@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** F12 place screen
+- **Task:** F13 admin panel (stats, history)
 - **Who:** Claude
 - **State:** todo
-- **Next step:** 🟢 domain/verification.py, use cases, HTTP
-- **Last pytest:** `uv run pytest` → red: F12 tests
+- **Next step:** 🔴 tests /admin/stats, /places/{id}/history
+- **Last pytest:** `uv run pytest` → 218 passed, 7 skipped
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -44,10 +44,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F9.1–F9.5 | Persistence: SQLite + SQLAlchemy (write-behind SqlRepo) | Claude | done | demo flow also green on SQL; live restart keeps data |
 | F10.1–F10.4 | Gemini vision adapter (AI_MODE=gemini, config-driven) | Claude | done | live Gemini OK (gemini-3.8-flash): stairs → critical; 503s retried |
 | F11.1–F11.5 | Postgres + docker-compose, DB choice via env/config | Claude | done | verified on PG in docker |
-| F12.1–F12.3 | Place screen: activity feed, photos, verification label | Claude | red | |
+| F12.1–F12.3 | Place screen: activity feed, photos, verification label | Claude | done | e2e 7d–7f + 400 |
 
 ## Log (newest first)
 
+- 2026-10-03 · F12 · done · activity feed, gallery, verification badge; FIX: tests no longer read .env (had called real Gemini, burned free quota 20/day)
 - 2026-10-03 · F12 · red · verification + activity + photos tests
 - 2026-10-03 · F11 · done · Postgres verified in docker (port 8001, local main.py on 8000); Gemini key hit 429 quota → mock fallback OK; docs updated
 - 2026-10-03 · F11 · green · DB_ENGINE/POSTGRES_* config, db_url, SqlRepo retry, Dockerfile, .dockerignore, compose; compose config valid; PG run pending

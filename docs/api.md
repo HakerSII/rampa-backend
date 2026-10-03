@@ -82,6 +82,8 @@ Every error has the same shape:
 | GET | `/api/v1/places/{id}` | — | Place details |
 | GET | `/api/v1/places/{id}/accessibility` | — | Computed accessibility, grouped |
 | GET | `/api/v1/places/{id}/check` | — | "Can I get in?" |
+| GET | `/api/v1/places/{id}/activity` | — | Feed: recent reports, confirmations, decisions |
+| GET | `/api/v1/places/{id}/photos` | — | Photo gallery (evidence) |
 | GET | `/api/v1/accessibility/features` | — | Feature dictionary (filters) |
 | POST | `/api/v1/uploads` | user | Upload photo |
 | POST | `/api/v1/ai/image-tags` | user | AI suggestions from photos |
@@ -142,6 +144,32 @@ Unknown feature → 400.
 
 ### `GET /api/v1/places/{id}`
 `PlaceSummary` + `short_description`, `address`. Unknown id → 404.
+
+Every `PlaceSummary` (list, details, owner places) carries a **`verification`** block, the "Potwierdzone dzisiaj" badge from the mock-ups:
+
+```json
+"verification": { "status": "confirmed", "label": "Potwierdzone dzisiaj",
+                  "last_verified": "2026-10-03T12:00:00+00:00", "confidence": 0.6,
+                  "confidence_level": "medium", "sources": ["admin", "community"] }
+```
+- `status`: `conflict` · `confirmed` (today) · `verified_recently` (≤ 30 days) · `verified` (≤ 90 days) · `needs_update` (> 90 days) · `unverified`.
+- `label`: "Sprzeczne zgłoszenia", "Zweryfikowane N dni temu", "Wymaga aktualizacji", "Brak danych".
+- `confidence`: the mean over known features; levels are high ≥ 0.8, medium ≥ 0.5, otherwise low.
+
+### `GET /api/v1/places/{id}/activity?limit=20`
+The "Ostatnie zgłoszenia i potwierdzenia" feed, newest first, with the full history (rejected items included). There is one item per observation:
+
+```json
+{ "items": [ { "type": "admin_decision", "label": "Decyzja moderatora", "observation_id": "obs_14",
+               "feature": "elevator", "value": "yes", "source": "admin",
+               "author": { "id": "usr_admin", "display_name": "Administrator" },
+               "comment": "Potwierdzone przez moderatora", "photo_url": null, "votes_up": 0,
+               "validation": "VALID", "created_at": "2026-10-03T12:00:00+00:00" } ] }
+```
+`type`: `issue_reported` · `confirmation` · `owner_update` · `admin_decision` · `open_data_import` · `initial_data`. `limit` is 1–100 (otherwise 400).
+
+### `GET /api/v1/places/{id}/photos`
+`{ "items": [ { id, url, author, feature, observation_id, created_at } ], "total": n }`: evidence photos, newest first.
 
 ### `GET /api/v1/places/{id}/accessibility`
 All 5 features grouped; features without data come back as `unknown`.

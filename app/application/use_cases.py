@@ -15,6 +15,7 @@ from app.application.ports import (
 )
 from app.domain import check as domain_check, osm as domain_osm, suggestions, trust, validation
 from app.domain.geo import haversine_m
+from app.domain.verification import Verification, activity_type, summarize
 from app.domain.enums import (
     CurrentState,
     DecisionAction,
@@ -51,7 +52,7 @@ from app.domain.model import (
     Session,
     User,
 )
-from app.seed import OSM_AUTHOR_ID, load_seed
+from app.seed import OSM_AUTHOR_ID, SEED_AUTHOR_ID, load_seed
 
 DEMO_TOKEN_PREFIX = "demo-"
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
@@ -200,6 +201,34 @@ class UseCases:
                   and o.validation != ValidationStatus.REJECTED
                   and states[o.feature].active_observation_id == o.id]
         return domain_check.check_place(place_id, states, profile, issues)
+
+    # ------------------------------------------------------------------ place screen (F12)
+    def verification_for(self, place_id: str) -> Verification:
+        states = self.get_accessibility(place_id).values()
+        sources = {o.source for o in self.list_observations(place_id)}
+        return summarize(states, sources, self.clock.now())
+
+    def place_activity(self, place_id: str, limit: int = 20) -> list[Observation]:
+        """Newest first (time, then insertion order). History incl. rejected observations."""
+        if not 1 <= limit <= 100:
+            raise ValidationFailed("limit: 1..100")
+        observations = self.list_observations(place_id, active=False)
+        ordered = sorted(enumerate(observations), key=lambda t: (t[1].created_at, t[0]), reverse=True)
+        return [o for _, o in ordered][:limit]
+
+    def place_photos(self, place_id: str) -> list[tuple[Photo, Observation]]:
+        seen, result = set(), []
+        for obs in self.place_activity(place_id, limit=100):
+            for photo_id in obs.evidence_ids:
+                photo = self.repo.get_photo(photo_id)
+                if photo and photo_id not in seen:
+                    seen.add(photo_id)
+                    result.append((photo, obs))
+        return result
+
+    @staticmethod
+    def activity_type(obs: Observation) -> str:
+        return activity_type(obs, SEED_AUTHOR_ID)
 
     def yes_features(self, place_id: str) -> list[FeatureKey]:
         return [f for f, s in self.repo.states_for(place_id).items() if s.state == StateValue.YES]

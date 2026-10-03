@@ -40,7 +40,8 @@ class AssignOwnerOut(BaseModel):
 
 @router.get("/owner/places", response_model=OwnerPlaces, tags=["owner"])
 async def list_owner_places(uc: UC, user: CurrentUser):
-    return OwnerPlaces(items=[place_summary(p, uc.yes_features(p.id)) for p in uc.list_owner_places(user)])
+    return OwnerPlaces(items=[place_summary(p, uc.yes_features(p.id), uc.verification_for(p.id))
+                              for p in uc.list_owner_places(user)])
 
 
 @router.post("/owner/places/{place_id}/observations", status_code=201, response_model=ObservationList,

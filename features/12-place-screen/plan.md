@@ -6,7 +6,7 @@ Overview: [../../README.md](../../README.md) · contract: [openapi.yaml](openapi
 
 - **Verification block** on `PlaceSummary` / `Place` (`verification`), pure `domain/verification.py`:
   - from known feature states: `last_verified` = newest, `confidence` = mean, level `high` ≥0.8 · `medium` ≥0.5 · `low`
-  - `status`: `conflict` (any state CONFLICT) · `confirmed` (≤1 day) · `verified_recently` (≤30 days) · `needs_update` (>90 days) · `verified` (else) · `unverified` (no data)
+  - `status`: `conflict` (any state CONFLICT) · `confirmed` (same day) · `verified_recently` (≤30 days) · `verified` (≤90 days) · `needs_update` (>90 days) · `unverified` (no data)
   - `label` (PL): "Sprzeczne zgłoszenia" · "Potwierdzone dzisiaj" · "Zweryfikowane N dni temu" · "Wymaga aktualizacji" · "Brak danych"
   - `sources`: distinct sources of active observations
 - `GET /places/{id}/activity?limit=20` — feed "Ostatnie zgłoszenia i potwierdzenia", newest first, one item per observation: `type` = `issue_reported` (community no) · `confirmation` (community yes) · `owner_update` · `admin_decision` · `open_data_import` · `initial_data` (seed); + label, feature, value, author ("Anna K."), comment, photo, votes up, validation, created_at

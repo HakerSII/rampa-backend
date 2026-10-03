@@ -54,6 +54,7 @@ flowchart LR
 |---|---|---|
 | Search places by required accessibility features | `GET /api/v1/places?features=…` | F2 |
 | "Can I get in?" (wheelchair) | `GET /api/v1/places/{id}/check` | F2 |
+| Place screen: activity feed, gallery, "Potwierdzone dzisiaj" badge | `/places/{id}/activity`, `/photos`, `verification` | F12 |
 | Report a change with a photo | `POST /uploads`, `POST /reports` | F3 |
 | Community confirmations 👍/👎 | `POST /observations/{id}/votes` | F3 |
 | Automatic conflict detection → moderation | `GET /admin/queue`, `POST …/decision` | F3/F4 |

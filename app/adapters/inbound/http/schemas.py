@@ -46,12 +46,22 @@ class Category(BaseModel):
     label: str
 
 
+class VerificationOut(BaseModel):
+    status: str
+    label: str
+    last_verified: str | None
+    confidence: float
+    confidence_level: str
+    sources: list[str]
+
+
 class PlaceSummary(BaseModel):
     id: str
     name: str
     category: Category
     location: Location
     accessibility_summary: list[FeatureKey]
+    verification: VerificationOut | None = None
 
 
 class PlaceOut(PlaceSummary):
@@ -125,8 +135,14 @@ class CheckResultOut(BaseModel):
 CATEGORY_LABELS = {"museum": "Muzeum", "cafe": "Kawiarnia", "culture": "Kultura", "office": "Urząd"}
 
 
-def place_summary(place: Place, yes_features: list[FeatureKey]) -> PlaceSummary:
+def verification_out(v) -> VerificationOut:
+    return VerificationOut(status=v.status, label=v.label, last_verified=iso(v.last_verified),
+                           confidence=v.confidence, confidence_level=v.confidence_level, sources=v.sources)
+
+
+def place_summary(place: Place, yes_features: list[FeatureKey], verification=None) -> PlaceSummary:
     return PlaceSummary(
+        verification=verification_out(verification) if verification else None,
         id=place.id, name=place.name,
         category=Category(key=place.category, label=CATEGORY_LABELS.get(place.category, place.category)),
         location=Location(lat=place.location.lat, lon=place.location.lon),
@@ -134,8 +150,8 @@ def place_summary(place: Place, yes_features: list[FeatureKey]) -> PlaceSummary:
     )
 
 
-def place_out(place: Place, yes_features: list[FeatureKey]) -> PlaceOut:
-    return PlaceOut(**place_summary(place, yes_features).model_dump(),
+def place_out(place: Place, yes_features: list[FeatureKey], verification=None) -> PlaceOut:
+    return PlaceOut(**place_summary(place, yes_features, verification).model_dump(),
                     short_description=place.short_description, address=place.address)
 
 
@@ -341,6 +357,52 @@ def queue_detail_out(uc, q: QueueItem, me: User) -> QueueDetailOut:
         summary=f"Sprzeczne zgłoszenia: {LABELS_PL[q.feature]}",
         observations=[observation_out(uc, o, me) for o in observations],
         feature_state=feature_state_out(state),
+    )
+
+
+# ---------------------------------------------------------------- place screen (F12)
+class ActivityItemOut(BaseModel):
+    type: str
+    label: str
+    observation_id: str
+    feature: FeatureKey
+    value: ObservationValue
+    source: ObservationSource
+    author: AuthorOut
+    comment: str
+    photo_url: str | None
+    votes_up: int
+    validation: ValidationStatus
+    created_at: str
+
+
+class ActivityList(BaseModel):
+    items: list[ActivityItemOut]
+
+
+class GalleryPhotoOut(BaseModel):
+    id: str
+    url: str
+    author: AuthorOut
+    feature: FeatureKey
+    observation_id: str
+    created_at: str
+
+
+class GalleryOut(BaseModel):
+    items: list[GalleryPhotoOut]
+    total: int
+
+
+def activity_item_out(uc, o: Observation) -> ActivityItemOut:
+    from app.domain.verification import ACTIVITY_LABELS
+    kind = uc.activity_type(o)
+    first = next((p for p in (uc.repo.get_photo(i) for i in o.evidence_ids) if p), None)
+    return ActivityItemOut(
+        type=kind, label=ACTIVITY_LABELS[kind], observation_id=o.id, feature=o.feature, value=o.value,
+        source=o.source, author=author_out(uc, o.author_id), comment=o.comment,
+        photo_url=first.url if first else None, votes_up=o.up_votes, validation=o.validation,
+        created_at=iso(o.created_at),
     )
 
 

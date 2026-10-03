@@ -164,6 +164,18 @@ GET {{base}}/places/plc_mnk/check?profile=wheelchair
 ### 7c. History kept: Anna's observation REJECTED, not deleted (active=false shows all)
 GET {{base}}/places/plc_mnk/observations?feature=elevator&active=false
 
+### 7d. Place screen: activity feed (admin decision, Marek, Anna's report …) — newest first
+GET {{base}}/places/plc_mnk/activity?limit=10
+
+### 7e. Place screen: photo gallery (Anna's evidence photo)
+GET {{base}}/places/plc_mnk/photos
+
+### 7f. Place details: verification block → "Potwierdzone dzisiaj", sources, confidence level
+GET {{base}}/places/plc_mnk
+
+### 400 VALIDATION_ERROR — activity limit out of range
+GET {{base}}/places/plc_mnk/activity?limit=0
+
 ### =====================================================================
 ### F5 Open API (/public/v1) — external apps, X-Api-Key, 60 req/min per key
 ### =====================================================================

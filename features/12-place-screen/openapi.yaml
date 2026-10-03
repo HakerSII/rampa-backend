@@ -1,0 +1,104 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F12 Place screen
+  version: 0.1.0-mvp
+  description: >
+    Details-page data from the mockups, computed from existing observations:
+    activity feed, photo gallery, and the verification block added to PlaceSummary/Place.
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: places
+paths:
+  /places/{placeId}/activity:
+    parameters: [{ $ref: "#/components/parameters/PlaceId" }]
+    get:
+      tags: [places]
+      summary: '"Ostatnie zgłoszenia i potwierdzenia" — newest first (full history)'
+      operationId: placeActivity
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/ActivityItem" } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /places/{placeId}/photos:
+    parameters: [{ $ref: "#/components/parameters/PlaceId" }]
+    get:
+      tags: [places]
+      summary: Photo gallery (evidence photos), newest first
+      operationId: placePhotos
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/GalleryPhoto" } }
+                  total: { type: integer }
+        "404": { $ref: "#/components/responses/Error" }
+components:
+  parameters:
+    PlaceId: { name: placeId, in: path, required: true, schema: { type: string, examples: [plc_mnk] } }
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code: { type: string }
+                  message: { type: string }
+  schemas:
+    Author:
+      type: object
+      properties:
+        id: { type: string }
+        display_name: { type: string, examples: ["Anna K."] }
+    Verification:
+      type: object
+      description: Added to PlaceSummary and Place as `verification`
+      properties:
+        status: { type: string, enum: [conflict, confirmed, verified_recently, verified, needs_update, unverified] }
+        label: { type: string, examples: ["Potwierdzone dzisiaj", "Zweryfikowane 3 dni temu"] }
+        last_verified: { type: [string, "null"], format: date-time }
+        confidence: { type: number }
+        confidence_level: { type: string, enum: [high, medium, low] }
+        sources: { type: array, items: { type: string, enum: [community, open_data, verified_owner, admin] } }
+    ActivityItem:
+      type: object
+      properties:
+        type: { type: string, enum: [initial_data, issue_reported, confirmation, owner_update, admin_decision, open_data_import] }
+        label: { type: string, examples: ["Zgłoszono utrudnienie"] }
+        observation_id: { type: string }
+        feature: { type: string }
+        value: { type: string, enum: ["yes", "no"] }
+        source: { type: string }
+        author: { $ref: "#/components/schemas/Author" }
+        comment: { type: string }
+        photo_url: { type: [string, "null"] }
+        votes_up: { type: integer }
+        validation: { type: string, enum: [VALID, CONFLICT, REJECTED] }
+        created_at: { type: string, format: date-time }
+    GalleryPhoto:
+      type: object
+      properties:
+        id: { type: string }
+        url: { type: string }
+        author: { $ref: "#/components/schemas/Author" }
+        feature: { type: string }
+        observation_id: { type: string }
+        created_at: { type: string, format: date-time }
