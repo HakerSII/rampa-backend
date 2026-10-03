@@ -1,4 +1,8 @@
-"""SqlRepo: write-behind cache over SQLite. Reload = new SqlRepo on the same file."""
+"""SqlRepo: write-behind cache. Runs on SQLite always and on Postgres when TEST_POSTGRES_URL is set
+(e.g. postgresql+psycopg://rampa:rampa@localhost:5432/rampa_test — tables are dropped!).
+Reload = new SqlRepo on the same database."""
+import os
+
 import pytest
 
 from app.adapters.outbound.memory import FixedClock, SeqIdGenerator
@@ -9,9 +13,20 @@ from tests.conftest import NOW, FakeStorage
 from tests.application.test_observations import report, user
 
 
-@pytest.fixture
-def url(tmp_path):
-    return f"sqlite:///{tmp_path / 'test.db'}"
+@pytest.fixture(params=["sqlite", "postgres"])
+def url(request, tmp_path):
+    if request.param == "sqlite":
+        return f"sqlite:///{tmp_path / 'test.db'}"
+    pg = os.getenv("TEST_POSTGRES_URL")
+    if not pg:
+        pytest.skip("set TEST_POSTGRES_URL to run SqlRepo tests on Postgres")
+    from sqlalchemy import create_engine
+
+    from app.adapters.outbound.sql import md
+    engine = create_engine(pg)
+    md.drop_all(engine)  # clean database per test
+    engine.dispose()
+    return pg
 
 
 def make(url) -> UseCases:

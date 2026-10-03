@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** — docs done
+- **Task:** F11 Postgres + docker-compose
 - **Who:** Claude
-- **State:** done
-- **Next step:** push; demo polish
-- **Last pytest:** `uv run pytest` → 198 passed
+- **State:** todo
+- **Next step:** 🟢 config DB_ENGINE/POSTGRES_*, Dockerfile, compose
+- **Last pytest:** `uv run pytest` → red: F11 tests
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -43,9 +43,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F8.1–F8.5 | OSM import (file) + MCP client of Open API | Claude | done | MCP stdio smoke OK (tools/list + call Tauron → yes) |
 | F9.1–F9.5 | Persistence: SQLite + SQLAlchemy (write-behind SqlRepo) | Claude | done | demo flow also green on SQL; live restart keeps data |
 | F10.1–F10.4 | Gemini vision adapter (AI_MODE=gemini, config-driven) | Claude | done | live Gemini OK (gemini-3.8-flash): stairs → critical; 503s retried |
+| F11.1–F11.5 | Postgres + docker-compose, DB choice via env/config | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F11 · red · config/compose/PG-parametrized repo tests
 - 2026-10-03 · DOCS · docs/ (README, architecture, api, configuration, operations, openapi.json) + export script + docs tests; 198 passed
 - 2026-10-03 · F10 · live · key in .env (gitignored), model gemini-3.8-flash, retry 429/5xx, prompt vocab, physical/mobility → critical; 192 passed
 - 2026-10-03 · F10 · done · Gemini REST adapter (httpx, key in header), config GEMINI_*, fallback to mock; 188 passed
