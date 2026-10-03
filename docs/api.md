@@ -54,7 +54,7 @@ Every error has the same shape:
 | 404 | `NOT_FOUND` | unknown place/observation/report/queue item; demo or Google login disabled in the current mode |
 | 409 | `CONFLICT` | queue item already resolved |
 | 413 | `FILE_TOO_LARGE` | photo > 10 MB |
-| 429 | `RATE_LIMITED` | Open API limit exceeded; `Retry-After` header |
+| 429 | `RATE_LIMITED` | rate limit exceeded (Open API key, `/ai/*`, login, login e-mails); `Retry-After` header |
 
 ### Enums
 
