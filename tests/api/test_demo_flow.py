@@ -100,3 +100,25 @@ def test_step7_admin_confirms(client, ctx):
     assert (state["state"], state["confidence"], state["validation"]) == ("yes", 1.0, "VALID")
     r = client.get("/api/v1/places/plc_mnk/check", params={"profile": "wheelchair"})
     assert r.json()["answer"] == "yes"
+
+
+# ---------------------------------------------------------------- auth over HTTP (F1)
+def test_me_requires_token(client):
+    assert client.get("/api/v1/me").status_code == 401
+    assert client.get("/api/v1/me", headers=auth("anna")).json()["role"] == "user"
+
+
+def test_google_mode_over_http(tmp_path):
+    from app.domain.model import GoogleIdentity
+    from tests.conftest import FakeIdentityVerifier
+
+    verifier = FakeIdentityVerifier({"tok": GoogleIdentity("sub-1", "a@b.pl", True, "Anna Kowalska")})
+    app = create_app(Settings(auth_mode="google", google_client_id="x", media_dir=str(tmp_path)), verifier)
+    c = TestClient(app)
+    assert c.post("/api/v1/auth/demo", json={"username": "anna"}).status_code == 404
+    assert c.post("/api/v1/auth/google", json={"id_token": "bad"}).json()["error"]["code"] == "UNAUTHORIZED"
+    token = c.post("/api/v1/auth/google", json={"id_token": "tok"}).json()["token"]
+    h = {"Authorization": f"Bearer {token}"}
+    assert c.get("/api/v1/me", headers=h).json()["email"] == "a@b.pl"
+    assert c.post("/api/v1/auth/logout", headers=h).status_code == 204
+    assert c.get("/api/v1/me", headers=h).status_code == 401

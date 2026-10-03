@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** F1 auth (Google Sign-In)
+- **Task:** contract check + live smoke
 - **Who:** Claude
 - **State:** todo
-- **Next step:** 🔴 tests/application/test_auth.py (FakeIdentityVerifier)
-- **Last pytest:** `uv run pytest` → 58 passed
+- **Next step:** tests/api/test_contract.py
+- **Last pytest:** `uv run pytest` → 67 passed
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -32,7 +32,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 |---|---|---|---|---|
 | F0.1–F0.8 | Skeleton | Claude | done | `2c032f2` |
 | F1.0 | Google Cloud OAuth client (human, online) | | todo | |
-| F1.1–F1.4 | Auth: tests, use cases, Google adapter, HTTP | | todo | |
+| F1.1–F1.4 | Auth: tests, use cases, Google adapter, HTTP | Claude | done | real Google token untested (needs F1.0) |
 | F1.5 | Front button | frontend | todo | |
 | F2.1–F2.5 | Places, search, check; demo steps 1–3 | Claude | done | steps 1–3 green |
 | F3.1–F3.8 | Trust, validation, reports, uploads, votes; steps 4–6 | Claude | done | steps 4–5 green; step 6 needs F4 endpoint |
@@ -40,6 +40,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 
 ## Log (newest first)
 
+- 2026-10-03 · F1 · done · Google Sign-In (verifier port + adapter), logout, /me, demo/google mode switch; 67 passed
 - 2026-10-03 · F4 · done · queue, detail, decision confirm/reject; test_demo_flow fully green; 58 passed
 - 2026-10-03 · F3 · done · trust, validation, reports, uploads, observations, votes; 48 passed, 2 xfail
 - 2026-10-03 · F2 · done · check rules, search/details/accessibility/check endpoints; 16 passed, 4 xfail

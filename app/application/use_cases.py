@@ -79,6 +79,26 @@ class UseCases:
             raise Unauthorized(f"unknown demo user: {username}")
         return DEMO_TOKEN_PREFIX + username, user
 
+    async def login_with_google(self, id_token: str) -> tuple[str, User]:
+        if self.auth_mode != "google" or self.verifier is None:
+            raise NotFound("Google login disabled (AUTH_MODE != google)")
+        identity = await self.verifier.verify(id_token)
+        if not identity.email_verified:
+            raise Unauthorized("Google e-mail not verified")
+        role = Role.ADMIN if identity.email.lower() in self.admin_emails else Role.USER
+        user = self.repo.find_user_by_google_sub(identity.sub)
+        if user is None:
+            user = User(self.ids.new("usr"), identity.name or identity.email, role,
+                        email=identity.email, google_sub=identity.sub)
+            self.repo.add_user(user)
+        else:
+            user.email, user.display_name, user.role = identity.email, identity.name or user.display_name, role
+        return self._new_session(user), user
+
+    def logout(self, token: str | None) -> None:
+        if token:
+            self.repo.delete_session(token)
+
     def current_user(self, token: str | None) -> User | None:
         """None = guest. Demo tokens are stateless, so they survive demo reset."""
         if not token:
