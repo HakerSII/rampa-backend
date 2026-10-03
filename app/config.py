@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     ai_model_path: str = "models/gpu/gpu-int4-rtn-block-32"
     ai_timeout_s: float = 60.0
     gemini_api_key: str = ""  # secret: only in .env (gitignored)
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.8-flash"
     gemini_api_url: str = "https://generativelanguage.googleapis.com/v1beta"
     osm_file: str = "data/osm_krakow_tauron.json"  # offline OSM snapshot
     public_api_keys: str = "demo-key"  # comma-separated X-Api-Key values for /public/v1

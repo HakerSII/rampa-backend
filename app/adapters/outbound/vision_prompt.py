@@ -15,7 +15,13 @@ Schema:
   "affected_disabilities": [],
   "description": "",
   "confidence": 0.0
-}"""
+}
+
+Rules:
+- barrier_type: short English phrase with spaces, e.g. "stairs without ramp", "elevator out of order", "" if none.
+- affected_disabilities: subset of ["wheelchair", "mobility", "visual", "hearing", "cognitive"].
+- real_place: false for screenshots, drawings, memes or photos of screens.
+- confidence: 0.0-1.0."""
 
 
 def parse_analysis(raw: str, model: str) -> ImageAnalysis:

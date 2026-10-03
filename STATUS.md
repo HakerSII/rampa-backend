@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** — F10 done
+- **Task:** — F10 done, live-verified
 - **Who:** Claude
 - **State:** done
-- **Next step:** manual: put GEMINI_API_KEY in .env, AI_MODE=gemini, click 4a-AI; then demo polish
-- **Last pytest:** `uv run pytest` → 188 passed
+- **Next step:** demo polish / push
+- **Last pytest:** `uv run pytest` → 192 passed
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -42,10 +42,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F7.1–F7.4 | Owner role + verified_owner observations | Claude | done | e2e owner scenario O0–O11 + 3×403 + 400 |
 | F8.1–F8.5 | OSM import (file) + MCP client of Open API | Claude | done | MCP stdio smoke OK (tools/list + call Tauron → yes) |
 | F9.1–F9.5 | Persistence: SQLite + SQLAlchemy (write-behind SqlRepo) | Claude | done | demo flow also green on SQL; live restart keeps data |
-| F10.1–F10.4 | Gemini vision adapter (AI_MODE=gemini, config-driven) | Claude | done | live Gemini call untested (needs key); no-key → mock verified |
+| F10.1–F10.4 | Gemini vision adapter (AI_MODE=gemini, config-driven) | Claude | done | live Gemini OK (gemini-3.8-flash): stairs → critical; 503s retried |
 
 ## Log (newest first)
 
+- 2026-10-03 · F10 · live · key in .env (gitignored), model gemini-3.8-flash, retry 429/5xx, prompt vocab, physical/mobility → critical; 192 passed
 - 2026-10-03 · F10 · done · Gemini REST adapter (httpx, key in header), config GEMINI_*, fallback to mock; 188 passed
 - 2026-10-03 · F10 · red · Gemini adapter tests (MockTransport)
 - 2026-10-03 · F9 · done · SQLite + SQLAlchemy write-behind SqlRepo, commit middleware, REPO_MODE/DATABASE_URL, .env.example synced with config.py; 179 passed

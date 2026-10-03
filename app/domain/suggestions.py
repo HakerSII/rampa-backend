@@ -18,6 +18,9 @@ EXTRA_TAGS: dict[str, tuple[str, ...]] = {
 }
 
 
+MOBILITY_WORDS = ("wheelchair", "mobility", "physical", "wózek", "ruch")  # blocks movement → critical
+
+
 @dataclass(slots=True)
 class Tag:
     label: str
@@ -60,6 +63,8 @@ def suggest(a: ImageAnalysis) -> Suggestion:
 
     suggested = None
     if a.barrier_detected and features:
-        severity = Severity.CRITICAL if "wheelchair" in a.affected_disabilities else Severity.OBSTACLE
+        affected = " ".join(a.affected_disabilities).lower()
+        critical = any(word in affected for word in MOBILITY_WORDS)
+        severity = Severity.CRITICAL if critical else Severity.OBSTACLE
         suggested = Suggested(features[0], CurrentState.NOT_WORKING, severity)
     return Suggestion(tags, suggested)

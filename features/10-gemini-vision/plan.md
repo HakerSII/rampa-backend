@@ -8,11 +8,13 @@ Overview: [../../README.md](../../README.md) · contract: F6 [openapi.yaml](../0
 - Selected by config: `AI_MODE=mock|onnx|gemini`.
 - Config (`app/config.py` ↔ `.env.example`):
   - `GEMINI_API_KEY` — secret, only in `.env` (gitignored); sent as `x-goog-api-key` header (never in URL/logs)
-  - `GEMINI_MODEL` — default `gemini-2.5-flash` (verify current model names in Google AI Studio)
+  - `GEMINI_MODEL` — default `gemini-3.8-flash` (API said `gemini-2.5-flash` is no longer available to new users)
   - `GEMINI_API_URL` — default `https://generativelanguage.googleapis.com/v1beta`
   - `AI_TIMEOUT_S` — shared with onnx
 - Request: same instruction + JSON schema as Phi (shared `vision_prompt.py`), image as `inline_data` base64, `generationConfig.response_mime_type=application/json`, `temperature=0`.
 - Response: `candidates[0].content.parts[*].text` → `parse_analysis` → `ImageAnalysis(model="gemini")`.
+- Retries 429/5xx ("high demand") up to 2× with backoff 2 s, 4 s.
+- Severity: `wheelchair` / `mobility` / `physical` affected → critical.
 - Wrapped in `FallbackVisionAnalyzer`: no key / HTTP error / timeout / blocked / bad JSON → mock (`model: "mock"`), warning in log. Demo never breaks.
 
 ## Tasks

@@ -10,7 +10,8 @@ from app.adapters.outbound.vision_prompt import INSTRUCTION, parse_analysis
 from app.domain.model import ImageAnalysis
 
 DEFAULT_API_URL = "https://generativelanguage.googleapis.com/v1beta"
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.8-flash"
+RETRY_STATUS = {429, 500, 502, 503, 504}  # transient (e.g. "high demand")
 
 
 def _mime(data: bytes) -> str:
@@ -25,6 +26,8 @@ class GeminiVisionAnalyzer:
         self.api_url = api_url.rstrip("/")
         self._http = http
         self.timeout_s = timeout_s
+        self.max_retries = 2
+        self.retry_pause_s = 2.0  # doubles each retry; whole call still bounded by FallbackVisionAnalyzer timeout
 
     async def analyze(self, image_path: str, original_name: str) -> ImageAnalysis:
         if not self.api_key:
@@ -40,7 +43,11 @@ class GeminiVisionAnalyzer:
         url = f"{self.api_url}/models/{self.model}:generateContent"
         client = self._http or httpx.AsyncClient(timeout=self.timeout_s)
         try:
-            r = await client.post(url, json=body, headers={"x-goog-api-key": self.api_key})
+            for attempt in range(self.max_retries + 1):
+                r = await client.post(url, json=body, headers={"x-goog-api-key": self.api_key})
+                if r.status_code not in RETRY_STATUS or attempt == self.max_retries:
+                    break
+                await asyncio.sleep(self.retry_pause_s * 2 ** attempt)
         finally:
             if self._http is None:
                 await client.aclose()
