@@ -27,7 +27,7 @@ paths:
               properties:
                 username:
                   type: string
-                  enum: [anna, jan, ola, piotr, marek, admin]
+                  enum: [anna, jan, ola, piotr, marek, ewa, admin]
       responses:
         "200":
           description: Logged in
@@ -103,7 +103,7 @@ components:
   schemas:
     Role:
       type: string
-      enum: [guest, user, admin]
+      enum: [guest, user, owner, admin]
       description: Subset of full Role [guest, user, owner, admin, api_client]
     User:
       type: object

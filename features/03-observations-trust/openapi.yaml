@@ -189,7 +189,7 @@ components:
       description: Full enum also has partial (cut in MVP)
     ObservationSource:
       type: string
-      enum: [community, admin]
+      enum: [community, verified_owner, admin]
     ValidationStatus:
       type: string
       enum: [VALID, CONFLICT, REJECTED]

@@ -1,0 +1,380 @@
+### =====================================================================
+### Kraków bez barier — MVP e2e demo (VS Code "REST Client", humao.rest-client)
+###
+### 1. Start server:  uv run python main.py
+### 2. Click "Send Request" above each block, top → bottom (requests pass ids along via @name).
+### 3. Start again any time with step 0 (reset).
+### =====================================================================
+
+@base = http://localhost:8000/api/v1
+@anna = demo-anna
+@jan = demo-jan
+@ola = demo-ola
+@piotr = demo-piotr
+@marek = demo-marek
+@admin = demo-admin
+@ewa = demo-ewa
+@public = http://localhost:8000/public/v1
+@apiKey = demo-key
+
+### ---------------------------------------------------------------------
+### 0. Reset demo data (admin) → 204
+POST {{base}}/admin/demo/reset
+Authorization: Bearer {{admin}}
+
+### Demo login (optional — demo tokens are just "demo-<username>") → 200 {token, user}
+POST {{base}}/auth/demo
+Content-Type: application/json
+
+{"username": "anna"}
+
+### Who am I → 200 role=user
+GET {{base}}/me
+Authorization: Bearer {{anna}}
+
+### ---------------------------------------------------------------------
+### 1. Search step-free places → plc_mnk, plc_ice
+GET {{base}}/places?features=step_free_entrance
+
+### Feature dictionary (filters)
+GET {{base}}/accessibility/features
+
+### ---------------------------------------------------------------------
+### 2. Place details
+GET {{base}}/places/plc_mnk
+
+### 2b. Accessibility → elevator: yes (seed, confidence 0.5)
+GET {{base}}/places/plc_mnk/accessibility
+
+### ---------------------------------------------------------------------
+### 3. Can I get in by wheelchair? → answer: yes
+GET {{base}}/places/plc_mnk/check?profile=wheelchair
+
+### ---------------------------------------------------------------------
+### 4a. Anna uploads a photo → 201 {id: ph_…, url}
+# @name upload
+POST {{base}}/uploads
+Authorization: Bearer {{anna}}
+Content-Type: multipart/form-data; boundary=----DemoBoundary
+
+------DemoBoundary
+Content-Disposition: form-data; name="file"; filename="winda.png"
+Content-Type: image/png
+
+< ./winda.png
+------DemoBoundary--
+
+### 4a-AI. AI suggestions for the photo → tags winda/awaria, suggested elevator / not_working / critical
+### (AI_MODE=mock: deterministic; onnx: Phi-3.5 Vision, falls back to mock on error/timeout)
+POST {{base}}/ai/image-tags
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"photo_ids": ["{{upload.response.body.$.id}}"], "place_id": "plc_mnk"}
+
+### 4b. Anna reports broken elevator → 201, observation_ids[0]
+# @name report
+POST {{base}}/reports
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{
+  "place_id": "plc_mnk",
+  "element": "elevator",
+  "current_state": "not_working",
+  "severity": "critical",
+  "nature": "temporary",
+  "description": "Winda przy wejściu głównym nieczynna, kartka o awarii.",
+  "photo_ids": ["{{upload.response.body.$.id}}"]
+}
+
+### 4c. Elevator now: no, temporary, confidence 0.6
+GET {{base}}/places/plc_mnk/accessibility
+
+### 4d. Active observations (alerts)
+GET {{base}}/places/plc_mnk/observations?feature=elevator
+Authorization: Bearer {{jan}}
+
+### ---------------------------------------------------------------------
+### 5a. Jan confirms 👍
+POST {{base}}/observations/{{report.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"value": 1}
+
+### 5b. Ola confirms 👍
+POST {{base}}/observations/{{report.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{ola}}
+Content-Type: application/json
+
+{"value": 1}
+
+### 5c. Piotr confirms 👍 → feature_state.confidence 0.9
+POST {{base}}/observations/{{report.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{piotr}}
+Content-Type: application/json
+
+{"value": 1}
+
+### 5d. Check → answer: partial (get in, elevator broken)
+GET {{base}}/places/plc_mnk/check?profile=wheelchair
+
+### ---------------------------------------------------------------------
+### 6a. Marek says the elevator works → 201, creates conflict
+# @name marek
+POST {{base}}/places/plc_mnk/observations
+Authorization: Bearer {{marek}}
+Content-Type: application/json
+
+{"feature": "elevator", "value": "yes", "comment": "Winda działa, sprawdzone rano."}
+
+### 6b. Elevator: still no, validation CONFLICT
+GET {{base}}/places/plc_mnk/accessibility
+
+### 6c. Admin: moderation queue → 1 conflict item
+# @name queue
+GET {{base}}/admin/queue?filter=conflict
+Authorization: Bearer {{admin}}
+
+### 6d. Admin: conflict detail (both observations, votes, photo)
+GET {{base}}/admin/queue/{{queue.response.body.$.items[0].id}}
+Authorization: Bearer {{admin}}
+
+### ---------------------------------------------------------------------
+### 7a. Admin confirms Marek → status approved, elevator yes, confidence 1.0, VALID
+POST {{base}}/admin/queue/{{queue.response.body.$.items[0].id}}/decision
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{
+  "action": "confirm",
+  "winning_observation_id": "{{marek.response.body.$.id}}",
+  "comment": "Sprawdzone telefonicznie z muzeum."
+}
+
+### 7b. Check → answer: yes
+GET {{base}}/places/plc_mnk/check?profile=wheelchair
+
+### 7c. History kept: Anna's observation REJECTED, not deleted (active=false shows all)
+GET {{base}}/places/plc_mnk/observations?feature=elevator&active=false
+
+### =====================================================================
+### F5 Open API (/public/v1) — external apps, X-Api-Key, 60 req/min per key
+### =====================================================================
+
+### P1. Public search step-free places → plc_mnk, plc_ice
+GET {{public}}/places?features=step_free_entrance
+X-Api-Key: {{apiKey}}
+
+### P2. Public place
+GET {{public}}/places/plc_mnk
+X-Api-Key: {{apiKey}}
+
+### P3. Flat accessibility (yes→true, no→false, unknown omitted); after 7a elevator = true
+GET {{public}}/places/plc_mnk/accessibility
+X-Api-Key: {{apiKey}}
+
+### P4. Flat accessibility, partial data → only "ramp"
+GET {{public}}/places/plc_camelot/accessibility
+X-Api-Key: {{apiKey}}
+
+### P5. Public check → partial (ICE: elevator broken)
+GET {{public}}/places/plc_ice/check?profile=wheelchair
+X-Api-Key: {{apiKey}}
+
+### 401 UNAUTHORIZED — public API without key
+GET {{public}}/places
+
+### 401 UNAUTHORIZED — app Bearer token is not an API key
+GET {{public}}/places
+Authorization: Bearer {{admin}}
+
+### =====================================================================
+### F7 Owner scenario — owner says "repaired" vs users "broken" (original mockup conflict)
+### Starts with its own reset. Ewa (owner) owns plc_mnk + plc_camelot.
+### =====================================================================
+
+### O0. Reset → 204
+POST {{base}}/admin/demo/reset
+Authorization: Bearer {{admin}}
+
+### O1. Owner: my places → plc_mnk, plc_camelot
+GET {{base}}/owner/places
+Authorization: Bearer {{ewa}}
+
+### O2. Anna uploads photo → 201
+# @name ownUpload
+POST {{base}}/uploads
+Authorization: Bearer {{anna}}
+Content-Type: multipart/form-data; boundary=----DemoBoundary
+
+------DemoBoundary
+Content-Disposition: form-data; name="file"; filename="winda.png"
+Content-Type: image/png
+
+< ./winda.png
+------DemoBoundary--
+
+### O3. Anna reports broken elevator (0.6) → 201
+# @name ownReport
+POST {{base}}/reports
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{
+  "place_id": "plc_mnk", "element": "elevator", "current_state": "not_working",
+  "severity": "critical", "nature": "temporary",
+  "description": "Winda nieczynna.", "photo_ids": ["{{ownUpload.response.body.$.id}}"]
+}
+
+### O4a. Jan 👍
+POST {{base}}/observations/{{ownReport.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"value": 1}
+
+### O4b. Ola 👍
+POST {{base}}/observations/{{ownReport.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{ola}}
+Content-Type: application/json
+
+{"value": 1}
+
+### O4c. Piotr 👍 → confidence 0.9
+POST {{base}}/observations/{{ownReport.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{piotr}}
+Content-Type: application/json
+
+{"value": 1}
+
+### O5. Owner sees user reports on her places → Anna's report
+GET {{base}}/owner/reports
+Authorization: Bearer {{ewa}}
+
+### O6. Owner: "elevator repaired" → 201, source verified_owner, 0.85, validation CONFLICT
+# @name ewaUpdate
+POST {{base}}/owner/places/plc_mnk/observations
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"observations": [{"feature": "elevator", "value": "yes", "comment": "Winda naprawiona 3.10, serwis potwierdził."}]}
+
+### O7. State: elevator still no (users 0.9 > owner 0.85), CONFLICT
+GET {{base}}/places/plc_mnk/accessibility
+
+### O8. Admin queue → 1 conflict (owner vs users)
+# @name ownQueue
+GET {{base}}/admin/queue?filter=conflict
+Authorization: Bearer {{admin}}
+
+### O9. Admin confirms owner → elevator yes, 1.0, VALID
+POST {{base}}/admin/queue/{{ownQueue.response.body.$.items[0].id}}/decision
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"action": "confirm", "winning_observation_id": "{{ewaUpdate.response.body.$.items[0].id}}"}
+
+### O10. Admin assigns Marek as owner of ICE → 200, role owner
+POST {{base}}/admin/places/plc_ice/owner
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"user_id": "usr_marek"}
+
+### O11. Marek (now owner) sees ICE
+GET {{base}}/owner/places
+Authorization: Bearer {{marek}}
+
+### 403 FORBIDDEN — regular user on owner panel
+GET {{base}}/owner/places
+Authorization: Bearer {{anna}}
+
+### 403 FORBIDDEN — owner updates a place she does not own
+POST {{base}}/owner/places/plc_ice/observations
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"observations": [{"feature": "elevator", "value": "yes"}]}
+
+### 403 FORBIDDEN — non-admin assigns owner
+POST {{base}}/admin/places/plc_ice/owner
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"user_id": "usr_ewa"}
+
+### 400 VALIDATION_ERROR — empty owner batch
+POST {{base}}/owner/places/plc_mnk/observations
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"observations": []}
+
+### =====================================================================
+### Error paths (expected status in title)
+### =====================================================================
+
+### 404 NOT_FOUND — unknown place
+GET {{base}}/places/nope
+
+### 400 VALIDATION_ERROR — unknown feature in filter
+GET {{base}}/places?features=teleporter
+
+### 401 UNAUTHORIZED — report without token
+POST {{base}}/reports
+Content-Type: application/json
+
+{"place_id": "plc_mnk", "element": "ramp", "current_state": "works", "severity": "minor", "nature": "permanent", "description": "x"}
+
+### 401 UNAUTHORIZED — unknown demo user
+POST {{base}}/auth/demo
+Content-Type: application/json
+
+{"username": "daniel"}
+
+### 403 FORBIDDEN — non-admin opens queue
+GET {{base}}/admin/queue
+Authorization: Bearer {{anna}}
+
+### 400 VALIDATION_ERROR — author votes on own observation (run after 4b)
+POST {{base}}/observations/{{report.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"value": 1}
+
+### (setup for next case) upload a "screenshot" → 201
+# @name screenshot
+POST {{base}}/uploads
+Authorization: Bearer {{anna}}
+Content-Type: multipart/form-data; boundary=----DemoBoundary
+
+------DemoBoundary
+Content-Disposition: form-data; name="file"; filename="screenshot.png"
+Content-Type: image/png
+
+< ./winda.png
+------DemoBoundary--
+
+### 400 NOT_A_REAL_PLACE — AI rejects a screenshot
+POST {{base}}/ai/image-tags
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"photo_ids": ["{{screenshot.response.body.$.id}}"]}
+
+### 400 VALIDATION_ERROR — AI with unknown photo
+POST {{base}}/ai/image-tags
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"photo_ids": ["ph_missing"]}
+
+### 409 CONFLICT — decide twice on the same item (run after 7a)
+POST {{base}}/admin/queue/{{queue.response.body.$.items[0].id}}/decision
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"action": "reject"}

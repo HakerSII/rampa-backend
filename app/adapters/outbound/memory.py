@@ -1,0 +1,139 @@
+from collections import defaultdict
+from datetime import datetime, timezone
+
+from app.domain.enums import FeatureKey, QueueStatus
+from app.domain.model import (
+    FeatureStateRecord,
+    Observation,
+    Photo,
+    Place,
+    QueueItem,
+    Report,
+    Session,
+    User,
+)
+
+
+class InMemoryRepo:
+    def __init__(self):
+        self.clear()
+
+    def clear(self) -> None:
+        self.users: dict[str, User] = {}
+        self.sessions: dict[str, Session] = {}
+        self.places: dict[str, Place] = {}
+        self.states: dict[str, dict[FeatureKey, FeatureStateRecord]] = defaultdict(dict)
+        self.observations: dict[str, Observation] = {}  # insertion order = creation order
+        self.reports: dict[str, Report] = {}
+        self.photos: dict[str, Photo] = {}
+        self.queue: dict[str, QueueItem] = {}
+
+    # users / sessions
+    def add_user(self, user: User) -> None:
+        self.users[user.id] = user
+
+    def get_user(self, user_id: str) -> User | None:
+        return self.users.get(user_id)
+
+    def find_user_by_username(self, username: str) -> User | None:
+        return next((u for u in self.users.values() if u.username == username), None)
+
+    def find_user_by_google_sub(self, sub: str) -> User | None:
+        return next((u for u in self.users.values() if u.google_sub == sub), None)
+
+    def add_session(self, session: Session) -> None:
+        self.sessions[session.token] = session
+
+    def get_session(self, token: str) -> Session | None:
+        return self.sessions.get(token)
+
+    def delete_session(self, token: str) -> None:
+        self.sessions.pop(token, None)
+
+    # places / states
+    def add_place(self, place: Place) -> None:
+        self.places[place.id] = place
+
+    def get_place(self, place_id: str) -> Place | None:
+        return self.places.get(place_id)
+
+    def list_places(self) -> list[Place]:
+        return list(self.places.values())
+
+    def save_state(self, state: FeatureStateRecord) -> None:
+        self.states[state.place_id][state.feature] = state
+
+    def states_for(self, place_id: str) -> dict[FeatureKey, FeatureStateRecord]:
+        return dict(self.states.get(place_id, {}))
+
+    # observations / reports / photos
+    def add_observation(self, obs: Observation) -> None:
+        self.observations[obs.id] = obs
+
+    def get_observation(self, obs_id: str) -> Observation | None:
+        return self.observations.get(obs_id)
+
+    def list_observations(self, place_id: str, feature: FeatureKey | None = None) -> list[Observation]:
+        return [
+            o for o in self.observations.values()
+            if o.place_id == place_id and (feature is None or o.feature == feature)
+        ]
+
+    def add_report(self, report: Report) -> None:
+        self.reports[report.id] = report
+
+    def get_report(self, report_id: str) -> Report | None:
+        return self.reports.get(report_id)
+
+    def list_reports(self) -> list[Report]:
+        return list(self.reports.values())
+
+    def add_photo(self, photo: Photo) -> None:
+        self.photos[photo.id] = photo
+
+    def get_photo(self, photo_id: str) -> Photo | None:
+        return self.photos.get(photo_id)
+
+    # moderation queue
+    def add_queue_item(self, item: QueueItem) -> None:
+        self.queue[item.id] = item
+
+    def get_queue_item(self, item_id: str) -> QueueItem | None:
+        return self.queue.get(item_id)
+
+    def list_queue_items(self) -> list[QueueItem]:
+        return list(self.queue.values())
+
+    def find_open_queue_item(self, place_id: str, feature: FeatureKey) -> QueueItem | None:
+        return next(
+            (q for q in self.queue.values()
+             if q.place_id == place_id and q.feature == feature and q.status == QueueStatus.OPEN),
+            None,
+        )
+
+
+class SystemClock:
+    def now(self) -> datetime:
+        return datetime.now(timezone.utc)
+
+
+class FixedClock:
+    def __init__(self, now: datetime):
+        self._now = now
+
+    def now(self) -> datetime:
+        return self._now
+
+
+class SeqIdGenerator:
+    """Deterministic ids: obs_1, obs_2, … (per prefix)."""
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self) -> None:
+        self._counters: dict[str, int] = defaultdict(int)
+
+    def new(self, prefix: str) -> str:
+        self._counters[prefix] += 1
+        return f"{prefix}_{self._counters[prefix]}"
