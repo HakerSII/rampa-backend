@@ -210,6 +210,41 @@ Authorization: Bearer {{anna}}
 ### F35d. 401 UNAUTHORIZED — guest
 GET {{base}}/me/notifications
 
+### F36a. Jan adds a new place from the map → new_place queue item for the moderator
+POST {{base}}/places/resolve
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"name": "Księgarnia Pod Globusem", "lat": 50.0635, "lon": 19.9365, "category": "shop"}
+
+### F36b. Admin: new places waiting for verification (counts.new_place)
+# @name newPlaces
+GET {{base}}/admin/queue?filter=new_place
+Authorization: Bearer {{admin}}
+
+### F36c. Admin accepts the new place → approved (feature_state null)
+POST {{base}}/admin/queue/{{newPlaces.response.body.$.items[0].id}}/decision
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"action": "confirm"}
+
+### F36d. Activity map (grid cells, busiest first)
+GET {{base}}/admin/activity?days=30&cell_deg=0.005
+Authorization: Bearer {{admin}}
+
+### F36e. Trends: last 7 days
+GET {{base}}/admin/trends?days=7
+Authorization: Bearer {{admin}}
+
+### F36f. Coverage per category + most missing core features
+GET {{base}}/admin/coverage
+Authorization: Bearer {{admin}}
+
+### F36g. 400 VALIDATION_ERROR — days out of range
+GET {{base}}/admin/trends?days=0
+Authorization: Bearer {{admin}}
+
 ### F33a. E-mail login: request a code (demo + console mailer → dev_token in the response; mail in the log)
 # @name emailReq
 POST {{base}}/auth/email/request
@@ -982,8 +1017,8 @@ Content-Type: application/json
 
 {"photo_ids": ["ph_missing"]}
 
-### 409 CONFLICT — decide twice on the same item (run after 7a)
-POST {{base}}/admin/queue/{{queue.response.body.$.items[0].id}}/decision
+### 409 CONFLICT — decide twice on the same item (O9 already decided it; ids restart after demo reset)
+POST {{base}}/admin/queue/{{ownQueue.response.body.$.items[0].id}}/decision
 Authorization: Bearer {{admin}}
 Content-Type: application/json
 

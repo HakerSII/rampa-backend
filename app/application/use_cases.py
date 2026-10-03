@@ -1,6 +1,7 @@
 """All MVP use cases (application layer). Depends only on domain + ports."""
 import logging
 import hashlib
+import math
 import secrets
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -151,6 +152,37 @@ class OwnerPlaceStats:
     open_conflicts: int
     last_verified: datetime | None
     confidence: float
+
+
+@dataclass(slots=True)
+class ActivityCell:
+    lat: float
+    lon: float
+    observations: int
+    reports: int
+
+
+@dataclass(slots=True)
+class TrendDay:
+    day: str
+    observations: int
+    reports: int
+    questions: int
+    queue_items: int
+
+
+@dataclass(slots=True)
+class CategoryCoverage:
+    category: str
+    places: int
+    with_data: int
+    avg_known_features: float
+
+
+@dataclass(slots=True)
+class Coverage:
+    categories: list[CategoryCoverage]
+    most_missing: list[tuple[FeatureKey, int]]
 
 
 @dataclass(slots=True)
@@ -681,6 +713,85 @@ class UseCases:
             return {p.id for p in self.repo.list_places()}
         return {p.id for p in self.repo.list_places() if p.owner_id == user.id}
 
+    # ------------------------------------------------------------------ admin insights (F36)
+    def admin_activity(self, admin: User | None, days: int = 30, cell_deg: float = 0.005,
+                       bbox: str | None = None) -> list[ActivityCell]:
+        """Observations + reports per grid cell in the last `days` (cell centres, busiest first)."""
+        self._require_admin(admin)
+        if not (1 <= days <= 365 and 0.001 <= cell_deg <= 0.1):
+            raise ValidationFailed("days 1..365, cell_deg 0.001..0.1")
+        try:
+            box = parse_bbox(bbox) if bbox else None
+        except ValueError as e:
+            raise ValidationFailed(str(e)) from e
+        since = self.clock.now() - timedelta(days=days)
+        cells: dict[tuple[int, int], ActivityCell] = {}
+
+        def bump(place_id: str, kind: str) -> None:
+            place = self.repo.get_place(place_id)
+            if place is None or (box and not in_bbox(place.location, box)):
+                return
+            key = (math.floor(place.location.lat / cell_deg), math.floor(place.location.lon / cell_deg))
+            cell = cells.setdefault(key, ActivityCell(round((key[0] + 0.5) * cell_deg, 6),
+                                                      round((key[1] + 0.5) * cell_deg, 6), 0, 0))
+            setattr(cell, kind, getattr(cell, kind) + 1)
+
+        for p in self.repo.list_places():
+            for o in self.repo.list_observations(p.id):
+                if o.created_at >= since:
+                    bump(p.id, "observations")
+        for r in self.repo.list_reports():
+            if r.status == "submitted" and r.created_at >= since:
+                bump(r.place_id, "reports")
+        return sorted(cells.values(), key=lambda c: (-(c.observations + c.reports), c.lat, c.lon))
+
+    def admin_trends(self, admin: User | None, days: int = 30) -> list[TrendDay]:
+        """Per-day counts, oldest → newest (today included)."""
+        self._require_admin(admin)
+        if not 1 <= days <= 365:
+            raise ValidationFailed("days 1..365")
+        today = self.clock.now().date()
+        result = {today - timedelta(days=i): TrendDay(str(today - timedelta(days=i)), 0, 0, 0, 0)
+                  for i in range(days - 1, -1, -1)}
+
+        def bump(when: datetime | None, kind: str) -> None:
+            if when is not None and when.date() in result:
+                day = result[when.date()]
+                setattr(day, kind, getattr(day, kind) + 1)
+
+        for p in self.repo.list_places():
+            for o in self.repo.list_observations(p.id):
+                bump(o.created_at, "observations")
+        for r in self.repo.list_reports():
+            if r.status == "submitted":
+                bump(r.created_at, "reports")
+        for q in self.repo.list_questions():
+            bump(q.created_at, "questions")
+        for item in self.repo.list_queue_items():
+            bump(item.created_at, "queue_items")
+        return list(result.values())
+
+    def admin_coverage(self, admin: User | None) -> Coverage:
+        """Data coverage per category + core features unknown in most places."""
+        self._require_admin(admin)
+        per: dict[str, CategoryCoverage] = {}
+        known_counts: dict[str, int] = {}
+        missing = {f: 0 for f in self.CORE_FEATURES}
+        for p in self.repo.list_places():
+            states = self.repo.states_for(p.id)
+            known = [f for f, s in states.items() if s.state != StateValue.UNKNOWN]
+            c = per.setdefault(p.category, CategoryCoverage(p.category, 0, 0, 0.0))
+            c.places += 1
+            c.with_data += bool(known)
+            known_counts[p.category] = known_counts.get(p.category, 0) + len(known)
+            for f in self.CORE_FEATURES:
+                if f not in known:
+                    missing[f] += 1
+        for c in per.values():
+            c.avg_known_features = round(known_counts[c.category] / c.places, 1)
+        return Coverage(sorted(per.values(), key=lambda c: (-c.places, c.category)),
+                        sorted(missing.items(), key=lambda t: (-t[1], str(t[0]))))
+
     # ------------------------------------------------------------------ notifications (F35)
     def _notify(self, user_id: str, actor: User | None, kind: str, text: str, place_id: str | None = None,
                 ref_id: str | None = None) -> None:
@@ -795,6 +906,11 @@ class UseCases:
         place = Place(self.ids.new("plc"), name, (category or "").strip() or "other", location,
                       address=address.strip()[:MAX_PLACE_NAME])
         self.repo.add_place(place)
+        if user.role != Role.ADMIN:  # F36: places added by users are verified by a moderator
+            self.repo.add_queue_item(QueueItem(self.ids.new("q"), place.id, None, self.clock.now(), [],
+                                               type="new_place", comments=[{
+                                                   "author_id": user.id, "text": f"Nowe miejsce: {name}",
+                                                   "created_at": self.clock.now().isoformat()}]))
         return place, True
 
     # ------------------------------------------------------------------ OSM import (F8)
@@ -1234,6 +1350,8 @@ class UseCases:
         for q in self.repo.list_queue_items():
             if q.place_id == source_id:
                 q.place_id = target_id
+                if q.type == "new_place" and q.pending:  # F36: the duplicate was merged
+                    q.status, q.decision, q.resolved_at = QueueStatus.RESOLVED, "merged", self.clock.now()
         for req in self.repo.list_ownership_requests():
             if req.place_id == source_id:
                 req.place_id = target_id
@@ -1298,8 +1416,9 @@ class UseCases:
     def list_queue(self, admin: User | None, filter: str = "all", status: str = "open") -> list[QueueItem]:
         self._require_admin(admin)
         items = self.repo.list_queue_items()
-        if filter not in ("all", "conflict", "abuse") or status not in ("open", "escalated", "resolved", "all"):
-            raise ValidationFailed("filter must be all|conflict|abuse, status open|escalated|resolved|all")
+        if filter not in ("all", "conflict", "abuse", "new_place") or status not in ("open", "escalated",
+                                                                                    "resolved", "all"):
+            raise ValidationFailed("filter must be all|conflict|abuse|new_place, status open|escalated|resolved|all")
         if filter != "all":
             items = [q for q in items if q.type == filter]
         if status != "all":
@@ -1314,7 +1433,7 @@ class UseCases:
         return item
 
     def decide(self, admin: User | None, item_id: str, action: str,
-               winning_observation_id: str | None = None, comment: str = "") -> FeatureStateRecord:
+               winning_observation_id: str | None = None, comment: str = "") -> FeatureStateRecord | None:
         """confirm: winner kept + admin observation, opposite values REJECTED; reject: all REJECTED;
         escalate: handed to a coordinator, data unchanged, decidable later.
         Abuse items: confirm → observation FLAGGED; reject → report dismissed.
@@ -1329,9 +1448,11 @@ class UseCases:
             item.status, item.decision = QueueStatus.ESCALATED, "escalated"
             if comment.strip():
                 self.add_queue_comment(admin, item_id, comment)
-            return self.recompute(item.place_id, item.feature)
+            return self.recompute(item.place_id, item.feature) if item.feature else None
         if item.type == "abuse":
             return self._decide_abuse(item, action_v)
+        if item.type == "new_place":
+            return self._decide_new_place(item, action_v)
         observations = [self._get_observation(i) for i in item.observation_ids]
 
         if action_v == DecisionAction.CONFIRM:
@@ -1354,6 +1475,16 @@ class UseCases:
                          f"Moderator {'potwierdził' if ok else 'odrzucił'} Twoją informację: {label} — {place}",
                          item.place_id, item.id)
         return self.recompute(item.place_id, item.feature)
+
+    def _decide_new_place(self, item: QueueItem, action: DecisionAction) -> None:
+        """confirm → place accepted; reject → deleted only if nobody added data (observations are never deleted)."""
+        if action == DecisionAction.REJECT:
+            if self.repo.list_observations(item.place_id):
+                raise ConflictError("place already has observations — merge it into the right place instead")
+            self.repo.delete_place(item.place_id)
+        item.status, item.resolved_at = QueueStatus.RESOLVED, self.clock.now()
+        item.decision = "approved" if action == DecisionAction.CONFIRM else "rejected"
+        return None
 
     def _decide_abuse(self, item: QueueItem, action: DecisionAction) -> FeatureStateRecord:
         obs = self._get_observation(item.observation_ids[0])

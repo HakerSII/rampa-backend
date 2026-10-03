@@ -4856,6 +4856,201 @@
         }
       }
     },
+    "/api/v1/admin/activity": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Activity",
+        "description": "Activity map: observations + reports per grid cell (cell centres, busiest first).",
+        "operationId": "activity_api_v1_admin_activity_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 30,
+              "title": "Days"
+            }
+          },
+          {
+            "name": "cell_deg",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 0.005,
+              "title": "Cell Deg"
+            }
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bbox"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/trends": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Trends",
+        "operationId": "trends_api_v1_admin_trends_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 30,
+              "title": "Days"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/coverage": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Coverage",
+        "description": "Data coverage per category + core features most often missing.",
+        "operationId": "coverage_api_v1_admin_coverage_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/public/v1/places": {
       "get": {
         "tags": [
@@ -5219,6 +5414,34 @@
         ],
         "title": "ActiveIssueOut"
       },
+      "ActivityCellOut": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "observations": {
+            "type": "integer",
+            "title": "Observations"
+          },
+          "reports": {
+            "type": "integer",
+            "title": "Reports"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lon",
+          "observations",
+          "reports"
+        ],
+        "title": "ActivityCellOut"
+      },
       "ActivityItemOut": {
         "properties": {
           "type": {
@@ -5304,6 +5527,32 @@
           "items"
         ],
         "title": "ActivityList"
+      },
+      "ActivityOut": {
+        "properties": {
+          "cell_deg": {
+            "type": "number",
+            "title": "Cell Deg"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityCellOut"
+            },
+            "type": "array",
+            "title": "Cells"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cell_deg",
+          "days",
+          "cells"
+        ],
+        "title": "ActivityOut"
       },
       "AdminStatsOut": {
         "properties": {
@@ -5534,6 +5783,34 @@
         ],
         "title": "Category"
       },
+      "CategoryCoverageOut": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "places": {
+            "type": "integer",
+            "title": "Places"
+          },
+          "with_data": {
+            "type": "integer",
+            "title": "With Data"
+          },
+          "avg_known_features": {
+            "type": "number",
+            "title": "Avg Known Features"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "places",
+          "with_data",
+          "avg_known_features"
+        ],
+        "title": "CategoryCoverageOut"
+      },
       "CategoryOut": {
         "properties": {
           "key": {
@@ -5669,6 +5946,30 @@
         ],
         "title": "ConfidenceOut"
       },
+      "CoverageOut": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryCoverageOut"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "most_missing": {
+            "items": {
+              "$ref": "#/components/schemas/MissingFeatureOut"
+            },
+            "type": "array",
+            "title": "Most Missing"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categories",
+          "most_missing"
+        ],
+        "title": "CoverageOut"
+      },
       "CsvImportOut": {
         "properties": {
           "imported": {
@@ -5740,14 +6041,20 @@
             "title": "Status"
           },
           "feature_state": {
-            "$ref": "#/components/schemas/FeatureStateOut"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeatureStateOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
         "required": [
           "id",
-          "status",
-          "feature_state"
+          "status"
         ],
         "title": "DecisionOut"
       },
@@ -6806,6 +7113,29 @@
           "into_place_id"
         ],
         "title": "MergeOut"
+      },
+      "MissingFeatureOut": {
+        "properties": {
+          "feature": {
+            "type": "string",
+            "title": "Feature"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "places_without_data": {
+            "type": "integer",
+            "title": "Places Without Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature",
+          "label",
+          "places_without_data"
+        ],
+        "title": "MissingFeatureOut"
       },
       "MyReports": {
         "properties": {
@@ -8230,7 +8560,14 @@
             "$ref": "#/components/schemas/QueuePlace"
           },
           "feature": {
-            "$ref": "#/components/schemas/FeatureKey"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeatureKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "observation_count": {
             "type": "integer",
@@ -8252,7 +8589,14 @@
             "title": "Observations"
           },
           "feature_state": {
-            "$ref": "#/components/schemas/FeatureStateOut"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeatureStateOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "comments": {
             "items": {
@@ -8274,8 +8618,7 @@
           "observation_count",
           "created_at",
           "summary",
-          "observations",
-          "feature_state"
+          "observations"
         ],
         "title": "QueueDetailOut"
       },
@@ -8301,7 +8644,14 @@
             "$ref": "#/components/schemas/QueuePlace"
           },
           "feature": {
-            "$ref": "#/components/schemas/FeatureKey"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeatureKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "observation_count": {
             "type": "integer",
@@ -9242,6 +9592,55 @@
           "confidence"
         ],
         "title": "TextSuggestionOut"
+      },
+      "TrendDayOut": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "title": "Day"
+          },
+          "observations": {
+            "type": "integer",
+            "title": "Observations"
+          },
+          "reports": {
+            "type": "integer",
+            "title": "Reports"
+          },
+          "questions": {
+            "type": "integer",
+            "title": "Questions"
+          },
+          "queue_items": {
+            "type": "integer",
+            "title": "Queue Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "observations",
+          "reports",
+          "questions",
+          "queue_items"
+        ],
+        "title": "TrendDayOut"
+      },
+      "TrendsOut": {
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/TrendDayOut"
+            },
+            "type": "array",
+            "title": "Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "days"
+        ],
+        "title": "TrendsOut"
       },
       "UserOut": {
         "properties": {

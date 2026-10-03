@@ -1,0 +1,110 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F36 Admin insights
+  version: 0.1.0-mvp
+  description: >
+    New places added by users go through the moderation queue (type new_place); activity grid, daily trends
+    and data coverage for the admin panel.
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: admin
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+security: [{ bearer: [] }]
+paths:
+  /admin/queue:
+    get:
+      tags: [admin]
+      summary: "Queue incl. type new_place (feature null)"
+      operationId: listQueueNewPlace
+      parameters:
+        - { name: filter, in: query, schema: { type: string, enum: [all, conflict, abuse, new_place] } }
+      responses:
+        "200": { description: "Items + counts {all, conflict, abuse, new_place}" }
+  /admin/activity:
+    get:
+      tags: [admin]
+      summary: Activity map — observations + reports per grid cell
+      operationId: adminActivity
+      parameters:
+        - { name: days, in: query, schema: { type: integer, minimum: 1, maximum: 365, default: 30 } }
+        - { name: cell_deg, in: query, schema: { type: number, minimum: 0.001, maximum: 0.1, default: 0.005 } }
+        - { name: bbox, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Cells, busiest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cell_deg: { type: number }
+                  days: { type: integer }
+                  cells:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        lat: { type: number }
+                        lon: { type: number }
+                        observations: { type: integer }
+                        reports: { type: integer }
+        "400": { description: VALIDATION_ERROR }
+  /admin/trends:
+    get:
+      tags: [admin]
+      summary: Daily counts (oldest → newest)
+      operationId: adminTrends
+      parameters:
+        - { name: days, in: query, schema: { type: integer, minimum: 1, maximum: 365, default: 30 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  days:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        day: { type: string, format: date }
+                        observations: { type: integer }
+                        reports: { type: integer }
+                        questions: { type: integer }
+                        queue_items: { type: integer }
+        "400": { description: VALIDATION_ERROR }
+  /admin/coverage:
+    get:
+      tags: [admin]
+      summary: Data coverage per category + core features most often missing
+      operationId: adminCoverage
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        category: { type: string }
+                        places: { type: integer }
+                        with_data: { type: integer }
+                        avg_known_features: { type: number }
+                  most_missing:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        feature: { type: string }
+                        label: { type: string }
+                        places_without_data: { type: integer }

@@ -181,7 +181,7 @@ class Report:
 class QueueItem:
     id: str
     place_id: str
-    feature: FeatureKey
+    feature: FeatureKey | None  # None for type new_place (F36)
     created_at: datetime
     observation_ids: list[str] = field(default_factory=list)
     type: str = "conflict"

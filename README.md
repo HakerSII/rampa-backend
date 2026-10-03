@@ -77,6 +77,7 @@ uv run python main.py                                          # http://localhos
 | 33 | Passwordless e-mail login `/auth/email/request` + `/verify` (console / SMTP mailer) | [plan](features/33-email-login/plan.md) | [openapi](features/33-email-login/openapi.yaml) | 1.5 h |
 | 34 | Questions to the owner (answer → attribute or planned) + needs statistics | [plan](features/34-questions/plan.md) | [openapi](features/34-questions/openapi.yaml) | 2 h |
 | 35 | In-app notifications `/me/notifications` (answers, replies, decisions) | [plan](features/35-notifications/plan.md) | [openapi](features/35-notifications/openapi.yaml) | 1.5 h |
+| 36 | Admin: `new_place` queue, activity grid, trends, coverage | [plan](features/36-admin-insights/plan.md) | [openapi](features/36-admin-insights/openapi.yaml) | 2 h |
 | 12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | [plan](features/12-frontend-bridge/plan.md) | [openapi](features/12-frontend-bridge/openapi.yaml) | 45 min |
 
 - F0 blocks all.

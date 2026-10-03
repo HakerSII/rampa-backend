@@ -376,7 +376,7 @@ class QueueItemOut(BaseModel):
     status: str
     label: str
     place: QueuePlace
-    feature: FeatureKey
+    feature: FeatureKey | None  # None for new_place
     observation_count: int
     created_at: str
 
@@ -396,7 +396,7 @@ class QueueCommentOut(BaseModel):
 class QueueDetailOut(QueueItemOut):
     summary: str
     observations: list[ObservationOut]
-    feature_state: FeatureStateOut
+    feature_state: FeatureStateOut | None = None
     comments: list[QueueCommentOut] = []
 
 
@@ -413,27 +413,36 @@ class DecisionIn(BaseModel):
 class DecisionOut(BaseModel):
     id: str
     status: str
-    feature_state: FeatureStateOut
+    feature_state: FeatureStateOut | None = None  # None for new_place (F36)
 
 
 def queue_item_out(uc, q: QueueItem) -> QueueItemOut:
     place = uc.repo.get_place(q.place_id)
     return QueueItemOut(
-        id=q.id, type=q.type, status=q.status, label="Konflikt danych" if q.type == "conflict" else "Zgłoszenie nadużycia",
+        id=q.id, type=q.type, status=q.status, label=QUEUE_LABELS.get(q.type, q.type),
         place=QueuePlace(id=q.place_id, name=place.name if place else q.place_id),
         feature=q.feature, observation_count=len(q.observation_ids), created_at=iso(q.created_at),
     )
 
 
+QUEUE_LABELS = {"conflict": "Konflikt danych", "abuse": "Zgłoszenie nadużycia", "new_place": "Nowe miejsce"}
+
+
 def queue_detail_out(uc, q: QueueItem, me: User) -> QueueDetailOut:
-    observations = [o for o in (uc.repo.get_observation(i) for i in q.observation_ids) if o]
-    state = uc.get_accessibility(q.place_id)[q.feature]
+    if q.type == "new_place":  # F36: the new place and whatever was already added to it
+        place = uc.repo.get_place(q.place_id)
+        observations = uc.repo.list_observations(q.place_id) if place else []
+        summary, state = f"Nowe miejsce: {place.name if place else q.place_id}", None
+    else:
+        observations = [o for o in (uc.repo.get_observation(i) for i in q.observation_ids) if o]
+        state = uc.get_accessibility(q.place_id)[q.feature]
+        summary = (f"Sprzeczne zgłoszenia: {LABELS_PL[q.feature]}" if q.type == "conflict"
+                   else f"Zgłoszone nadużycie: {LABELS_PL[q.feature]}")
     return QueueDetailOut(
         **queue_item_out(uc, q).model_dump(),
-        summary=(f"Sprzeczne zgłoszenia: {LABELS_PL[q.feature]}" if q.type == "conflict"
-                 else f"Zgłoszone nadużycie: {LABELS_PL[q.feature]}"),
+        summary=summary,
         observations=[observation_out(uc, o, me) for o in observations],
-        feature_state=feature_state_out(state),
+        feature_state=feature_state_out(state) if state else None,
         comments=[QueueCommentOut(author=author_out(uc, c["author_id"]), text=c["text"], created_at=c["created_at"])
                   for c in q.comments],
     )

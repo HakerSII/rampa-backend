@@ -245,7 +245,7 @@ class SqlRepo(InMemoryRepo):
         for i, p in enumerate(self.photos.values()):
             yield photos, dict(id=p.id, seq=i, path=p.path, url=p.url, original_name=p.original_name)
         for i, q in enumerate(self.queue.values()):
-            yield queue, dict(id=q.id, seq=i, place_id=q.place_id, feature=str(q.feature),
+            yield queue, dict(id=q.id, seq=i, place_id=q.place_id, feature=_s(q.feature),
                               created_at=_iso(q.created_at), observation_ids=list(q.observation_ids), type=q.type,
                               status=str(q.status), decision=q.decision, resolved_at=_iso(q.resolved_at),
                               comments=list(q.comments))
@@ -306,7 +306,7 @@ class SqlRepo(InMemoryRepo):
             for r in rows(photos):
                 self.photos[r["id"]] = Photo(r["id"], r["path"], r["url"], r["original_name"])
             for r in rows(queue):
-                self.queue[r["id"]] = QueueItem(r["id"], r["place_id"], FeatureKey(r["feature"]), _dt(r["created_at"]),
+                self.queue[r["id"]] = QueueItem(r["id"], r["place_id"], _e(FeatureKey, r["feature"]), _dt(r["created_at"]),
                                                 list(r["observation_ids"]), r["type"], QueueStatus(r["status"]),
                                                 r["decision"], _dt(r["resolved_at"]), list(r["comments"] or []))
             for r in rows(ownership):

@@ -156,6 +156,7 @@ Every error has the same shape:
 | GET | `/api/v1/admin/needs-stats` | admin / owner | Most asked features |
 | GET | `/api/v1/me/notifications` | user | My notifications (`?unread=true`), unread count |
 | POST | `/api/v1/me/notifications/{id}/read`, `/read-all` | user | Mark read |
+| GET | `/api/v1/admin/activity`, `/admin/trends`, `/admin/coverage` | admin | Activity grid, daily trends, data coverage |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -634,6 +635,17 @@ In-app notifications are created inside the use cases. The actor is never notifi
 | `POST /owner/ownership-requests {place_id, justification}` | any user, 201 `status: pending` |
 | `GET /admin/ownership-requests?status=pending` | `{ items: [ { id, place_id, user, justification, status, created_at, decided_at } ] }` |
 | `POST /admin/ownership-requests/{id}/verify {approved}` | approved → the user becomes the owner (promoted to `owner`); a second decision → 409 |
+
+## 7c. New places, activity, trends, coverage
+
+- **New places:** a place created by a non-admin through `POST /places/resolve` becomes a queue item `type: new_place` with `feature: null`. The detail summary reads "Nowe miejsce: …" and `feature_state` is `null`.
+  - `confirm` accepts the place.
+  - `reject` deletes it, but only if nobody has added observations (otherwise `409`; observations are never deleted, so merge the place instead).
+  - `POST /admin/places/{id}/merge` resolves the item as `merged`.
+  - Queue `filter=new_place`; `counts.new_place`.
+- `GET /admin/activity?days=30&cell_deg=0.005[&bbox]` → `{cells: [{lat, lon, observations, reports}]}`: grid cell centres, busiest first. Use it as the activity map layer.
+- `GET /admin/trends?days=30` → `{days: [{day, observations, reports, questions, queue_items}]}`, oldest → newest. `days` is 1–365.
+- `GET /admin/coverage` → `{categories: [{category, places, with_data, avg_known_features}], most_missing: [{feature, label, places_without_data}]}`. `most_missing` covers the core features: step-free entrance, ramp, elevator, toilet.
 
 ## 8. Open API (`/public/v1`, header `X-Api-Key`)
 
