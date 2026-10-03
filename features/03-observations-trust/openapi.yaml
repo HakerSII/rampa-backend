@@ -1,0 +1,278 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F3 Observations, votes, trust
+  version: 0.1.0-mvp
+  description: >
+    Subset of ../../../openapi.yaml. Every input becomes an Observation;
+    feature state is computed (trust), never written directly.
+servers:
+  - url: http://localhost:8000/api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: media
+  - name: reports
+  - name: observations
+paths:
+  /uploads:
+    post:
+      tags: [media]
+      summary: Upload photo (PNG/JPG, max 10 MB)
+      operationId: uploadPhoto
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "201":
+          description: Stored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Photo" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "413": { $ref: "#/components/responses/FileTooLarge" }
+  /reports:
+    post:
+      tags: [reports]
+      summary: 'Create report (MVP: immediately submitted) → creates 1 observation'
+      operationId: createReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReportInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Report" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /reports/{reportId}:
+    parameters:
+      - { name: reportId, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [reports]
+      summary: Report (author or admin)
+      operationId: getReport
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Report" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /places/{placeId}/observations:
+    parameters: [{ $ref: "#/components/parameters/PlaceId" }]
+    get:
+      tags: [observations]
+      summary: Place observations (alerts)
+      operationId: listObservations
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - { name: feature, in: query, schema: { $ref: "#/components/schemas/FeatureKey" } }
+        - { name: active, in: query, schema: { type: boolean, default: true }, description: true = not REJECTED }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Observation" } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [observations]
+      summary: Quick observation without report form
+      operationId: addObservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ObservationInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Observation" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /observations/{observationId}/votes:
+    parameters: [{ $ref: "#/components/parameters/ObservationId" }]
+    post:
+      tags: [observations]
+      summary: Vote up/down (re-vote replaces; author can't vote own)
+      operationId: vote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [value]
+              properties:
+                value: { type: integer, enum: [1, -1] }
+      responses:
+        "200":
+          description: Vote stored, state recomputed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VoteResult" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /observations/{observationId}/votes/me:
+    parameters: [{ $ref: "#/components/parameters/ObservationId" }]
+    delete:
+      tags: [observations]
+      summary: Remove own vote
+      operationId: removeVote
+      responses:
+        "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  parameters:
+    PlaceId: { name: placeId, in: path, required: true, schema: { type: string, examples: [plc_mnk] } }
+    ObservationId: { name: observationId, in: path, required: true, schema: { type: string, examples: [obs_7] } }
+  responses:
+    ValidationError:
+      description: VALIDATION_ERROR
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unauthorized:
+      description: UNAUTHORIZED
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: FORBIDDEN
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: NOT_FOUND
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    FileTooLarge:
+      description: FILE_TOO_LARGE
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, enum: [VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, FILE_TOO_LARGE] }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+    FeatureKey:
+      type: string
+      enum: [step_free_entrance, ramp, elevator, accessible_toilet, induction_loop]
+    FeatureStateValue:
+      type: string
+      enum: ["yes", "no", unknown]
+    ObservationValue:
+      type: string
+      enum: ["yes", "no"]
+      description: Full enum also has partial (cut in MVP)
+    ObservationSource:
+      type: string
+      enum: [community, admin]
+    ValidationStatus:
+      type: string
+      enum: [VALID, CONFLICT, REJECTED]
+    Author:
+      type: object
+      properties:
+        id: { type: string }
+        display_name: { type: string }
+    Photo:
+      type: object
+      properties:
+        id: { type: string }
+        url: { type: string }
+    ReportInput:
+      type: object
+      required: [place_id, element, current_state, severity, nature, description]
+      properties:
+        place_id: { type: string }
+        element: { $ref: "#/components/schemas/FeatureKey" }
+        current_state: { type: string, enum: [works, not_working] }
+        severity: { type: string, enum: [critical, obstacle, minor] }
+        nature: { type: string, enum: [permanent, temporary, unknown] }
+        description: { type: string, minLength: 1, maxLength: 1000 }
+        photo_ids: { type: array, items: { type: string }, maxItems: 5 }
+    Report:
+      allOf:
+        - { $ref: "#/components/schemas/ReportInput" }
+        - type: object
+          properties:
+            id: { type: string }
+            status: { type: string, enum: [submitted] }
+            author: { $ref: "#/components/schemas/Author" }
+            created_at: { type: string, format: date-time }
+            observation_ids: { type: array, items: { type: string } }
+    ObservationInput:
+      type: object
+      required: [feature, value]
+      properties:
+        feature: { $ref: "#/components/schemas/FeatureKey" }
+        value: { $ref: "#/components/schemas/ObservationValue" }
+        temporary: { type: boolean, default: false }
+        comment: { type: string }
+        photo_ids: { type: array, items: { type: string }, maxItems: 5 }
+    Observation:
+      type: object
+      properties:
+        id: { type: string }
+        place_id: { type: string }
+        feature: { $ref: "#/components/schemas/FeatureKey" }
+        value: { $ref: "#/components/schemas/ObservationValue" }
+        temporary: { type: boolean }
+        source: { $ref: "#/components/schemas/ObservationSource" }
+        author: { $ref: "#/components/schemas/Author" }
+        report_id: { type: [string, "null"] }
+        comment: { type: string }
+        evidence: { type: array, items: { $ref: "#/components/schemas/Photo" } }
+        votes:
+          type: object
+          properties:
+            up: { type: integer }
+            down: { type: integer }
+            my_vote: { type: [integer, "null"], enum: [1, -1, null] }
+        validation:
+          type: object
+          properties:
+            status: { $ref: "#/components/schemas/ValidationStatus" }
+            reason: { type: string }
+        confidence: { type: number }
+        created_at: { type: string, format: date-time }
+    FeatureState:
+      type: object
+      required: [key, state]
+      properties:
+        key: { $ref: "#/components/schemas/FeatureKey" }
+        state: { $ref: "#/components/schemas/FeatureStateValue" }
+        temporary: { type: boolean }
+        confidence: { type: number }
+        last_verified: { type: [string, "null"], format: date-time }
+        sources_count: { type: integer }
+        validation: { $ref: "#/components/schemas/ValidationStatus" }
+        active_observation_id: { type: [string, "null"] }
+    VoteResult:
+      type: object
+      properties:
+        observation: { $ref: "#/components/schemas/Observation" }
+        feature_state: { $ref: "#/components/schemas/FeatureState" }

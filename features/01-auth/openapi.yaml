@@ -1,0 +1,136 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F1 Auth
+  version: 0.1.0-mvp
+  description: >
+    Subset of ../../../openapi.yaml for MVP auth. Modes: AUTH_MODE=demo
+    (seeded accounts, offline) and AUTH_MODE=google (Google Sign-In ID token).
+    Shared schema names (Role, User, Error) match the full contract.
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: auth
+paths:
+  /auth/demo:
+    post:
+      tags: [auth]
+      summary: Log in as seeded demo account (AUTH_MODE=demo only, 404 otherwise)
+      operationId: loginDemo
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              properties:
+                username:
+                  type: string
+                  enum: [anna, jan, ola, piotr, marek, admin]
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginResult" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /auth/google:
+    post:
+      tags: [auth]
+      summary: Exchange Google ID token for app session token (creates user on first login)
+      operationId: loginWithGoogle
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_token]
+              properties:
+                id_token:
+                  type: string
+                  description: Google ID token (JWT) from Google Identity Services on the front end.
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginResult" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Invalidate current session
+      operationId: logout
+      responses:
+        "204":
+          description: Logged out
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /me:
+    get:
+      tags: [auth]
+      summary: Current user
+      operationId: getMe
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque app session token from /auth/demo or /auth/google
+  responses:
+    Unauthorized:
+      description: UNAUTHORIZED
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: NOT_FOUND
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Role:
+      type: string
+      enum: [guest, user, admin]
+      description: Subset of full Role [guest, user, owner, admin, api_client]
+    User:
+      type: object
+      required: [id, display_name, role]
+      properties:
+        id: { type: string }
+        display_name: { type: string }
+        email: { type: [string, "null"], format: email }
+        role: { $ref: "#/components/schemas/Role" }
+    LoginResult:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+          description: 'Use as "Authorization: Bearer <token>". TTL 24 h.'
+        user: { $ref: "#/components/schemas/User" }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT]
+            message: { type: string }
+            details: { type: object, additionalProperties: true }

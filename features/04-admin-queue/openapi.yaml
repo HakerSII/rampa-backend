@@ -1,0 +1,208 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F4 Moderation queue
+  version: 0.1.0-mvp
+  description: Subset of ../../../openapi.yaml (admin only) + demo reset endpoint.
+servers:
+  - url: http://localhost:8000/api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: admin
+paths:
+  /admin/queue:
+    get:
+      tags: [admin]
+      summary: Moderation queue
+      operationId: listQueue
+      parameters:
+        - name: filter
+          in: query
+          schema: { type: string, enum: [all, conflict], default: all }
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, resolved, all], default: open }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/QueueItem" } }
+                  total: { type: integer }
+                  counts:
+                    type: object
+                    additionalProperties: { type: integer }
+                    examples: [{ all: 1, conflict: 1 }]
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/queue/{queueId}:
+    parameters: [{ $ref: "#/components/parameters/QueueId" }]
+    get:
+      tags: [admin]
+      summary: Queue item detail (conflicting observations)
+      operationId: getQueueItem
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QueueDetail" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /admin/queue/{queueId}/decision:
+    parameters: [{ $ref: "#/components/parameters/QueueId" }]
+    post:
+      tags: [admin]
+      summary: Confirm (keep winner, reject opposite) or reject (reject all)
+      operationId: decide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [confirm, reject] }
+                winning_observation_id: { type: string, description: Required for confirm }
+                comment: { type: string }
+      responses:
+        "200":
+          description: Decided, state recomputed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  status: { type: string, enum: [approved, rejected] }
+                  feature_state: { $ref: "#/components/schemas/FeatureState" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /admin/demo/reset:
+    post:
+      tags: [admin]
+      summary: Reset in-memory data to seed (demo only)
+      operationId: resetDemo
+      responses:
+        "204": { description: Reset done }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  parameters:
+    QueueId: { name: queueId, in: path, required: true, schema: { type: string, examples: [q_1] } }
+  responses:
+    ValidationError:
+      description: VALIDATION_ERROR
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unauthorized:
+      description: UNAUTHORIZED
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: FORBIDDEN
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: NOT_FOUND
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Conflict:
+      description: CONFLICT (item already resolved)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, enum: [VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT] }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+    FeatureKey:
+      type: string
+      enum: [step_free_entrance, ramp, elevator, accessible_toilet, induction_loop]
+    FeatureStateValue:
+      type: string
+      enum: ["yes", "no", unknown]
+    ObservationValue:
+      type: string
+      enum: ["yes", "no"]
+    ObservationSource:
+      type: string
+      enum: [community, admin]
+    ValidationStatus:
+      type: string
+      enum: [VALID, CONFLICT, REJECTED]
+    QueueItem:
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [conflict] }
+        status: { type: string, enum: [open, resolved] }
+        label: { type: string, examples: [Konflikt danych] }
+        place:
+          type: object
+          properties:
+            id: { type: string }
+            name: { type: string }
+        feature: { $ref: "#/components/schemas/FeatureKey" }
+        observation_count: { type: integer }
+        created_at: { type: string, format: date-time }
+    QueueObservation:
+      type: object
+      properties:
+        id: { type: string }
+        value: { $ref: "#/components/schemas/ObservationValue" }
+        source: { $ref: "#/components/schemas/ObservationSource" }
+        author:
+          type: object
+          properties:
+            id: { type: string }
+            display_name: { type: string }
+        comment: { type: string }
+        temporary: { type: boolean }
+        votes:
+          type: object
+          properties:
+            up: { type: integer }
+            down: { type: integer }
+        evidence:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              url: { type: string }
+        confidence: { type: number }
+        validation: { $ref: "#/components/schemas/ValidationStatus" }
+        created_at: { type: string, format: date-time }
+    QueueDetail:
+      allOf:
+        - { $ref: "#/components/schemas/QueueItem" }
+        - type: object
+          properties:
+            summary: { type: string, examples: ["Users disagree whether the elevator works."] }
+            observations: { type: array, items: { $ref: "#/components/schemas/QueueObservation" } }
+            feature_state: { $ref: "#/components/schemas/FeatureState" }
+    FeatureState:
+      type: object
+      required: [key, state]
+      properties:
+        key: { $ref: "#/components/schemas/FeatureKey" }
+        state: { $ref: "#/components/schemas/FeatureStateValue" }
+        temporary: { type: boolean }
+        confidence: { type: number }
+        last_verified: { type: [string, "null"], format: date-time }
+        sources_count: { type: integer }
+        validation: { $ref: "#/components/schemas/ValidationStatus" }
+        active_observation_id: { type: [string, "null"] }
