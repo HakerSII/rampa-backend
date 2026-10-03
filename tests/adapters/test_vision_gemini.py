@@ -86,3 +86,27 @@ def test_bootstrap_selects_gemini_from_config():
     assert isinstance(v, FallbackVisionAnalyzer) and isinstance(v.primary, GeminiVisionAnalyzer)
     assert v.primary.model == "gemini-x"
     assert isinstance(build_vision(Settings(ai_mode="mock")), MockVisionAnalyzer)
+
+
+async def test_retries_transient_503_then_succeeds(photo):
+    replies = iter([httpx.Response(503, text="high demand"), httpx.Response(429, text="slow down"),
+                    httpx.Response(200, json=gemini_reply(json.dumps(ANALYSIS)))])
+    g, seen = analyzer(lambda r: next(replies))
+    g.retry_pause_s = 0
+    assert (await g.analyze(photo, "x.png")).model == "gemini" and len(seen) == 3
+
+
+async def test_gives_up_after_max_retries(photo):
+    g, seen = analyzer(lambda r: httpx.Response(503, text="high demand"))
+    g.retry_pause_s = 0
+    with pytest.raises(RuntimeError):
+        await g.analyze(photo, "x.png")
+    assert len(seen) == 3  # 1 + 2 retries
+
+
+async def test_does_not_retry_client_errors(photo):
+    g, seen = analyzer(lambda r: httpx.Response(400, json={"error": {"message": "bad key"}}))
+    g.retry_pause_s = 0
+    with pytest.raises(RuntimeError):
+        await g.analyze(photo, "x.png")
+    assert len(seen) == 1

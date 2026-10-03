@@ -31,3 +31,9 @@ def test_stairs_without_wheelchair_impact_is_an_obstacle():
 def test_no_barrier_means_no_suggestion():
     r = suggest(CLEAR)
     assert r.suggested is None and r.tags == []
+
+
+def test_physical_or_mobility_impairment_is_critical_like_wheelchair():
+    for affected in (["physical"], ["mobility"], ["Wheelchair users"]):
+        a = ImageAnalysis(True, True, "stairs_without_ramp", affected, "Stairs, no ramp.", 0.99)
+        assert suggest(a).suggested.severity == "critical"
