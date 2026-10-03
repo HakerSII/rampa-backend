@@ -8,8 +8,8 @@
 - **Task:** F10 Gemini vision
 - **Who:** Claude
 - **State:** todo
-- **Next step:** plan: AI_MODE=gemini, GEMINI_API_KEY/GEMINI_MODEL in config, fallback to mock
-- **Last pytest:** `uv run pytest` → 179 passed
+- **Next step:** 🟢 vision_prompt.py + vision_gemini.py + config/bootstrap
+- **Last pytest:** `uv run pytest` → red: F10 tests
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -42,9 +42,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F7.1–F7.4 | Owner role + verified_owner observations | Claude | done | e2e owner scenario O0–O11 + 3×403 + 400 |
 | F8.1–F8.5 | OSM import (file) + MCP client of Open API | Claude | done | MCP stdio smoke OK (tools/list + call Tauron → yes) |
 | F9.1–F9.5 | Persistence: SQLite + SQLAlchemy (write-behind SqlRepo) | Claude | done | demo flow also green on SQL; live restart keeps data |
+| F10.1–F10.4 | Gemini vision adapter (AI_MODE=gemini, config-driven) | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F10 · red · Gemini adapter tests (MockTransport)
 - 2026-10-03 · F9 · done · SQLite + SQLAlchemy write-behind SqlRepo, commit middleware, REPO_MODE/DATABASE_URL, .env.example synced with config.py; 179 passed
 - 2026-10-03 · F9 · red · plan, SqlRepo + persistence tests
 - 2026-10-03 · F8 · done · OSM import (file, idempotent, 50 m match), open_data 0.6, MCP client tools via Open API; 170 passed
