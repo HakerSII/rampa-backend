@@ -5,9 +5,9 @@
 
 ## Current
 
-- **State:** **full plan implemented** (F0–F23) + **F12b front-end bridge** (Adrian: `POST /auth/anonymous`, `POST /places/resolve`) — merged from `master`
+- **State:** todo
 - **Deploy:** `master` is deployed on **Render**; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
-- **Last pytest:** see latest log entry (Postgres-only tests skipped without `TEST_POSTGRES_URL`)
+- **Last pytest:** `uv run pytest` → red: F24
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
@@ -63,9 +63,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F22 | Owner panel extras (profile, stats, edit, hours, photos, reply/approve, reminders, suggestions, batch, CSV) | Claude | done | e2e O9a–O9k + 400 |
 | F23 | Domain gaps: partial state, trust ageing, valid_until, place_type | Claude | done | e2e 1i–1k + 2×400; OSM import now 11 places |
 | F12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` (Adrian, on `master`) | Claude | done | `85a358e`; contract + demo.http B1–B7 |
+| F24 | Map observations: `GET /observations?active&bbox` (front-end request) | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F24 red: map observations tests
 - 2026-10-03 · MERGE · `master` (F12b front-end bridge) merged into `feat/mvp-backend`; conflicts resolved keeping both sides
 - 2026-10-03 · DOCS · final docs + STATUS pass for F16–F23 (README, architecture, api, PITCH, DEMO, docs index)
 - 2026-10-03 · F23 · done · partial state, trust ageing 180 d, valid_until with lazy refresh, place_type filter
