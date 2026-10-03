@@ -187,3 +187,13 @@ async def test_login_token_persists_between_workers(url):
     other = make(url)
     _, user = other.verify_email_login(code)
     assert user.email == "w@example.com"
+
+
+def test_questions_persist(url):
+    """F34"""
+    uc = make(url)
+    q = uc.ask_question(uc.repo.get_user("usr_anna"), "plc_mnk", "Pies?", feature="pets_allowed")
+    uc.answer_question(uc.repo.get_user("usr_ewa"), q.id, "Tak", value="yes")
+    uc.repo.commit()
+    again = make(url).repo.get_question(q.id)
+    assert (again.status, again.outcome, again.answer_text, again.feature) == ("answered", "yes", "Tak", "pets_allowed")
