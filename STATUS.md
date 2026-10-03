@@ -8,8 +8,8 @@
 - **Task:** F23 domain gaps
 - **Who:** Claude
 - **State:** todo
-- **Next step:** partial state, trust decay, temporary valid_until, place_type
-- **Last pytest:** `uv run pytest` → see commit
+- **Next step:** green: partial, decay, valid_until, place_type
+- **Last pytest:** `uv run pytest` → red: F23
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -55,9 +55,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F20 | Similar places + accessible route (heuristic) | Claude | done | e2e 1f–1h + 404 |
 | F21 | Admin extras: confidence, comments, flag, merge, revalidate, ownership requests | Claude | done | e2e 7j–7q + 409 |
 | F22 | Owner panel extras (profile, stats, edit, hours, photos, reply/approve, reminders, suggestions, batch, CSV) | Claude | done | e2e O9a–O9k + 400 |
+| F23 | Domain gaps: partial state, trust ageing, valid_until, place_type | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F23 red: domain gaps tests
 - 2026-10-03 · F22 · done · owner profile/stats/edit/hours/photos/reply/approve/reminders/suggestions/batch/CSV
 - 2026-10-03 · F22 red: owner extras tests
 - 2026-10-03 · F21 · done · confidence, comments, FLAGGED + abuse tile, merge, revalidate, ownership requests
