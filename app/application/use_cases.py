@@ -15,12 +15,15 @@ from app.application.ports import (
     IdGenerator,
     Geocoder,
     OsmSource,
+    QueryInterpreter,
     WalkingRouter,
     Repo,
     VisionAnalyzer,
 )
 from app.domain import check as domain_check, osm as domain_osm, suggestions, trust, validation
 from app.domain.geo import haversine_m, in_bbox, parse_bbox
+from app.domain import recommend as recommend_domain
+from app.domain.recommend import Intent, Recommendation
 from app.domain.route import RouteResult, plan_route
 from app.domain.text_parse import TextSuggestion, parse_text
 from app.domain.history import HistoryEvent, build_history
@@ -172,6 +175,14 @@ class PlaceConfidence:
 
 
 @dataclass(slots=True)
+class RecommendResult:
+    intent: Intent
+    items: list[Recommendation]
+    model: str
+    note: str
+
+
+@dataclass(slots=True)
 class ImportResult:
     source: str
     points: int = 0
@@ -212,7 +223,7 @@ class UseCases:
                  anonymous_auth: bool = True, anonymous_ttl_days: int = 365,
                  vision: VisionAnalyzer | None = None, osm: OsmSource | None = None,
                  geocoder: Geocoder | None = None, osm_live: OsmSource | None = None,
-                 router: WalkingRouter | None = None):
+                 router: WalkingRouter | None = None, recommender: QueryInterpreter | None = None):
         self.repo = repo
         self.clock = clock
         self.ids = ids
@@ -228,6 +239,7 @@ class UseCases:
         self.geocoder = geocoder
         self.osm_live = osm_live
         self.router = router
+        self.recommender = recommender
 
     # ------------------------------------------------------------------ multi-worker (F29)
     def sync(self, force: bool = False) -> bool:
@@ -457,6 +469,37 @@ class UseCases:
                 log.warning("router failed (%s) → straight line", e)
         places = [(p, self.repo.states_for(p.id)) for p in self.repo.list_places()]
         return plan_route(a, b, profile, places, path)
+
+    async def recommend(self, user: User | None, query: str, profile: NeedsProfile | None = None,
+                        lat: float | None = None, lon: float | None = None, limit: int = 5) -> RecommendResult:
+        """F30: query → needs/filters (model or rules) → ranking + reasons + missing from the DB only."""
+        query = (query or "").strip()
+        if not 1 <= len(query) <= recommend_domain.MAX_QUERY:
+            raise ValidationFailed(f"query must have 1..{recommend_domain.MAX_QUERY} characters")
+        if not 1 <= limit <= 20:
+            raise ValidationFailed("limit 1..20")
+        intent, model = None, "rules"
+        if self.recommender is not None:
+            try:
+                intent, model = await self.recommender.interpret(query), self.recommender.model
+            except Exception as e:  # noqa: BLE001 — network / quota / bad answer → rules
+                log.warning("recommender failed (%s) → rules", e)
+        if intent is None:
+            intent = recommend_domain.interpret_rules(query)
+        recognised = not intent.empty
+        if profile and profile not in intent.profiles:
+            intent.profiles.append(profile)
+        origin = GeoPoint(lat, lon) if lat is not None and lon is not None else None
+        places = []
+        for p in self.repo.list_places():
+            self._refresh_expired(p.id)
+            states = self.repo.states_for(p.id)
+            sources = {o.id: str(o.source) for o in self.repo.list_observations(p.id)}
+            places.append((p, states, sources))
+        items = recommend_domain.rank(places, intent, origin, self.clock.now(), limit)
+        note = ("Wyniki tylko z bazy; brakujące lub stare dane są w `missing`." if recognised else
+                "Nie rozpoznano potrzeb ani rodzaju miejsca — pokazuję miejsca z danymi; doprecyzuj zapytanie.")
+        return RecommendResult(intent, items, model, note)
 
     def _resolve_point(self, raw: str) -> GeoPoint:
         """Place id or 'lat,lon'."""

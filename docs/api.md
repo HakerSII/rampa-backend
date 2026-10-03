@@ -146,6 +146,7 @@ Every error has the same shape:
 | POST | `/api/v1/owner/places/import` | owner | CSV import |
 | GET | `/api/v1/observations` | — | Map layer: observations across places (one request) |
 | POST | `/api/v1/observations/{id}/abuse` | user | Report spam / false data → moderation queue (type abuse) |
+| POST | `/api/v1/ai/recommend` | — | Natural-language query → recommended places with reasons + missing data |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -432,6 +433,28 @@ One request replaces per-place `GET /places/{id}/observations` loops in the map 
 Any queue item can be escalated: `POST /admin/queue/{id}/decision {"action": "escalate"}` → `status: escalated`. Data is unchanged and the item can still be confirmed or rejected later. A new contradicting observation extends an escalated conflict instead of opening a second one.
 
 Queue filters: `filter=all|conflict|abuse`, `status=open|escalated|resolved|all`; `counts` has `all`, `conflict`, `abuse`. Dashboard conflicts, owner stats and reminders count only `type: conflict`.
+
+## 5e. AI recommendations
+
+`POST /api/v1/ai/recommend {"query": "restauracja w centrum, wejdę z wózkiem dziecięcym i psem", "profile"?: "wheelchair", "lat"?, "lon"?, "limit"?: 5}`. Guests are allowed.
+
+1. **Interpret** the query into `intent {profiles, features, categories, area}`. `AI_RECOMMENDER=rules` (default) uses offline PL+EN keywords. `claude` uses Claude with a forced tool call `set_filters`: the model sees only the query and returns only filters. If the model fails, the rules take over. A `profile` parameter is merged into the intent.
+2. **Rank** places from the database: `check` for each profile plus the requested features. Order: `yes` > `partial` > `unknown` > `no` (last), ties by distance (from `lat/lon`, or the area centre).
+3. **Explain** each item:
+   - `reasons`: each relevant feature with its `state`, `source` and `last_verified`, taken from the DB;
+   - `missing`: features the user asked for that are unknown or older than 90 days.
+
+The answer never contains facts that are not in the database.
+
+```json
+{ "intent": { "profiles": ["stroller"], "features": ["pets_allowed"], "categories": ["culture"], "area": null },
+  "items": [ { "place": { "id": "plc_mnk", "name": "Muzeum Narodowe w Krakowie", "...": "..." },
+               "match": "partial", "distance_m": null,
+               "reasons": [ { "feature": "step_free_entrance", "label": "Wejście bez schodów", "state": "yes",
+                              "source": "community", "last_verified": "2026-08-04T12:00:00+00:00" } ],
+               "missing": ["pets_allowed"] } ],
+  "model": "rules", "note": "Wyniki tylko z bazy; …" }
+```
 
 ## 6. Owner (role `owner`)
 

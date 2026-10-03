@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from app.adapters.inbound.http.deps import UC, CurrentUser
-from app.domain.enums import LABELS_PL, CurrentState, FeatureKey, ObservationValue, Severity
+from app.adapters.inbound.http.deps import UC, CurrentUser, OptionalUser
+from app.domain.enums import LABELS_PL, CurrentState, FeatureKey, NeedsProfile, ObservationValue, Severity
 
 router = APIRouter(tags=["ai"])
 
@@ -80,3 +80,68 @@ async def image_tags(body: ImageTagsIn, uc: UC, user: CurrentUser):
                                severity=r.suggested.severity) if r.suggested else None,
         model=r.model,
     )
+
+
+# ---------------------------------------------------------------- F30 recommendations
+class RecommendIn(BaseModel):
+    query: str
+    profile: NeedsProfile | None = None
+    lat: float | None = None
+    lon: float | None = None
+    limit: int = 5
+
+
+class IntentOut(BaseModel):
+    profiles: list[NeedsProfile]
+    features: list[FeatureKey]
+    categories: list[str]
+    area: str | None
+
+
+class RecReasonOut(BaseModel):
+    feature: FeatureKey
+    label: str
+    state: str
+    source: str | None
+    last_verified: str | None
+
+
+class RecPlaceOut(BaseModel):
+    id: str
+    name: str
+    category: str
+    address: str | None
+    location: dict
+
+
+class RecItemOut(BaseModel):
+    place: RecPlaceOut
+    match: str
+    distance_m: int | None
+    reasons: list[RecReasonOut]
+    missing: list[FeatureKey]
+
+
+class RecommendOut(BaseModel):
+    intent: IntentOut
+    items: list[RecItemOut]
+    model: str
+    note: str
+
+
+@router.post("/ai/recommend", response_model=RecommendOut)
+async def recommend(body: RecommendIn, uc: UC, user: OptionalUser):
+    """Natural-language query → places from the database only, with reasons and missing data (guest allowed)."""
+    r = await uc.recommend(user, body.query, body.profile, body.lat, body.lon, body.limit)
+    i = r.intent
+    return RecommendOut(
+        intent=IntentOut(profiles=i.profiles, features=i.features, categories=i.categories, area=i.area),
+        items=[RecItemOut(
+            place=RecPlaceOut(id=x.place.id, name=x.place.name, category=x.place.category, address=x.place.address,
+                              location={"lat": x.place.location.lat, "lon": x.place.location.lon}),
+            match=x.match, distance_m=x.distance_m,
+            reasons=[RecReasonOut(feature=c.feature, label=LABELS_PL[c.feature], state=str(c.state), source=c.source,
+                                  last_verified=c.last_verified.isoformat() if c.last_verified else None)
+                     for c in x.reasons],
+            missing=x.missing) for x in r.items],
+        model=r.model, note=r.note)

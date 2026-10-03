@@ -71,6 +71,7 @@ uv run python main.py                                          # http://localhos
 | 27 | Live OSM: Nominatim geocoder (`GEOCODER=nominatim`), Overpass import `{"source":"overpass"}`; fallback to local / snapshot | [plan](features/27-live-geo/plan.md) | endpoints unchanged | 45 min |
 | 28 | Walking route from OSRM (`ROUTER=osrm`), barriers along the real path; fallback straight line | [plan](features/28-osrm-route/plan.md) | `engine` field added | 45 min |
 | 29 | Multi-worker consistency: `meta.data_version`, reload when stale, 409 on concurrent write | [plan](features/29-multi-worker/plan.md) | 409 on any write | 45 min |
+| 30 | AI recommendations `POST /ai/recommend` (rules / Claude tool call; facts only from DB) | [plan](features/30-ai-recommend/plan.md) | [openapi](features/30-ai-recommend/openapi.yaml) | 2 h |
 | 12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | [plan](features/12-frontend-bridge/plan.md) | [openapi](features/12-frontend-bridge/openapi.yaml) | 45 min |
 
 - F0 blocks all.

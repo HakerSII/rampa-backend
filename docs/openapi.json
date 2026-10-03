@@ -2110,6 +2110,66 @@
         }
       }
     },
+    "/api/v1/ai/recommend": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Recommend",
+        "description": "Natural-language query → places from the database only, with reasons and missing data (guest allowed).",
+        "operationId": "recommend_api_v1_ai_recommend_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/owner/places": {
       "get": {
         "tags": [
@@ -5585,6 +5645,50 @@
         ],
         "title": "ImportOut"
       },
+      "IntentOut": {
+        "properties": {
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/NeedsProfile"
+            },
+            "type": "array",
+            "title": "Profiles"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureKey"
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profiles",
+          "features",
+          "categories",
+          "area"
+        ],
+        "title": "IntentOut"
+      },
       "LineString": {
         "properties": {
           "type": {
@@ -7101,6 +7205,218 @@
           "name"
         ],
         "title": "QueuePlace"
+      },
+      "RecItemOut": {
+        "properties": {
+          "place": {
+            "$ref": "#/components/schemas/RecPlaceOut"
+          },
+          "match": {
+            "type": "string",
+            "title": "Match"
+          },
+          "distance_m": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance M"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/RecReasonOut"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "missing": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureKey"
+            },
+            "type": "array",
+            "title": "Missing"
+          }
+        },
+        "type": "object",
+        "required": [
+          "place",
+          "match",
+          "distance_m",
+          "reasons",
+          "missing"
+        ],
+        "title": "RecItemOut"
+      },
+      "RecPlaceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "location": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Location"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "category",
+          "address",
+          "location"
+        ],
+        "title": "RecPlaceOut"
+      },
+      "RecReasonOut": {
+        "properties": {
+          "feature": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "last_verified": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature",
+          "label",
+          "state",
+          "source",
+          "last_verified"
+        ],
+        "title": "RecReasonOut"
+      },
+      "RecommendIn": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NeedsProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "RecommendIn"
+      },
+      "RecommendOut": {
+        "properties": {
+          "intent": {
+            "$ref": "#/components/schemas/IntentOut"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecItemOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "intent",
+          "items",
+          "model",
+          "note"
+        ],
+        "title": "RecommendOut"
       },
       "ReminderOut": {
         "properties": {

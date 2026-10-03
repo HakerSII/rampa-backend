@@ -114,6 +114,30 @@ Content-Type: application/json
 
 {"feature": "disabled_parking", "value": "yes"}
 
+### F30a. AI recommend (guest): stroller + dog in a museum → MNK first, pets_allowed in "missing"
+POST {{base}}/ai/recommend
+Content-Type: application/json
+
+{"query": "muzeum, wejdę z wózkiem dziecięcym i psem", "limit": 3}
+
+### F30b. AI recommend: café in the centre for a wheelchair, from Rynek
+POST {{base}}/ai/recommend
+Content-Type: application/json
+
+{"query": "kawiarnia w centrum, wjadę wózkiem", "lat": 50.0617, "lon": 19.9373}
+
+### F30c. Profile parameter merged into the query → Urząd (no entrance) last with match "no"
+POST {{base}}/ai/recommend
+Content-Type: application/json
+
+{"query": "urząd albo muzeum", "profile": "wheelchair"}
+
+### F30d. 400 VALIDATION_ERROR — empty query
+POST {{base}}/ai/recommend
+Content-Type: application/json
+
+{"query": ""}
+
 ### Feature dictionary (filters)
 GET {{base}}/accessibility/features
 

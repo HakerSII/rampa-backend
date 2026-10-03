@@ -35,6 +35,16 @@ def build_geocoder(settings: Settings):
     return NominatimGeocoder(settings.nominatim_url, settings.http_user_agent, timeout_s=settings.external_timeout_s)
 
 
+def build_recommender(settings: Settings):
+    if settings.ai_recommender != "claude":
+        return None
+    if not settings.anthropic_api_key:
+        log.warning("AI_RECOMMENDER=claude but ANTHROPIC_API_KEY is empty → rules")
+        return None
+    from app.adapters.outbound.recommender_claude import ClaudeQueryInterpreter
+    return ClaudeQueryInterpreter(settings.anthropic_api_key, settings.claude_model, timeout_s=settings.ai_timeout_s)
+
+
 def build_router(settings: Settings):
     if settings.router != "osrm":
         return None
@@ -64,7 +74,7 @@ def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None
         session_ttl_hours=settings.session_ttl_hours, anonymous_auth=settings.anonymous_auth,
         anonymous_ttl_days=settings.anonymous_ttl_days, vision=vision,
         osm=FileOsmSource(settings.osm_file), geocoder=build_geocoder(settings), osm_live=build_osm_live(settings),
-        router=build_router(settings),
+        router=build_router(settings), recommender=build_recommender(settings),
     )
     seed_or_continue(use_cases)
     return use_cases

@@ -1,0 +1,72 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F30 AI recommendations
+  version: 0.1.0-mvp
+  description: >
+    Natural-language query → needs + filters (rules or Claude) → places from the database only,
+    each with reasons (state, source, date) and the data that is missing or stale. Nothing is guessed.
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: ai
+paths:
+  /ai/recommend:
+    post:
+      tags: [ai]
+      summary: Recommend places for a natural-language query (guest allowed)
+      operationId: recommend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string, minLength: 1, maxLength: 500, example: "restauracja w centrum, wejdę z wózkiem dziecięcym i psem" }
+                profile: { type: string, enum: [wheelchair, crutches, stroller, blind, low_vision, deaf, assistance_dog] }
+                lat: { type: number }
+                lon: { type: number }
+                limit: { type: integer, minimum: 1, maximum: 20, default: 5 }
+      responses:
+        "200":
+          description: Ranked places
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  model: { type: string, description: "rules | Claude model id" }
+                  note: { type: string }
+                  intent:
+                    type: object
+                    properties:
+                      profiles: { type: array, items: { type: string } }
+                      features: { type: array, items: { type: string } }
+                      categories: { type: array, items: { type: string, enum: [gastronomy, culture, services, shopping] } }
+                      area: { type: [string, "null"] }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        place:
+                          type: object
+                          properties:
+                            id: { type: string }
+                            name: { type: string }
+                            category: { type: string }
+                        match: { type: string, enum: ["yes", partial, unknown, "no"] }
+                        distance_m: { type: [integer, "null"] }
+                        reasons:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              feature: { type: string }
+                              label: { type: string }
+                              state: { type: string }
+                              source: { type: [string, "null"] }
+                              last_verified: { type: [string, "null"], format: date-time }
+                        missing: { type: array, items: { type: string } }
+        "400": { description: "VALIDATION_ERROR (empty / too long query, limit)" }

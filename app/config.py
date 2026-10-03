@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     osm_center_lon: float = 19.9450
     osm_radius_m: int = 1500
     external_timeout_s: float = 10.0
+    # F30 recommendations: rules (offline) | claude (needs ANTHROPIC_API_KEY); failure → rules
+    ai_recommender: Literal["rules", "claude"] = "rules"
+    anthropic_api_key: str = ""  # secret: only in .env / Render env
+    claude_model: str = "claude-sonnet-5-5"
     router: Literal["straight", "osrm"] = "straight"  # F28: GET /route geometry
     osrm_url: str = "https://routing.openstreetmap.de/routed-foot"  # FOSSGIS OSRM, foot profile
     http_user_agent: str = "RampaKrakowBezBarier/0.1 (HackYeah 2026)"  # OSM usage policy: identify the app

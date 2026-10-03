@@ -6,6 +6,7 @@ from typing import Protocol
 
 from app.domain.enums import FeatureKey
 from app.domain.osm import OsmPoint
+from app.domain.recommend import Intent
 from app.domain.route import RoutePath
 from app.domain.model import (
     GeoPoint,
@@ -110,6 +111,14 @@ class OsmSource(Protocol):
 class WalkingRouter(Protocol):
     async def walk(self, a: GeoPoint, b: GeoPoint) -> RoutePath | None:
         """Walking path; None = no route; raise on failure (use case falls back to the straight line)."""
+        ...
+
+
+class QueryInterpreter(Protocol):
+    model: str
+
+    async def interpret(self, query: str) -> Intent:
+        """Query → needs + filters only (never facts). Raise on failure → rules."""
         ...
 
 
