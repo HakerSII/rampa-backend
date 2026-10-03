@@ -276,6 +276,8 @@ Public display names are shortened to "Anna K." (privacy rule from the mock-ups)
 - `check_accessibility(place_name, profile="wheelchair")`
 - `search_accessible_places(features)`
 
+Transport: **stdio** locally (`.mcp.json`) or **Streamable HTTP** at `/mcp` (F41, `MCP_TRANSPORT=http`, `Dockerfile.mcp`). As a separate Render service it lets remote assistants (Claude, Gemini CLI, Grok …) use the same tools. HTTP mode is stateless, with an optional Bearer token. Guide: [mcp.md](mcp.md).
+
 It is a **client of the Open API**, not part of the backend process. With in-memory data, a separate process would not see the app's live data, and going through the public API proves that external integrations work. If the backend is down, a tool returns `{"error": …}` instead of crashing.
 
 ## 9. Design decisions and known limits

@@ -1,0 +1,23 @@
+# rampa-mcp — public remote MCP server (F41): Streamable HTTP at /mcp, GET /health.
+# A client of the backend's Open API: set RAMPA_API_URL (backend URL) + RAMPA_API_KEY (one of PUBLIC_API_KEYS).
+FROM python:3.13-slim
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# dependencies first (cached layer); mcp extra = fastmcp
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --extra mcp --no-install-project
+
+COPY . .
+
+ENV PATH="/app/.venv/bin:$PATH" \
+    MCP_TRANSPORT=http \
+    PORT=8080
+
+EXPOSE 8080
+CMD ["python", "-m", "clients.mcp_server"]

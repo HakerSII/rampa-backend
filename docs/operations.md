@@ -17,7 +17,7 @@ uv run uvicorn main:app --reload
 ### Docker (Postgres + API)
 
 ```bash
-docker compose up -d --build          # db (postgres:17) + api → http://localhost:8000/docs
+docker compose up -d --build          # db (postgres:17) + api → http://localhost:8000/docs + mcp → http://localhost:8080/mcp
 API_PORT=8001 docker compose up -d    # if 8000 is taken (e.g. local main.py running)
 docker compose logs -f api            # logs (AI fallbacks, DB retries)
 docker compose down                   # stop (data kept in volume pgdata)
@@ -38,6 +38,7 @@ The backend is **deployed on Render** and **deploys automatically after every me
 |---|---|
 | `rampa-backend` | Web service, runtime **Docker** (this `Dockerfile`), region Ohio |
 | `rampa-backend-postgres` | Render Postgres, connected through `DATABASE_URL` |
+| `rampa-mcp` (F41, to be created) | Web service, runtime **Docker** (`Dockerfile.mcp`): public remote MCP at `/mcp`, health `/health`. Setup: [mcp.md §4](mcp.md#4-deploy-on-render-separate-service) |
 
 - **Release flow:** feature branch → PR → merge into `master` → Render builds the image and deploys it, no manual step. Do not push unfinished work to `master`.
 - **Configuration:** environment variables in the Render dashboard (service → Environment), same names as `.env.example`. Secrets (`GEMINI_API_KEY`, `DATABASE_URL`, `GOOGLE_CLIENT_ID`) live there only, never in git.
@@ -118,6 +119,8 @@ The response field `model` tells you which model answered. If it says `mock` whi
 4. Ask: *"Czy wjadę na wózku do Tauron Areny?"* (run the OSM import first, step I2).
 
 Manual smoke test without Claude: send `initialize`, `tools/list` and `tools/call` JSON-RPC lines to `uv run --extra mcp python -m clients.mcp_server` on stdin.
+
+**Remote MCP (F41):** `MCP_TRANSPORT=http PORT=8080 uv run --extra mcp python -m clients.mcp_server` → `http://localhost:8080/mcp`. Run [`requests/mcp.http`](../requests/mcp.http) against it. The Render deploy and the client setup for Claude Code, claude.ai, Gemini CLI and Grok are in [mcp.md](mcp.md).
 
 ## 6. Google Sign-In (production login)
 

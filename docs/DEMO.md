@@ -11,7 +11,7 @@ Every click and its expected result. Tool: VS Code + **REST Client** on [`../req
 | Clean data | `demo.http` step **0** (reset) | `204` |
 | Fixed time (optional) | `.env`: `DEMO_NOW=2026-10-03T12:00:00+02:00`, restart | identical numbers on every run |
 | Gemini quota | one call to step 4a-AI | `"model": "gemini"`; if `"mock"` → keep mock (the free tier is about 20 requests/day; a 429 in the log means quota) |
-| MCP (optional) | Claude Code → `/mcp` → `rampa` connected; run step **I2** (OSM import) first | tool `check_accessibility` listed |
+| MCP (optional) | Claude Code → `/mcp` → `rampa` connected (local stdio, or remote: `claude mcp add --transport http rampa https://<rampa-mcp>/mcp`); run step **I2** (OSM import) first | tool `check_accessibility` listed |
 | Offline fallback | Wi-Fi off → everything except Gemini/Google still works | `AI_MODE=mock` |
 
 ## Script

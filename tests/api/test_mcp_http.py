@@ -51,8 +51,8 @@ def test_health_and_tools_over_http(mcp_client):
         assert {t["name"] for t in tools} >= {"check_accessibility", "search_accessible_places"}
         call = body(c.post("/mcp", headers=HEADERS, content=rpc("tools/call", {
             "name": "check_accessibility", "arguments": {"place_name": "Muzeum Narodowe"}}, id_=3)))
-        text = call["result"]["content"][0]["text"]
-        assert "plc_mnk" in text and '"answer": "yes"' in text.replace("'", '"')
+        (match,) = json.loads(call["result"]["content"][0]["text"])["matches"]
+        assert (match["place"]["id"], match["answer"]) == ("plc_mnk", "yes")
 
 
 def test_optional_bearer_token(mcp_client):

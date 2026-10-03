@@ -22,7 +22,7 @@
    - Answers for **7 needs profiles**, not one icon.
    - **AI suggestions from a photo** (Gemini / local Phi-3.5, offline fallback), which fill the report in seconds.
    - **Open API** for city apps and transport.
-   - An **AI assistant (MCP)** that answers "can I get in?" from our live data.
+   - An **AI assistant (MCP)** that answers "can I get in?" from our live data, locally or as a public remote MCP server that Claude, Gemini or Grok can connect to.
 6. **Next (10 s).** Real users in one district, the city's open data, the frontend from the mock-ups, a live OSM import, and more features from the full model (35).
 
 ## Evidence (only what exists)

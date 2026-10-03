@@ -53,12 +53,15 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `GEMINI_MODEL` | `gemini-3.8-flash` | Gemini model name (Google retired `gemini-2.5-flash` for new users) |
 | `GEMINI_API_URL` | `https://generativelanguage.googleapis.com/v1beta` | API base URL |
 
-**MCP client** (`clients/mcp_server.py`, separate process; its env comes from `.mcp.json`):
+**MCP server** (`clients/mcp_server.py`, separate process; env from `.mcp.json` locally, or the Render service `rampa-mcp`; see [mcp.md](mcp.md)):
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `RAMPA_API_URL` | `http://localhost:8000` | backend base URL |
-| `RAMPA_API_KEY` | `demo-key` | one of `PUBLIC_API_KEYS` |
+| `RAMPA_API_KEY` | `demo-key` | one of `PUBLIC_API_KEYS` (use a dedicated key in production) |
+| `MCP_TRANSPORT` | `stdio` (`http` in `Dockerfile.mcp`) | `stdio` = local child process · `http` = Streamable HTTP at `/mcp` (F41) |
+| `PORT` | `8080` | HTTP port (Render sets it) |
+| `MCP_AUTH_TOKEN` | — | **secret**; when set, `/mcp` needs `Authorization: Bearer <token>`; empty for claude.ai connectors |
 
 ## Typical profiles
 

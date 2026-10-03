@@ -22,9 +22,10 @@ uv run python main.py                                          # http://localhos
 - AI: `POST /api/v1/ai/image-tags {"photo_ids": [...]}` — `AI_MODE=mock` (default) | `onnx` (`uv sync --extra ai`, model in `models/`) | `gemini` (`GEMINI_API_KEY` in `.env`, `GEMINI_MODEL`); any failure → mock.
 - OSM import: `POST /api/v1/admin/imports {"source": "osm_file"}` (admin) → Tauron Arena stops etc.
 - MCP (Claude): backend running → `.mcp.json` server `rampa` (`uv run --extra mcp python -m clients.mcp_server`); tools `check_accessibility`, `search_accessible_places`.
+- **Remote MCP** (F41): `MCP_TRANSPORT=http` → `http://…/mcp`; separate Render service from `Dockerfile.mcp`, for Claude / Gemini CLI / Grok. Guide: [docs/mcp.md](docs/mcp.md).
 - Open API: `GET /public/v1/places` with header `X-Api-Key: demo-key`.
 - Storage: `REPO_MODE=sql|memory`, `DB_ENGINE=sqlite|postgres` (+ `POSTGRES_*`); config in `.env` (see `.env.example`).
-- Docker: `docker compose up -d --build` → Postgres + API on :8000 (`API_PORT=8001` if taken).
+- Docker: `docker compose up -d --build` → Postgres + API on :8000 (`API_PORT=8001` if taken) + remote MCP on :8080/mcp (`MCP_PORT`).
 - **Deploy: Render**, automatic after every merge to `master` (Docker service `rampa-backend` + Render Postgres); see [docs/operations.md](docs/operations.md#render-production-deploy).
 - Demo login: `POST /api/v1/auth/demo {"username": "anna"}` → use `Authorization: Bearer demo-anna`.
 - Reset: `POST /api/v1/admin/demo/reset` with `Bearer demo-admin`.
@@ -80,6 +81,7 @@ uv run python main.py                                          # http://localhos
 | 36 | Admin: `new_place` queue, activity grid, trends, coverage | [plan](features/36-admin-insights/plan.md) | [openapi](features/36-admin-insights/openapi.yaml) | 2 h |
 | 37 | City configuration JSON (`CITY_CONFIG`) + `GET /city` | [plan](features/37-city-config/plan.md) | [openapi](features/37-city-config/openapi.yaml) | 1 h |
 | 40 | One LLM filter-tool schema for Claude + Gemini (`AI_RECOMMENDER=gemini`) | [plan](features/40-llm-tools-unification/plan.md) | — | 30 min |
+| 41 | Remote MCP over Streamable HTTP (`/mcp`, `/health`, optional Bearer) as a separate Render service (`Dockerfile.mcp`) | [plan](features/41-remote-mcp/plan.md) | [docs/mcp.md](docs/mcp.md) | 1 h |
 | 12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | [plan](features/12-frontend-bridge/plan.md) | [openapi](features/12-frontend-bridge/openapi.yaml) | 45 min |
 
 - F0 blocks all.
@@ -142,7 +144,7 @@ app/
     outbound/      memory, sql (SQLite/Postgres), files, google_auth, vision_mock/onnx/gemini, osm_file, osm_live (Nominatim/Overpass), osrm,
                    recommender_claude, mailer (console/SMTP)
   bootstrap.py     composition root (config → adapters)
-clients/           MCP server (client of the Open API)
+clients/           MCP server (client of the Open API; stdio or HTTP — docs/mcp.md)
 tests/             unit · application · adapters · api (contract, demo flow, docs)
 ```
 

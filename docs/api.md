@@ -691,7 +691,9 @@ No or wrong key → 401. Over the limit → 429 + `Retry-After`. An app Bearer t
 
 ## 9. MCP tools (for AI assistants)
 
-Served by `clients/mcp_server.py` over stdio; it calls the Open API. Setup: [operations.md §5](operations.md#5-mcp-in-claude).
+Served by `clients/mcp_server.py`, which calls the Open API. Locally it runs over **stdio**. Remote (F41) it runs over **Streamable HTTP** at `https://<mcp-service>/mcp` (JSON-RPC 2.0: `initialize`, `tools/list`, `tools/call`), plus `GET /health` and an optional `Authorization: Bearer <MCP_AUTH_TOKEN>`.
+
+The full guide (run, deploy on Render, connect Claude, Gemini CLI or Grok) is [mcp.md](mcp.md). Raw calls are in [`requests/mcp.http`](../requests/mcp.http).
 
 | Tool | Input | Output |
 |---|---|---|

@@ -1,4 +1,4 @@
-# docker compose up -d --build   →  API http://localhost:8000/docs, Postgres localhost:5432
+# docker compose up -d --build   →  API http://localhost:8000/docs, MCP http://localhost:8080/mcp, Postgres localhost:5432
 # Values come from .env in this folder (compose interpolation) with safe defaults below.
 name: rampa
 
@@ -48,10 +48,48 @@ services:
       AI_TIMEOUT_S: ${AI_TIMEOUT_S:-60}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      # F30/F40 recommendations: rules | claude | gemini
+      AI_RECOMMENDER: ${AI_RECOMMENDER:-rules}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-5-5}
+      # F33 e-mail login: console (log) | smtp
+      MAILER: ${MAILER:-console}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-noreply@rampa.local}
+      EMAIL_LINK_URL: ${EMAIL_LINK_URL:-}
+      # F27/F28/F37 live OSM + city
+      GEOCODER: ${GEOCODER:-local}
+      ROUTER: ${ROUTER:-straight}
+      CITY_CONFIG: ${CITY_CONFIG:-}
     volumes:
       - media:/app/media
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # F41 remote MCP (Streamable HTTP) — client of the api's Open API; docs/mcp.md
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${MCP_PORT:-8080}:8080"
+    environment:
+      RAMPA_API_URL: http://api:8000
+      RAMPA_API_KEY: ${RAMPA_API_KEY:-demo-key}   # must be one of PUBLIC_API_KEYS
+      MCP_TRANSPORT: http
+      PORT: 8080
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}         # empty = open; set → Authorization: Bearer <token>
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 5s
       timeout: 3s
       retries: 20
