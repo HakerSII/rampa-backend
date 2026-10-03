@@ -94,6 +94,20 @@ Content-Type: application/json
 ### 400 VALIDATION_ERROR — unknown place type
 GET {{base}}/places?place_type=spaceport
 
+### 1l. Escalator out of order on ICE (feature requested by the front end)
+POST {{base}}/places/plc_ice/observations
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"feature": "escalator", "value": "no", "temporary": true, "comment": "Schody ruchome nieczynne"}
+
+### 1m. Parking feature: disabled parking at the office
+POST {{base}}/places/plc_urzad/observations
+Authorization: Bearer {{ola}}
+Content-Type: application/json
+
+{"feature": "disabled_parking", "value": "yes"}
+
 ### Feature dictionary (filters)
 GET {{base}}/accessibility/features
 

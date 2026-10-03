@@ -127,16 +127,17 @@ sequenceDiagram
 
 **Place types:** `venue`, `shop`, `public_transport_stop`, `platform`, `parking`, `office`, `street_segment`, `other`.
 
-**Accessibility features (13):**
-- *entrance*: `step_free_entrance`, `ramp`
-- *inside*: `elevator`
-- *toilet*: `accessible_toilet`
-- *hearing*: `induction_loop`, `sign_language_interpreter`
-- *vision*: `braille`, `tactile_paths`, `good_lighting`
+**Accessibility features (35, 8 groups):**
+- *entrance*: `step_free_entrance`, `ramp`, `elevator_entrance`, `wide_doors`, `automatic_doors`, `call_bell`
+- *inside*: `elevator`, `escalator`, `spacious_interior`, `high_contrast_info`, `tactile_info`
+- *toilet*: `accessible_toilet`, `adult_changing_table`, `turning_space`, `extra_accessible_toilets`
+- *hearing*: `induction_loop`, `sign_language_interpreter`, `video_captions`, `fm_system`
+- *vision*: `braille`, `tactile_paths`, `good_lighting`, `high_contrast_markings`, `accessible_digital_materials`, `audio_description`
 - *mobility*: `lowered_curb`, `platform_elevator`, `crutches_friendly`
-- *other*: `assistance_dog_allowed`
+- *parking*: `disabled_parking`, `marked_parking`, `level_surface`, `more_than_n_spots`, `drop_off_zone`
+- *other*: `assistance_dog_allowed`, `pets_allowed`
 
-They are a subset of the 35 features in the full contract (`../openapi.yaml` in the docs repo).
+This is the full model from the contract plus `escalator` (requested by the front end). `partially_inaccessible_exhibition` is left out because its meaning is inverted (`yes` = bad). For the front end: `tactile` → `tactile_paths`, `sign` → `sign_language_interpreter` (to confirm).
 
 ## 5. Rules
 
@@ -281,7 +282,7 @@ It is a **client of the Open API**, not part of the backend process. With in-mem
 | Observations + computed state | Trust, history, conflicts, "Yanosik" model | More logic than a flag; mitigated by pure, tested domain functions |
 | Hexagon with mock/offline adapters | Offline, deterministic demo; fast tests | More files; ports only where there are ≥2 implementations |
 | Sync `Repo` + write-behind SQLite | Atomic use cases, persistence without a rewrite | Single process |
-| 13 features, states `yes/partial/no/unknown` | Covers all user questions from the brief | 22 more features in the full model |
+| 35 features, states `yes/partial/no/unknown` | Full model + `escalator`; all user questions from the brief | Only some features take part in `check` rules; the rest are informational |
 | Route A→B as a heuristic | No routing engine needed; honest `note` | Not turn-by-turn; only barriers near a straight line |
 | `/geocode` from the local index | Offline demo | No address search outside known places |
 | AI = suggestion only + fallback | AI never corrupts data; demo never breaks | Keyword mapping is simple (PL/EN) |

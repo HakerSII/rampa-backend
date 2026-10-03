@@ -16,6 +16,28 @@ class FeatureKey(StrEnum):
     CRUTCHES_FRIENDLY = "crutches_friendly"
     SIGN_LANGUAGE_INTERPRETER = "sign_language_interpreter"
     ASSISTANCE_DOG_ALLOWED = "assistance_dog_allowed"
+    ELEVATOR_ENTRANCE = "elevator_entrance"
+    WIDE_DOORS = "wide_doors"
+    AUTOMATIC_DOORS = "automatic_doors"
+    CALL_BELL = "call_bell"
+    SPACIOUS_INTERIOR = "spacious_interior"
+    HIGH_CONTRAST_INFO = "high_contrast_info"
+    TACTILE_INFO = "tactile_info"
+    ESCALATOR = "escalator"
+    ADULT_CHANGING_TABLE = "adult_changing_table"
+    TURNING_SPACE = "turning_space"
+    EXTRA_ACCESSIBLE_TOILETS = "extra_accessible_toilets"
+    HIGH_CONTRAST_MARKINGS = "high_contrast_markings"
+    ACCESSIBLE_DIGITAL_MATERIALS = "accessible_digital_materials"
+    AUDIO_DESCRIPTION = "audio_description"
+    VIDEO_CAPTIONS = "video_captions"
+    FM_SYSTEM = "fm_system"
+    DISABLED_PARKING = "disabled_parking"
+    MARKED_PARKING = "marked_parking"
+    LEVEL_SURFACE = "level_surface"
+    MORE_THAN_N_SPOTS = "more_than_n_spots"
+    DROP_OFF_ZONE = "drop_off_zone"
+    PETS_ALLOWED = "pets_allowed"
 
 
 class FeatureGroupKey(StrEnum):
@@ -25,6 +47,7 @@ class FeatureGroupKey(StrEnum):
     HEARING = "hearing"
     VISION = "vision"
     MOBILITY = "mobility"
+    PARKING = "parking"
     OTHER = "other"
 
 
@@ -132,6 +155,28 @@ FEATURE_GROUP: dict[FeatureKey, FeatureGroupKey] = {
     FeatureKey.PLATFORM_ELEVATOR: FeatureGroupKey.MOBILITY,
     FeatureKey.CRUTCHES_FRIENDLY: FeatureGroupKey.MOBILITY,
     FeatureKey.ASSISTANCE_DOG_ALLOWED: FeatureGroupKey.OTHER,
+    FeatureKey.ELEVATOR_ENTRANCE: FeatureGroupKey.ENTRANCE,
+    FeatureKey.WIDE_DOORS: FeatureGroupKey.ENTRANCE,
+    FeatureKey.AUTOMATIC_DOORS: FeatureGroupKey.ENTRANCE,
+    FeatureKey.CALL_BELL: FeatureGroupKey.ENTRANCE,
+    FeatureKey.SPACIOUS_INTERIOR: FeatureGroupKey.INSIDE,
+    FeatureKey.HIGH_CONTRAST_INFO: FeatureGroupKey.INSIDE,
+    FeatureKey.TACTILE_INFO: FeatureGroupKey.INSIDE,
+    FeatureKey.ESCALATOR: FeatureGroupKey.INSIDE,
+    FeatureKey.ADULT_CHANGING_TABLE: FeatureGroupKey.TOILET,
+    FeatureKey.TURNING_SPACE: FeatureGroupKey.TOILET,
+    FeatureKey.EXTRA_ACCESSIBLE_TOILETS: FeatureGroupKey.TOILET,
+    FeatureKey.HIGH_CONTRAST_MARKINGS: FeatureGroupKey.VISION,
+    FeatureKey.ACCESSIBLE_DIGITAL_MATERIALS: FeatureGroupKey.VISION,
+    FeatureKey.AUDIO_DESCRIPTION: FeatureGroupKey.VISION,
+    FeatureKey.VIDEO_CAPTIONS: FeatureGroupKey.HEARING,
+    FeatureKey.FM_SYSTEM: FeatureGroupKey.HEARING,
+    FeatureKey.DISABLED_PARKING: FeatureGroupKey.PARKING,
+    FeatureKey.MARKED_PARKING: FeatureGroupKey.PARKING,
+    FeatureKey.LEVEL_SURFACE: FeatureGroupKey.PARKING,
+    FeatureKey.MORE_THAN_N_SPOTS: FeatureGroupKey.PARKING,
+    FeatureKey.DROP_OFF_ZONE: FeatureGroupKey.PARKING,
+    FeatureKey.PETS_ALLOWED: FeatureGroupKey.OTHER,
 }
 
 LABELS_PL: dict[str, str] = {
@@ -141,6 +186,7 @@ LABELS_PL: dict[str, str] = {
     FeatureGroupKey.HEARING: "Słuch",
     FeatureGroupKey.VISION: "Wzrok",
     FeatureGroupKey.MOBILITY: "Poruszanie się",
+    FeatureGroupKey.PARKING: "Parking",
     FeatureGroupKey.OTHER: "Inne",
     FeatureKey.STEP_FREE_ENTRANCE: "Wejście bez schodów",
     FeatureKey.RAMP: "Podjazd",
@@ -155,4 +201,26 @@ LABELS_PL: dict[str, str] = {
     FeatureKey.CRUTCHES_FRIENDLY: "Udogodnienia dla osób o kulach",
     FeatureKey.SIGN_LANGUAGE_INTERPRETER: "Tłumacz PJM",
     FeatureKey.ASSISTANCE_DOG_ALLOWED: "Wejście z psem asystującym",
+    FeatureKey.ELEVATOR_ENTRANCE: "Winda przy wejściu",
+    FeatureKey.WIDE_DOORS: "Szerokie drzwi (min. 90 cm)",
+    FeatureKey.AUTOMATIC_DOORS: "Automatyczne drzwi",
+    FeatureKey.CALL_BELL: "Dzwonek przy wejściu",
+    FeatureKey.SPACIOUS_INTERIOR: "Przestronne wnętrze",
+    FeatureKey.HIGH_CONTRAST_INFO: "Informacja w kontrastowych kolorach",
+    FeatureKey.TACTILE_INFO: "Plany tyflograficzne",
+    FeatureKey.ESCALATOR: "Schody ruchome",
+    FeatureKey.ADULT_CHANGING_TABLE: "Przewijak dla dorosłych",
+    FeatureKey.TURNING_SPACE: "Przestrzeń manewrowa",
+    FeatureKey.EXTRA_ACCESSIBLE_TOILETS: "Dodatkowe toalety dostępne",
+    FeatureKey.HIGH_CONTRAST_MARKINGS: "Kontrastowe oznaczenia",
+    FeatureKey.ACCESSIBLE_DIGITAL_MATERIALS: "Dostępne materiały cyfrowe",
+    FeatureKey.AUDIO_DESCRIPTION: "Audiodeskrypcja",
+    FeatureKey.VIDEO_CAPTIONS: "Napisy do treści wideo",
+    FeatureKey.FM_SYSTEM: "System FM",
+    FeatureKey.DISABLED_PARKING: "Miejsca dla osób z niepełnosprawnościami",
+    FeatureKey.MARKED_PARKING: "Oznakowane miejsca parkingowe",
+    FeatureKey.LEVEL_SURFACE: "Równa, utwardzona nawierzchnia",
+    FeatureKey.MORE_THAN_N_SPOTS: "Więcej niż 2 miejsca",
+    FeatureKey.DROP_OFF_ZONE: "Strefa wysiadania",
+    FeatureKey.PETS_ALLOWED: "Wejście ze zwierzętami",
 }

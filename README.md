@@ -65,6 +65,7 @@ uv run python main.py                                          # http://localhos
 | 21 | Admin extras: confidence, comments, flag abuse, merge, revalidate, ownership requests | [plan](features/21-admin-extras/plan.md) | [openapi](features/21-admin-extras/openapi.yaml) | 90 min |
 | 22 | Owner panel extras: profile, stats, edit, hours, photos, reply/approve, reminders, suggestions, batch, CSV | [plan](features/22-owner-extras/plan.md) | [openapi](features/22-owner-extras/openapi.yaml) | 120 min |
 | 24 | Map layer: `GET /observations?active&bbox&value&current` (front-end request) | [plan](features/24-map-observations/plan.md) | [openapi](features/24-map-observations/openapi.yaml) | 45 min |
+| 25 | Full feature model: 35 features (+ `escalator`), group `parking` | [plan](features/25-features-full/plan.md) | specs updated | 30 min |
 | 12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | [plan](features/12-frontend-bridge/plan.md) | [openapi](features/12-frontend-bridge/openapi.yaml) | 45 min |
 
 - F0 blocks all.
@@ -104,7 +105,7 @@ Everything from the full contract is implemented except the items below, which a
 | `action=escalate` | `confirm` / `reject` only |
 | Persistence | write-behind cache over SQLite/Postgres, single process (F9/F11); a fully SQL-backed repository is needed for multiple workers |
 | DDD aggregate + domain events + UoW | light hexagon: logic in pure domain functions + use cases; conflicts create queue items directly |
-| Features | 13 of 35 from the full model (all user questions from the brief covered) |
+| Features | 35 (full model + `escalator`); `partially_inaccessible_exhibition` left out (inverted meaning) |
 | Media storage | local `media/` folder (S3 later) |
 | Frontend | not in this repo (mockups in the hackathon PDF) |
 

@@ -4956,6 +4956,7 @@
           "hearing",
           "vision",
           "mobility",
+          "parking",
           "other"
         ],
         "title": "FeatureGroupKey"
@@ -5000,7 +5001,29 @@
           "platform_elevator",
           "crutches_friendly",
           "sign_language_interpreter",
-          "assistance_dog_allowed"
+          "assistance_dog_allowed",
+          "elevator_entrance",
+          "wide_doors",
+          "automatic_doors",
+          "call_bell",
+          "spacious_interior",
+          "high_contrast_info",
+          "tactile_info",
+          "escalator",
+          "adult_changing_table",
+          "turning_space",
+          "extra_accessible_toilets",
+          "high_contrast_markings",
+          "accessible_digital_materials",
+          "audio_description",
+          "video_captions",
+          "fm_system",
+          "disabled_parking",
+          "marked_parking",
+          "level_surface",
+          "more_than_n_spots",
+          "drop_off_zone",
+          "pets_allowed"
         ],
         "title": "FeatureKey"
       },

@@ -60,7 +60,7 @@ components:
             details: { type: object, additionalProperties: true }
     FeatureKey:
       type: string
-      enum: [step_free_entrance, ramp, elevator, accessible_toilet, induction_loop, braille, tactile_paths, good_lighting, lowered_curb, platform_elevator, crutches_friendly, sign_language_interpreter, assistance_dog_allowed]
+      enum: [step_free_entrance, ramp, elevator, accessible_toilet, induction_loop, braille, tactile_paths, good_lighting, lowered_curb, platform_elevator, crutches_friendly, sign_language_interpreter, assistance_dog_allowed, elevator_entrance, wide_doors, automatic_doors, call_bell, spacious_interior, high_contrast_info, tactile_info, escalator, adult_changing_table, turning_space, extra_accessible_toilets, high_contrast_markings, accessible_digital_materials, audio_description, video_captions, fm_system, disabled_parking, marked_parking, level_surface, more_than_n_spots, drop_off_zone, pets_allowed]
     ImageAnalysis:
       type: object
       description: Same schema as analyze_image() in get_model.py

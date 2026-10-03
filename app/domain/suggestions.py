@@ -6,6 +6,7 @@ from app.domain.enums import LABELS_PL, CurrentState, FeatureKey, Severity
 from app.domain.model import ImageAnalysis
 
 FEATURE_KEYWORDS: dict[FeatureKey, tuple[str, ...]] = {
+    FeatureKey.ESCALATOR: ("escalator", "schody ruchome", "ruchome schody"),
     FeatureKey.ELEVATOR: ("elevator", "lift", "winda", "windy"),
     FeatureKey.STEP_FREE_ENTRANCE: ("stairs", "steps", "step", "schody", "stopnie", "stopień"),
     FeatureKey.RAMP: ("ramp", "podjazd"),
