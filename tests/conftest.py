@@ -44,13 +44,13 @@ class FakeIdentityVerifier:
 
 
 def make_use_cases(auth_mode="demo", verifier=None, admin_emails=None, clock=None, vision=None, osm=None,
-                   anonymous_auth=True, geocoder=None, osm_live=None, router=None, recommender=None) -> UseCases:
+                   anonymous_auth=True, geocoder=None, osm_live=None, router=None, recommender=None, mailer=None) -> UseCases:
     from app.adapters.outbound.osm_file import FileOsmSource
     from app.adapters.outbound.vision_mock import MockVisionAnalyzer
     uc = UseCases(InMemoryRepo(), clock or FixedClock(NOW), SeqIdGenerator(), FakeStorage(),
                   verifier, auth_mode=auth_mode, admin_emails=admin_emails or [], anonymous_auth=anonymous_auth,
                   vision=vision or MockVisionAnalyzer(), osm=osm or FileOsmSource(str(OSM_SNAPSHOT)),
-                  geocoder=geocoder, osm_live=osm_live, router=router, recommender=recommender)
+                  geocoder=geocoder, osm_live=osm_live, router=router, recommender=recommender, mailer=mailer)
     uc.load_seed()
     return uc
 

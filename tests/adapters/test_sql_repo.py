@@ -174,3 +174,16 @@ def test_needs_profile_persists(url):
     uc.set_needs_profile(uc.repo.get_user("usr_anna"), ["stroller"], ["pets_allowed"])
     uc.repo.commit()
     assert make(url).get_needs_profile(make(url).repo.get_user("usr_anna")) == (["stroller"], ["pets_allowed"])
+
+
+async def test_login_token_persists_between_workers(url):
+    """F33: the link may be opened on a request served by another worker / after a restart."""
+    from app.adapters.outbound.mailer import ConsoleMailer
+    uc = make(url)
+    uc.mailer = ConsoleMailer()
+    await uc.request_email_login("w@example.com")
+    uc.repo.commit()
+    code = uc.mailer.outbox[-1].text.split("Kod logowania: ")[1].split()[0]
+    other = make(url)
+    _, user = other.verify_email_login(code)
+    assert user.email == "w@example.com"
