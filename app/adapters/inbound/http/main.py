@@ -29,13 +29,22 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
     app.include_router(public.router, prefix="/public/v1")  # Open API, versioned separately
     app.mount("/media", StaticFiles(directory=settings.media_dir, check_dir=False), name="media")
 
+    @app.middleware("http")
+    async def commit_writes(request, call_next):
+        """Unit of work per request: memory is source of truth, persist after every write."""
+        response = await call_next(request)
+        if request.method not in ("GET", "HEAD", "OPTIONS"):
+            app.state.use_cases.repo.commit()
+        return response
+
     @app.get("/", include_in_schema=False)
     async def root():
         return RedirectResponse("/docs")
 
     @app.get("/health", tags=["health"])
     async def health():
-        return {"status": "ok", "auth_mode": settings.auth_mode, "ai_mode": settings.ai_mode, "storage": "memory"}
+        return {"status": "ok", "auth_mode": settings.auth_mode, "ai_mode": settings.ai_mode,
+                "storage": settings.repo_mode}
 
     return app
 

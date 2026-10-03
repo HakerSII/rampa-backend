@@ -21,6 +21,7 @@ uv run python main.py                                          # http://localhos
 - OSM import: `POST /api/v1/admin/imports {"source": "osm_file"}` (admin) → Tauron Arena stops etc.
 - MCP (Claude): backend running → `.mcp.json` server `rampa` (`uv run --extra mcp python -m clients.mcp_server`); tools `check_accessibility`, `search_accessible_places`.
 - Open API: `GET /public/v1/places` with header `X-Api-Key: demo-key`.
+- Storage: `REPO_MODE=sql` (default, SQLite `data/rampa.db`, survives restart) or `memory`; config in `.env` (see `.env.example`).
 - Demo login: `POST /api/v1/auth/demo {"username": "anna"}` → use `Authorization: Bearer demo-anna`.
 - Reset: `POST /api/v1/admin/demo/reset` with `Bearer demo-admin`.
 - Google mode: `.env` → `AUTH_MODE=google`, `GOOGLE_CLIENT_ID=…`, `ADMIN_EMAILS=…` (see `.env.example`).
@@ -47,6 +48,7 @@ uv run python main.py                                          # http://localhos
 | 6 | AI photo suggestions (mock / Phi-3.5 ONNX + fallback) | [plan](features/06-ai-image-tags/plan.md) | [openapi](features/06-ai-image-tags/openapi.yaml) | 60 min |
 | 7 | Owner role + verified_owner observations | [plan](features/07-owner/plan.md) | [openapi](features/07-owner/openapi.yaml) | 60 min |
 | 8 | OSM import (offline snapshot) + MCP client of Open API | [plan](features/08-osm-mcp/plan.md) | [openapi](features/08-osm-mcp/openapi.yaml) | 75 min |
+| 9 | Persistence: SQLite + SQLAlchemy (`REPO_MODE`, `DATABASE_URL`) | [plan](features/09-sqlite/plan.md) | — | 90 min |
 
 - F0 blocks all.
 - After F0: **F1, F2, F3 in parallel** (demo auth stub ships in F0, Google added in F1).
@@ -86,7 +88,7 @@ Place `plc_mnk` (National Museum), feature `elevator`, seeded `yes` (observation
 | `action=escalate` | `confirm` / `reject` only |
 | Feature state `partial`, `current_state=partially_works` | states `yes/no/unknown`. **`check` answer may still be `partial`** (full-enum value) |
 | Favorites, history/audit, admin stats, merge, flagging, gallery, activity | not on demo path |
-| SQLAlchemy / persistent DB | in-memory only; seed on startup + reset endpoint |
+| Postgres, multi-worker | F9: SQLite (single process); seed only into empty DB; reset endpoint wipes |
 | Trust age decay | simplified formula (F3); 30-day conflict window kept |
 | Domain events + dispatcher | use case creates `QueueItem` directly on conflict |
 
@@ -167,4 +169,4 @@ Photo(id, path, url)
 2. ~~`POST /ai/image-tags` with mock~~ → done as F6 (real Phi-3.5: `uv sync --extra ai`, `AI_MODE=onnx`).
 3. ~~`owner` role + `verified_owner` observations~~ → done as F7 (demo.http section "F7 Owner scenario").
 4. ~~OSM import / MCP integration~~ → done as F8 (live Overpass adapter still open).
-5. SQLAlchemy instead of in-memory: `Repo` port stays, add adapter (full plan T0.6).
+5. ~~SQLAlchemy instead of in-memory~~ → done as F9 (SQLite write-behind; Postgres / multi-worker = fully SQL-backed repo later).

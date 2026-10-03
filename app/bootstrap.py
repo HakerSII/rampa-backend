@@ -22,11 +22,23 @@ def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None
         from app.adapters.outbound.google_auth import GoogleIdentityVerifier
         verifier = GoogleIdentityVerifier(settings.google_client_id)
     vision = build_vision(settings)
+    ids = SeqIdGenerator()
+    repo = InMemoryRepo() if settings.repo_mode == "memory" else _sql_repo(settings.database_url)
     use_cases = UseCases(
-        InMemoryRepo(), clock, SeqIdGenerator(), LocalFileStorage(settings.media_dir), verifier,
+        repo, clock, ids, LocalFileStorage(settings.media_dir), verifier,
         auth_mode=settings.auth_mode, admin_emails=settings.admin_email_list,
         session_ttl_hours=settings.session_ttl_hours, vision=vision,
         osm=FileOsmSource(settings.osm_file),
     )
-    use_cases.load_seed()
+    if repo.is_empty():
+        use_cases.load_seed()
+        repo.commit()
+    else:  # persisted data: keep it, continue id sequences
+        for existing_id in repo.all_ids():
+            ids.observe(existing_id)
     return use_cases
+
+
+def _sql_repo(url: str):
+    from app.adapters.outbound.sql import SqlRepo
+    return SqlRepo(url)

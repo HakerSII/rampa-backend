@@ -18,7 +18,11 @@
 @apiKey = demo-key
 
 ### ---------------------------------------------------------------------
-### 0. Reset demo data (admin) → 204
+### Health → storage: sql (SQLite, survives restart) | memory; auth_mode; ai_mode
+GET http://localhost:8000/health
+
+### ---------------------------------------------------------------------
+### 0. Reset demo data (admin) → 204 (also wipes the SQLite DB back to seed)
 POST {{base}}/admin/demo/reset
 Authorization: Bearer {{admin}}
 

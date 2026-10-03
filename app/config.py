@@ -9,6 +9,8 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    repo_mode: Literal["sql", "memory"] = "sql"
+    database_url: str = "sqlite:///data/rampa.db"
     auth_mode: Literal["demo", "google"] = "demo"
     google_client_id: str = ""
     admin_emails: str = ""  # comma-separated

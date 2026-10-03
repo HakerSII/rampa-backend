@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** F9 SQLite + SQLAlchemy
+- **Task:** F10 Gemini vision
 - **Who:** Claude
 - **State:** todo
-- **Next step:** 🟢 adapters/outbound/sql.py SqlRepo + commit middleware
-- **Last pytest:** `uv run pytest` → red: F9 tests
+- **Next step:** plan: AI_MODE=gemini, GEMINI_API_KEY/GEMINI_MODEL in config, fallback to mock
+- **Last pytest:** `uv run pytest` → 179 passed
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -41,10 +41,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F6.1–F6.5 | AI image tags: mock + ONNX Phi-3.5 + fallback | Claude | done | real ONNX inference untested here (manual: uv sync --extra ai) |
 | F7.1–F7.4 | Owner role + verified_owner observations | Claude | done | e2e owner scenario O0–O11 + 3×403 + 400 |
 | F8.1–F8.5 | OSM import (file) + MCP client of Open API | Claude | done | MCP stdio smoke OK (tools/list + call Tauron → yes) |
-| F9.1–F9.5 | Persistence: SQLite + SQLAlchemy (write-behind SqlRepo) | Claude | red | |
+| F9.1–F9.5 | Persistence: SQLite + SQLAlchemy (write-behind SqlRepo) | Claude | done | demo flow also green on SQL; live restart keeps data |
 
 ## Log (newest first)
 
+- 2026-10-03 · F9 · done · SQLite + SQLAlchemy write-behind SqlRepo, commit middleware, REPO_MODE/DATABASE_URL, .env.example synced with config.py; 179 passed
 - 2026-10-03 · F9 · red · plan, SqlRepo + persistence tests
 - 2026-10-03 · F8 · done · OSM import (file, idempotent, 50 m match), open_data 0.6, MCP client tools via Open API; 170 passed
 - 2026-10-03 · F8 · red · plan, contract, OSM mapping/import/MCP tool tests
