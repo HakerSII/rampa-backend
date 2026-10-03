@@ -5,28 +5,32 @@ import httpx
 
 from app.adapters.outbound.osm_live import _LazyClient
 from app.domain.enums import FeatureKey, NeedsProfile
-from app.domain.recommend import AREAS, CATEGORY_GROUPS, Intent
+from app.domain.city import City
+from app.domain.recommend import Intent, default_city
 
 API_URL = "https://api.anthropic.com/v1/messages"
-SYSTEM = ("You convert a user's request for an accessible place in Kraków into search filters by calling "
+SYSTEM = ("You convert a user's request for an accessible place in {city} into search filters by calling "
           "set_filters. Only list needs and features the user actually mentioned. Do not answer the question, "
           "do not describe places. The query may be Polish or English.")
-TOOL = {
-    "name": "set_filters",
-    "description": "Accessibility needs and place filters extracted from the user's query.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "profiles": {"type": "array", "items": {"type": "string", "enum": [p.value for p in NeedsProfile]},
-                         "description": "needs of the visitor (wheelchair, stroller = baby stroller, …)"},
-            "features": {"type": "array", "items": {"type": "string", "enum": [f.value for f in FeatureKey]},
-                         "description": "extra place features explicitly requested (toilet, pets, parking …)"},
-            "categories": {"type": "array", "items": {"type": "string", "enum": list(CATEGORY_GROUPS)}},
-            "area": {"type": ["string", "null"], "enum": [*AREAS, None]},
+
+
+def tool(city: City) -> dict:
+    return {
+        "name": "set_filters",
+        "description": "Accessibility needs and place filters extracted from the user's query.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "profiles": {"type": "array", "items": {"type": "string", "enum": [p.value for p in NeedsProfile]},
+                             "description": "needs of the visitor (wheelchair, stroller = baby stroller, …)"},
+                "features": {"type": "array", "items": {"type": "string", "enum": [f.value for f in FeatureKey]},
+                             "description": "extra place features explicitly requested (toilet, pets, parking …)"},
+                "categories": {"type": "array", "items": {"type": "string", "enum": list(city.category_groups)}},
+                "area": {"type": ["string", "null"], "enum": [*city.areas, None]},
+            },
+            "required": ["profiles", "features", "categories"],
         },
-        "required": ["profiles", "features", "categories"],
-    },
-}
+    }
 
 
 def _valid(enum_cls, values) -> list:
@@ -41,14 +45,17 @@ def _valid(enum_cls, values) -> list:
 
 class ClaudeQueryInterpreter(_LazyClient):
     def __init__(self, api_key: str, model: str, *, url: str = API_URL, timeout_s: float = 20.0,
-                 transport: httpx.AsyncBaseTransport | None = None):
+                 city: City | None = None, transport: httpx.AsyncBaseTransport | None = None):
         super().__init__("rampa-backend", timeout_s, transport)
         self.api_key, self.model, self.url = api_key, model, url
+        self.city = city or default_city()
 
     async def interpret(self, query: str) -> Intent:
         r = await self.client.post(self.url, headers={"x-api-key": self.api_key, "anthropic-version": "2023-06-01"},
-                                   json={"model": self.model, "max_tokens": 400, "system": SYSTEM,
-                                         "tools": [TOOL], "tool_choice": {"type": "tool", "name": "set_filters"},
+                                   json={"model": self.model, "max_tokens": 400,
+                                         "system": SYSTEM.format(city=self.city.name),
+                                         "tools": [tool(self.city)],
+                                         "tool_choice": {"type": "tool", "name": "set_filters"},
                                          "messages": [{"role": "user", "content": query}]})
         r.raise_for_status()
         call = next((c for c in r.json().get("content", [])
@@ -58,5 +65,5 @@ class ClaudeQueryInterpreter(_LazyClient):
         data = call.get("input") or {}
         area = data.get("area")
         return Intent(_valid(NeedsProfile, data.get("profiles")), _valid(FeatureKey, data.get("features")),
-                      [c for c in dict.fromkeys(data.get("categories") or []) if c in CATEGORY_GROUPS],
-                      area if area in AREAS else None)
+                      [c for c in dict.fromkeys(data.get("categories") or []) if c in self.city.category_groups],
+                      area if area in self.city.areas else None)

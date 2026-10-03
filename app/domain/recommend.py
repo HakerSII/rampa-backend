@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
 from app.domain.check import PROFILE_RULES, check_place
+from app.domain.city import DEFAULT_CITY_FILE, City, load_city
 from app.domain.enums import CheckAnswer, FeatureKey as F, NeedsProfile as P, StateValue
 from app.domain.geo import haversine_m
 from app.domain.model import FeatureStateRecord, GeoPoint, Place
@@ -13,26 +14,17 @@ from app.domain.verification import STALE_DAYS
 
 MAX_QUERY = 500
 
-# category group → place categories (seed + OSM) — F37 moves this to city config
-CATEGORY_GROUPS: dict[str, tuple[str, ...]] = {
-    "gastronomy": ("cafe", "restaurant", "fast_food", "bar", "pub", "food_court", "ice_cream"),
-    "culture": ("museum", "culture", "theatre", "cinema", "arts_centre", "gallery", "attraction", "library"),
-    "services": ("office", "townhall", "post_office", "bank", "pharmacy", "hairdresser", "clinic", "hospital"),
-    "shopping": ("shop", "supermarket", "mall", "marketplace", "convenience"),
-}
-CATEGORY_WORDS: dict[str, tuple[str, ...]] = {
-    "gastronomy": ("restaurac", "kawiar", "knajp", "jedzen", "obiad", "gastronom", "restaurant", "cafe", "coffee",
-                   "kawa", "kawę", "bar "),
-    "culture": ("muze", "teatr", "kino", "kina", "kultur", "galeri", "museum", "theatre", "cinema", "zabyt"),
-    "services": ("urząd", "urzęd", "urzad", "poczt", "bank", "aptek", "fryzjer", "office", "pharmacy"),
-    "shopping": ("sklep", "zakup", "market", "galeria handlowa", "shop", "store"),
-}
-# named areas — F37 moves this to city config
-AREAS: dict[str, tuple[GeoPoint, int, tuple[str, ...]]] = {
-    "centrum": (GeoPoint(50.0617, 19.9373), 1500, ("centrum", "rynek", "stare miasto", "starym mieście", "center",
-                                                    "centre", "old town")),
-    "kazimierz": (GeoPoint(50.0513, 19.9454), 800, ("kazimierz",)),
-}
+_DEFAULT: City | None = None
+
+
+def default_city() -> City:
+    """Kraków file, loaded once (tests and code paths without an explicit city)."""
+    global _DEFAULT
+    if _DEFAULT is None:
+        _DEFAULT = load_city(DEFAULT_CITY_FILE)
+    return _DEFAULT
+
+
 STROLLER_WORDS = ("stroller", "pram", "pushchair", "z dzieckiem")
 STROLLER_PHRASE = re.compile(r"w[óo]z\w*\s+(?:dla\s+)?dzie\w*")
 CRUTCHES = re.compile(r"kul(?:e|ach|ami|i)|crutch")
@@ -91,7 +83,8 @@ class Recommendation:
     missing: list[F]
 
 
-def interpret_rules(query: str) -> Intent:
+def interpret_rules(query: str, city: City | None = None) -> Intent:
+    city = city or default_city()
     q = f" {query.lower()} "
     rest = STROLLER_PHRASE.sub(" ", q)  # "wózek dziecięcy" = stroller; wheelchair only if mentioned apart from it
     profiles = []
@@ -106,8 +99,8 @@ def interpret_rules(query: str) -> Intent:
     features = [f for f, words in FEATURE_WORDS if any(w in q for w in words)]
     if P.ASSISTANCE_DOG in profiles and F.PETS_ALLOWED in features and not PET_APART.search(ASSIST.sub(" ", q)):
         features.remove(F.PETS_ALLOWED)  # "pies asystujący" is the profile, not a pet
-    categories = [c for c, words in CATEGORY_WORDS.items() if any(w in q for w in words)]
-    area = next((name for name, (_, _, words) in AREAS.items() if any(w in q for w in words)), None)
+    categories = [key for key, g in city.category_groups.items() if any(w in q for w in g.words)]
+    area = next((key for key, a in city.areas.items() if any(w in q for w in a.words)), None)
     return Intent(profiles, features, categories, area)
 
 
@@ -129,19 +122,22 @@ def evaluate(place_id: str, states: dict[F, FeatureStateRecord], profiles: list[
     return match, score, answers
 
 
-def in_categories(place: Place, groups: list[str]) -> bool:
-    return not groups or any(place.category in CATEGORY_GROUPS.get(g, (g,)) for g in groups)
+def in_categories(place: Place, groups: list[str], city: City) -> bool:
+    return not groups or any(place.category in (city.category_groups[g].categories if g in city.category_groups
+                                                else (g,)) for g in groups)
 
 
 def rank(places: list[tuple[Place, dict[F, FeatureStateRecord], dict[str, str]]], intent: Intent,
-         origin: GeoPoint | None, now: datetime, limit: int) -> list[Recommendation]:
+         origin: GeoPoint | None, now: datetime, limit: int, city: City | None = None) -> list[Recommendation]:
     """places: (place, states, source per active observation id)."""
-    centre, radius = (AREAS[intent.area][0], AREAS[intent.area][1]) if intent.area in AREAS else (None, None)
+    city = city or default_city()
+    area = city.areas.get(intent.area or "")
+    centre, radius = (area.center, area.radius_m) if area else (None, None)
     here = origin or centre
     stale = now - timedelta(days=STALE_DAYS)
     items = []
     for place, states, sources in places:
-        if not in_categories(place, intent.categories):
+        if not in_categories(place, intent.categories, city):
             continue
         if centre and haversine_m(place.location, centre) > radius:
             continue

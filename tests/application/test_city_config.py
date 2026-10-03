@@ -17,7 +17,7 @@ GDANSK = {
     "center": {"lat": 54.352, "lon": 18.6466},
     "osm_radius_m": 1200,
     "areas": {"starowka": {"lat": 54.3489, "lon": 18.6532, "radius_m": 900,
-                           "words": ["starówk", "starowk", "główne miasto"]}},
+                           "words": ["starówk", "starówc", "starowk", "starowc", "główne miasto"]}},
     "category_groups": {"gastronomy": {"categories": ["cafe", "restaurant"], "words": ["kawiar", "restaurac"]},
                         "culture": {"categories": ["museum"], "words": ["muze"]}},
 }

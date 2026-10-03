@@ -32,7 +32,8 @@ def transport(payload, status=200, seen=None):
 
 async def test_nominatim_maps_results_and_sends_user_agent():
     seen = []
-    g = NominatimGeocoder("https://nominatim.example/search", "RampaTest/1.0", transport=transport(NOMINATIM, seen=seen))
+    g = NominatimGeocoder("https://nominatim.example/search", "RampaTest/1.0", viewbox="19.79,50.13,20.22,49.97",
+                          transport=transport(NOMINATIM, seen=seen))
     hits = await g.search("tauron")
     assert [(h.label, h.location.lat, h.location.lon) for h in hits] == [
         ("Tauron Arena Kraków, Stanisława Lema 7, Kraków", 50.0675, 19.9915)]

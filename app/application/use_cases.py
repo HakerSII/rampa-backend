@@ -26,6 +26,7 @@ from app.application.ports import (
 from app.domain import check as domain_check, osm as domain_osm, suggestions, trust, validation
 from app.domain.geo import haversine_m, in_bbox, parse_bbox
 from app.domain import recommend as recommend_domain
+from app.domain.city import City
 from app.domain.recommend import Intent, Recommendation
 from app.domain.route import RouteResult, plan_route
 from app.domain.text_parse import TextSuggestion, parse_text
@@ -288,7 +289,7 @@ class UseCases:
                  geocoder: Geocoder | None = None, osm_live: OsmSource | None = None,
                  router: WalkingRouter | None = None, recommender: QueryInterpreter | None = None,
                  mailer: Mailer | None = None, email_login: bool = True, email_dev_token: bool = False,
-                 email_link_url: str = ""):
+                 email_link_url: str = "", city: City | None = None):
         self.repo = repo
         self.clock = clock
         self.ids = ids
@@ -309,6 +310,7 @@ class UseCases:
         self.email_login = email_login
         self.email_dev_token = email_dev_token  # demo + console mailer only: code returned in the response
         self.email_link_url = email_link_url
+        self.city = city or recommend_domain.default_city()
 
     # ------------------------------------------------------------------ multi-worker (F29)
     def sync(self, force: bool = False) -> bool:
@@ -600,7 +602,7 @@ class UseCases:
             except Exception as e:  # noqa: BLE001 — network / quota / bad answer → rules
                 log.warning("recommender failed (%s) → rules", e)
         if intent is None:
-            intent = recommend_domain.interpret_rules(query)
+            intent = recommend_domain.interpret_rules(query, self.city)
         recognised = not intent.empty
         stored_needs, stored_features = self.get_needs_profile(user) if user else ([], [])
         for p in [*stored_needs, *([profile] if profile else [])]:
@@ -616,7 +618,7 @@ class UseCases:
             states = self.repo.states_for(p.id)
             sources = {o.id: str(o.source) for o in self.repo.list_observations(p.id)}
             places.append((p, states, sources))
-        items = recommend_domain.rank(places, intent, origin, self.clock.now(), limit)
+        items = recommend_domain.rank(places, intent, origin, self.clock.now(), limit, self.city)
         note = ("Wyniki tylko z bazy; brakujące lub stare dane są w `missing`." if recognised else
                 "Nie rozpoznano potrzeb ani rodzaju miejsca — pokazuję miejsca z danymi; doprecyzuj zapytanie.")
         return RecommendResult(intent, items, model, note)

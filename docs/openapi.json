@@ -1629,6 +1629,28 @@
         }
       }
     },
+    "/api/v1/city": {
+      "get": {
+        "tags": [
+          "dictionaries"
+        ],
+        "summary": "City",
+        "description": "Configured city (CITY_CONFIG): map centre and box, named areas, category groups.",
+        "operationId": "city_api_v1_city_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CityOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/uploads": {
       "post": {
         "tags": [
@@ -5906,6 +5928,90 @@
           "advice"
         ],
         "title": "CheckResultOut"
+      },
+      "CityAreaOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "center": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "radius_m": {
+            "type": "integer",
+            "title": "Radius M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "center",
+          "radius_m"
+        ],
+        "title": "CityAreaOut"
+      },
+      "CityGroupOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "categories"
+        ],
+        "title": "CityGroupOut"
+      },
+      "CityOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "center": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "viewbox": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Viewbox"
+          },
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/CityAreaOut"
+            },
+            "type": "array",
+            "title": "Areas"
+          },
+          "category_groups": {
+            "items": {
+              "$ref": "#/components/schemas/CityGroupOut"
+            },
+            "type": "array",
+            "title": "Category Groups"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "center",
+          "viewbox",
+          "areas",
+          "category_groups"
+        ],
+        "title": "CityOut"
       },
       "CommentIn": {
         "properties": {

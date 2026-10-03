@@ -245,3 +245,34 @@ async def accessible_route(uc: UC, to: str, origin: Annotated[str, Query(alias="
 @router.get("/accessibility/features", response_model=list[FeatureDictGroup], tags=["dictionaries"])
 async def list_features():
     return feature_dictionary()
+
+
+# ---------------------------------------------------------------- F37 city
+class CityAreaOut(BaseModel):
+    key: str
+    center: Location
+    radius_m: int
+
+
+class CityGroupOut(BaseModel):
+    key: str
+    categories: list[str]
+
+
+class CityOut(BaseModel):
+    name: str
+    center: Location
+    viewbox: list[float]
+    areas: list[CityAreaOut]
+    category_groups: list[CityGroupOut]
+
+
+@router.get("/city", response_model=CityOut, tags=["dictionaries"])
+async def city(uc: UC):
+    """Configured city (CITY_CONFIG): map centre and box, named areas, category groups."""
+    c = uc.city
+    return CityOut(name=c.name, center=Location(lat=c.center.lat, lon=c.center.lon), viewbox=list(c.viewbox),
+                   areas=[CityAreaOut(key=k, center=Location(lat=a.center.lat, lon=a.center.lon), radius_m=a.radius_m)
+                          for k, a in c.areas.items()],
+                   category_groups=[CityGroupOut(key=k, categories=list(g.categories))
+                                    for k, g in c.category_groups.items()])

@@ -78,6 +78,7 @@ uv run python main.py                                          # http://localhos
 | 34 | Questions to the owner (answer → attribute or planned) + needs statistics | [plan](features/34-questions/plan.md) | [openapi](features/34-questions/openapi.yaml) | 2 h |
 | 35 | In-app notifications `/me/notifications` (answers, replies, decisions) | [plan](features/35-notifications/plan.md) | [openapi](features/35-notifications/openapi.yaml) | 1.5 h |
 | 36 | Admin: `new_place` queue, activity grid, trends, coverage | [plan](features/36-admin-insights/plan.md) | [openapi](features/36-admin-insights/openapi.yaml) | 2 h |
+| 37 | City configuration JSON (`CITY_CONFIG`) + `GET /city` | [plan](features/37-city-config/plan.md) | [openapi](features/37-city-config/openapi.yaml) | 1 h |
 | 12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | [plan](features/12-frontend-bridge/plan.md) | [openapi](features/12-frontend-bridge/openapi.yaml) | 45 min |
 
 - F0 blocks all.

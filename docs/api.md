@@ -157,6 +157,7 @@ Every error has the same shape:
 | GET | `/api/v1/me/notifications` | user | My notifications (`?unread=true`), unread count |
 | POST | `/api/v1/me/notifications/{id}/read`, `/read-all` | user | Mark read |
 | GET | `/api/v1/admin/activity`, `/admin/trends`, `/admin/coverage` | admin | Activity grid, daily trends, data coverage |
+| GET | `/api/v1/city` | — | Configured city: centre, map box, areas, category groups |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -336,6 +337,26 @@ All 39 features in 8 groups; features without data come back as `unknown`.
                  "label": "Obniżony krawężnik", "location": { "lat": 50.065, "lon": 19.945 } } ],
   "note": "heuristic: straight line between the points; …" }
 ```
+
+## 4c. City configuration
+
+Everything city-specific comes from the JSON file set in `CITY_CONFIG` (default `data/cities/krakow.json`). It is validated at start; an invalid file stops the app with an error naming the field.
+
+```json
+{ "name": "Kraków", "viewbox": [19.79, 50.13, 20.22, 49.97], "center": {"lat": 50.0617, "lon": 19.9373},
+  "osm_radius_m": 1500,
+  "areas": { "centrum": {"lat": 50.0617, "lon": 19.9373, "radius_m": 1500, "words": ["centrum", "rynek", "…"]} },
+  "category_groups": { "gastronomy": {"categories": ["cafe", "restaurant", "…"], "words": ["restaurac", "kawiar", "…"]} } }
+```
+
+Consumers:
+- the Nominatim viewbox (F27);
+- the Overpass centre and radius (F27), unless `OSM_CENTER_*` / `OSM_RADIUS_M` are set;
+- the recommendation interpreter (F30): the rules' words and the enums of Claude's tool.
+
+`GET /api/v1/city` returns `{name, center, viewbox, areas: [{key, center, radius_m}], category_groups: [{key, categories}]}`, so the front end can set up its map from it.
+
+Another city = another JSON file. Two things stay in code: the needs profiles (they drive the `check` rules) and the seed demo data.
 
 ## 5. Reporting and observations
 

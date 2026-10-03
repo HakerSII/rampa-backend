@@ -245,6 +245,9 @@ Authorization: Bearer {{admin}}
 GET {{base}}/admin/trends?days=0
 Authorization: Bearer {{admin}}
 
+### F37a. Configured city (front end sets up the map: centre, box, areas, category groups)
+GET {{base}}/city
+
 ### F33a. E-mail login: request a code (demo + console mailer → dev_token in the response; mail in the log)
 # @name emailReq
 POST {{base}}/auth/email/request
