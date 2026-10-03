@@ -15,6 +15,8 @@ from app.application.ports import (
 )
 from app.domain import check as domain_check, osm as domain_osm, suggestions, trust, validation
 from app.domain.geo import haversine_m
+from app.domain.history import HistoryEvent, build_history
+from app.domain.stats import AdminStats, compute_stats
 from app.domain.verification import Verification, activity_type, summarize
 from app.domain.enums import (
     CurrentState,
@@ -364,6 +366,25 @@ class UseCases:
             model=best.model,
         )
 
+    # ------------------------------------------------------------------ admin panel (F13)
+    def admin_stats(self, admin: User | None) -> AdminStats:
+        self._require_admin(admin)
+        places = self.repo.list_places()
+        observations = [o for p in places for o in self.repo.list_observations(p.id)]
+        states = [s for p in places for s in self.repo.states_for(p.id).values()]
+        return compute_stats(reports=self.repo.list_reports(), observations=observations,
+                             queue=self.repo.list_queue_items(), states=states, places=len(places),
+                             now=self.clock.now())
+
+    def place_history(self, user: User | None, place_id: str) -> list[HistoryEvent]:
+        """Audit trail — admin, or the owner of this place."""
+        self._require_user(user)
+        place = self.get_place(place_id)
+        if not (user.role == Role.ADMIN or (user.role == Role.OWNER and place.owner_id == user.id)):
+            raise Forbidden("history is visible to admins and the place owner")
+        queue = [q for q in self.repo.list_queue_items() if q.place_id == place_id]
+        return build_history(self.repo.list_observations(place_id), queue)
+
     # ------------------------------------------------------------------ moderation (F4)
     def list_queue(self, admin: User | None, filter: str = "all", status: str = "open") -> list[QueueItem]:
         self._require_admin(admin)
@@ -399,13 +420,13 @@ class UseCases:
             winner = self._get_observation(winning_observation_id)
             for o in observations:
                 o.validation = ValidationStatus.VALID if o.value == winner.value else ValidationStatus.REJECTED
-            item.status, item.decision = QueueStatus.RESOLVED, "approved"
+            item.status, item.decision, item.resolved_at = QueueStatus.RESOLVED, "approved", self.clock.now()
             self._new_observation(admin, item.place_id, item.feature, winner.value, temporary=winner.temporary,
                                   comment=comment or "Potwierdzone przez moderatora", photo_ids=[])
         else:
             for o in observations:
                 o.validation = ValidationStatus.REJECTED
-            item.status, item.decision = QueueStatus.RESOLVED, "rejected"
+            item.status, item.decision, item.resolved_at = QueueStatus.RESOLVED, "rejected", self.clock.now()
         return self.recompute(item.place_id, item.feature)
 
     # ------------------------------------------------------------------ observations (F3)

@@ -6,9 +6,9 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy.exc import OperationalError
 from sqlalchemy import JSON, Boolean, Column, Float, Integer, MetaData, String, Table, create_engine, delete, insert, \
-    select, update
+    inspect, select, text, update
+from sqlalchemy.exc import OperationalError
 
 from app.adapters.outbound.memory import InMemoryRepo
 from app.domain.enums import (
@@ -67,7 +67,7 @@ photos = Table("photos", md, Column("id", String, primary_key=True), Column("seq
 queue = Table("queue_items", md, Column("id", String, primary_key=True), Column("seq", Integer),
               Column("place_id", String), Column("feature", String), Column("created_at", String),
               Column("observation_ids", JSON), Column("type", String), Column("status", String),
-              Column("decision", String))
+              Column("decision", String), Column("resolved_at", String))
 
 PK = {t.name: [c.name for c in t.primary_key.columns] for t in md.sorted_tables}
 
@@ -88,6 +88,7 @@ class SqlRepo(InMemoryRepo):
         for attempt in range(1, connect_retries + 1):  # Postgres in docker may still be booting
             try:
                 md.create_all(self.engine)
+                self._add_missing_columns()
                 break
             except OperationalError:
                 if attempt == connect_retries:
@@ -97,6 +98,19 @@ class SqlRepo(InMemoryRepo):
         super().__init__()
         self._snapshot: dict[tuple[str, tuple], dict] = {}
         self._load()
+
+    def _add_missing_columns(self) -> None:
+        """Lightweight schema evolution: new nullable columns appear in DBs created by older versions."""
+        existing = inspect(self.engine)
+        quote = self.engine.dialect.identifier_preparer.quote
+        with self.engine.begin() as conn:
+            for table in md.sorted_tables:
+                have = {c["name"] for c in existing.get_columns(table.name)}
+                for col in table.columns:
+                    if col.name not in have:
+                        ddl = col.type.compile(dialect=self.engine.dialect)
+                        conn.execute(text(f"ALTER TABLE {quote(table.name)} ADD COLUMN {quote(col.name)} {ddl}"))
+                        log.warning("schema: added column %s.%s", table.name, col.name)
 
     # ------------------------------------------------------------------ port extras
     def commit(self) -> None:
@@ -146,7 +160,7 @@ class SqlRepo(InMemoryRepo):
         for i, q in enumerate(self.queue.values()):
             yield queue, dict(id=q.id, seq=i, place_id=q.place_id, feature=str(q.feature),
                               created_at=_iso(q.created_at), observation_ids=list(q.observation_ids), type=q.type,
-                              status=str(q.status), decision=q.decision)
+                              status=str(q.status), decision=q.decision, resolved_at=_iso(q.resolved_at))
 
     # ------------------------------------------------------------------ rows → domain
     def _load(self) -> None:
@@ -184,6 +198,6 @@ class SqlRepo(InMemoryRepo):
             for r in rows(queue):
                 self.queue[r["id"]] = QueueItem(r["id"], r["place_id"], FeatureKey(r["feature"]), _dt(r["created_at"]),
                                                 list(r["observation_ids"]), r["type"], QueueStatus(r["status"]),
-                                                r["decision"])
+                                                r["decision"], _dt(r["resolved_at"]))
         self._snapshot = {(t.name, tuple(row[k] for k in PK[t.name])): row for t, row in self._rows()}
 

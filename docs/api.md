@@ -100,6 +100,8 @@ Every error has the same shape:
 | GET | `/api/v1/admin/queue/{id}` | admin | Conflict detail |
 | POST | `/api/v1/admin/queue/{id}/decision` | admin | Confirm / reject |
 | POST | `/api/v1/admin/places/{id}/owner` | admin | Assign owner |
+| GET | `/api/v1/admin/stats` | admin | Dashboard tiles |
+| GET | `/api/v1/places/{id}/history` | admin / owner of place | Audit trail |
 | POST | `/api/v1/admin/imports` | admin | OSM import |
 | POST | `/api/v1/admin/demo/reset` | admin | Reset data to seed |
 | GET | `/public/v1/places` | API key | Open API search |
@@ -298,6 +300,33 @@ Owners **never overwrite** data. A contradiction with users goes to moderation.
                      "sources_count": 3, "active_observation_id": "obs_14", "...": "..." } }
 ```
 Already resolved → 409. `confirm` without a winner from this item → 400.
+
+### `GET /api/v1/admin/stats`
+Dashboard tiles from the mock-up. `change_pct` is today vs yesterday in %, and `null` when yesterday was 0 or the tile has no comparison.
+
+```json
+{ "new_reports_today":  { "value": 1, "change_pct": null },
+  "data_conflicts":     { "value": 1, "change_pct": null },
+  "low_confidence":     { "value": 0, "change_pct": null },
+  "observations_today": { "value": 2, "change_pct": null },
+  "places":             { "value": 4, "change_pct": null },
+  "updated_at": "2026-10-03T12:00:00+00:00" }
+```
+- `data_conflicts`: the value is the number of open items; the change counts items opened today vs yesterday.
+- `low_confidence`: known features with confidence < 0.5.
+- There is no "abuse reports" tile, because the MVP has no flagging.
+
+### `GET /api/v1/places/{id}/history`
+The audit trail ("Historia i audyt"), newest first, for **admins and the owner of the place** (otherwise 403). Events: `observation_added` (every observation, including rejected ones, with final validation and votes), `conflict_detected`, and `conflict_resolved` (with the decision and the time it was made).
+
+```json
+{ "items": [ { "event": "conflict_resolved", "description": "Rozstrzygnięto: elevator → approved",
+               "created_at": "2026-10-03T12:00:00+00:00", "actor": null, "observation_id": null, "queue_id": "q_1" },
+             { "event": "observation_added",
+               "description": "community: elevator = no (tymczasowo) · REJECTED · 👍3 👎0",
+               "created_at": "2026-10-03T12:00:00+00:00",
+               "actor": { "id": "usr_anna", "display_name": "Anna K." }, "observation_id": "obs_12", "queue_id": null } ] }
+```
 
 ### `POST /api/v1/admin/places/{id}/owner`
 `{ "user_id": "usr_marek" }` → `{ place_id, owner: User }`. A `user` is promoted to `owner`.

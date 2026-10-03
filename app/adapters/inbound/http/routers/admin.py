@@ -35,6 +35,30 @@ async def decide(item_id: str, body: DecisionIn, uc: UC, admin: AdminUser):
     return DecisionOut(id=item.id, status=item.decision, feature_state=feature_state_out(state))
 
 
+class StatTileOut(BaseModel):
+    value: int
+    change_pct: float | None
+
+
+class AdminStatsOut(BaseModel):
+    new_reports_today: StatTileOut
+    data_conflicts: StatTileOut
+    low_confidence: StatTileOut
+    observations_today: StatTileOut
+    places: StatTileOut
+    updated_at: str
+
+
+@router.get("/admin/stats", response_model=AdminStatsOut)
+async def admin_stats(uc: UC, admin: AdminUser):
+    """Dashboard tiles: value + change vs yesterday (%). No abuse tile (no flagging in MVP)."""
+    s = uc.admin_stats(admin)
+    tile = lambda t: StatTileOut(value=t.value, change_pct=t.change_pct)  # noqa: E731
+    return AdminStatsOut(new_reports_today=tile(s.new_reports_today), data_conflicts=tile(s.data_conflicts),
+                         low_confidence=tile(s.low_confidence), observations_today=tile(s.observations_today),
+                         places=tile(s.places), updated_at=s.updated_at.isoformat())
+
+
 @router.post("/admin/demo/reset", status_code=204)
 async def reset_demo(uc: UC, user: OptionalUser):
     uc.reset_demo(user)  # use case enforces admin (401/403)

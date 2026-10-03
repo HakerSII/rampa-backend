@@ -1,8 +1,9 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Query
+from pydantic import BaseModel
 
-from app.adapters.inbound.http.deps import UC
+from app.adapters.inbound.http.deps import UC, CurrentUser
 from app.adapters.inbound.http.schemas import (
     AccessibilityOut,
     ActivityList,
@@ -72,6 +73,39 @@ async def place_photos(place_id: str, uc: UC):
                              observation_id=o.id, created_at=iso(o.created_at))
              for p, o in uc.place_photos(place_id)]
     return GalleryOut(items=items, total=len(items))
+
+
+class HistoryActor(BaseModel):
+    id: str
+    display_name: str
+
+
+class HistoryEventOut(BaseModel):
+    event: str
+    description: str
+    created_at: str
+    actor: HistoryActor | None
+    observation_id: str | None
+    queue_id: str | None
+
+
+class HistoryOut(BaseModel):
+    items: list[HistoryEventOut]
+
+
+@router.get("/places/{place_id}/history", response_model=HistoryOut, tags=["admin", "owner"])
+async def place_history(place_id: str, uc: UC, user: CurrentUser):
+    """Audit trail "Historia i audyt" — admin, or the owner of the place."""
+    def actor(user_id):
+        if user_id is None:
+            return None
+        a = author_out(uc, user_id)
+        return HistoryActor(id=a.id, display_name=a.display_name)
+
+    return HistoryOut(items=[HistoryEventOut(event=e.event, description=e.description, created_at=iso(e.created_at),
+                                             actor=actor(e.actor_id), observation_id=e.observation_id,
+                                             queue_id=e.queue_id)
+                             for e in uc.place_history(user, place_id)])
 
 
 @router.get("/accessibility/features", response_model=list[FeatureDictGroup], tags=["dictionaries"])

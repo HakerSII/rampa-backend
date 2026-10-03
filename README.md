@@ -55,6 +55,7 @@ uv run python main.py                                          # http://localhos
 | 10 | Gemini vision (`AI_MODE=gemini`, `GEMINI_*` config) | [plan](features/10-gemini-vision/plan.md) | F6 | 45 min |
 | 11 | Postgres + docker-compose (`DB_ENGINE`, `POSTGRES_*`) | [plan](features/11-postgres-docker/plan.md) | — | 60 min |
 | 12 | Place screen: activity feed, photos, verification badge | [plan](features/12-place-screen/plan.md) | [openapi](features/12-place-screen/openapi.yaml) | 60 min |
+| 13 | Admin panel: stats tiles + audit history | [plan](features/13-admin-panel/plan.md) | [openapi](features/13-admin-panel/openapi.yaml) | 60 min |
 
 - F0 blocks all.
 - After F0: **F1, F2, F3 in parallel** (demo auth stub ships in F0, Google added in F1).

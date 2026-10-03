@@ -130,6 +130,7 @@ class QueueItem:
     type: str = "conflict"
     status: QueueStatus = QueueStatus.OPEN
     decision: str | None = None  # approved | rejected
+    resolved_at: datetime | None = None
 
 
 @dataclass(slots=True)

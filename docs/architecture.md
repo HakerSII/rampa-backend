@@ -206,6 +206,7 @@ Public display names are shortened to "Anna K." (privacy rule from the mock-ups)
   - At bootstrap: an empty DB is seeded. A non-empty DB is loaded, and the id counters continue past the stored ids so new ids never collide.
   - Tables: `users`, `sessions`, `places`, `feature_states`, `observations`, `reports`, `photos`, `queue_items`.
 - **Why write-behind:** the `Repo` port is synchronous and the use cases mutate domain objects in place. This adds persistence without touching the domain or use cases.
+- **Schema evolution:** on start, `SqlRepo` adds any **missing nullable columns** to existing tables (`ALTER TABLE … ADD COLUMN`), so databases created by older versions keep working (e.g. `queue_items.resolved_at`, F13). It never drops or renames anything.
 - **Limit:** a single process only (one uvicorn worker), on both SQLite and Postgres. Multiple workers or replicas would need a fully SQL-backed repository; the port stays the same.
 - **Deployment:** `docker-compose.yml` = `postgres:17-alpine` (healthcheck, volume `pgdata`) + the API image (`Dockerfile`, uv, Python 3.13, extra `postgres`). Verified: the full `demo.http` and the SqlRepo test suite pass on Postgres.
 

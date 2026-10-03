@@ -60,6 +60,7 @@ flowchart LR
 | Automatic conflict detection → moderation | `GET /admin/queue`, `POST …/decision` | F3/F4 |
 | AI suggestions from photos (mock / Phi-3.5 / Gemini) | `POST /ai/image-tags` | F6/F10 |
 | Owner panel (verified owner observations) | `/owner/*` | F7 |
+| Admin dashboard tiles + audit trail | `/admin/stats`, `/places/{id}/history` | F13 |
 | Open data import (OpenStreetMap) | `POST /admin/imports` | F8 |
 | Open API for external apps | `/public/v1/*` | F5 |
 | AI assistant integration (MCP) | `clients/mcp_server.py` | F8 |

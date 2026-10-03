@@ -173,6 +173,26 @@ GET {{base}}/places/plc_mnk/photos
 ### 7f. Place details: verification block → "Potwierdzone dzisiaj", sources, confidence level
 GET {{base}}/places/plc_mnk
 
+### 7g. Admin dashboard tiles (reports today, open conflicts, low confidence, observations today)
+GET {{base}}/admin/stats
+Authorization: Bearer {{admin}}
+
+### 7h. Audit trail of MNK: observations (incl. REJECTED), conflict detected → resolved
+GET {{base}}/places/plc_mnk/history
+Authorization: Bearer {{admin}}
+
+### 7i. Owner Ewa can read history of her place
+GET {{base}}/places/plc_mnk/history
+Authorization: Bearer {{ewa}}
+
+### 403 FORBIDDEN — regular user cannot read the audit trail
+GET {{base}}/places/plc_mnk/history
+Authorization: Bearer {{anna}}
+
+### 403 FORBIDDEN — non-admin dashboard
+GET {{base}}/admin/stats
+Authorization: Bearer {{ewa}}
+
 ### 400 VALIDATION_ERROR — activity limit out of range
 GET {{base}}/places/plc_mnk/activity?limit=0
 
