@@ -109,6 +109,10 @@ Every error has the same shape:
 | GET | `/public/v1/places/{id}` | API key | Open API place |
 | GET | `/public/v1/places/{id}/accessibility` | API key | Open API flat accessibility |
 | GET | `/public/v1/places/{id}/check` | API key | Open API "can I get in?" |
+| GET | `/api/v1/me/favorites` | user | My favourite places |
+| PUT | `/api/v1/me/favorites/{id}` | user | Add favourite (idempotent) |
+| DELETE | `/api/v1/me/favorites/{id}` | user | Remove favourite (idempotent) |
+| GET | `/api/v1/me/reports` | user | My reports, newest first |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -344,6 +348,17 @@ The audit trail ("Historia i audyt"), newest first, for **admins and the owner o
 
 ### `POST /api/v1/admin/demo/reset` → 204
 Clears all data (including the SQLite DB) and loads the seed again.
+
+## 7a. Me (logged-in user)
+
+| Endpoint | Body / response |
+|---|---|
+| `GET /me/favorites` | `{ items: [PlaceSummary] }` (with `verification`), in the order they were added |
+| `PUT /me/favorites/{placeId}` | 204; adding again is a no-op; unknown place → 404 |
+| `DELETE /me/favorites/{placeId}` | 204; idempotent |
+| `GET /me/reports` | `{ items: [Report] }`, mine only, newest first |
+
+Favourites are stored per user (`users.favorites`, JSON) and survive restarts in SQL mode.
 
 ## 8. Open API (`/public/v1`, header `X-Api-Key`)
 

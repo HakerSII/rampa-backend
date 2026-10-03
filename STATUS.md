@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** F16–F23 full plan: F16 me
+- **Task:** F17 geo search + categories + geocode
 - **Who:** Claude
 - **State:** todo
-- **Next step:** 🟢 favorites + my reports
-- **Last pytest:** `uv run pytest` → red: F16
+- **Next step:** 🔴 tests lat/lon/radius/sort/bbox/pagination/map + /categories + /geocode
+- **Last pytest:** `uv run pytest` → 271 passed, 9 skipped
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -48,10 +48,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F13.1–F13.2 | Admin panel: stats tiles + audit history (+ column migration) | Claude | done | migration verified on SQLite + copy of real rampa.db; PG run pending (containers stopped) |
 | F14.1–F14.2 | +8 features, +6 needs profiles (generic check rules) | Claude | done | e2e 3b–3f + 400 |
 | F15 | Pitch + stage demo script | Claude | done | docs/PITCH.md, docs/DEMO.md |
-| F16 | Me: favourites + my reports | Claude | red | |
+| F16 | Me: favourites + my reports | Claude | done | e2e 4b-ME/FAV + 404/401 |
 
 ## Log (newest first)
 
+- 2026-10-03 · F16 · done · favourites (JSON column, auto-migrated), my reports
 - 2026-10-03 · F16 · red · me/favorites/reports tests
 - 2026-10-03 · F15 · done · docs/PITCH.md (pitch, evidence, Q&A), docs/DEMO.md (stage script, pre-flight, fallbacks)
 - 2026-10-03 · F14 · done · 13 features / 7 groups, 7 needs profiles via rule table, seed extras, AI keywords, specs+docs updated

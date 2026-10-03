@@ -111,6 +111,18 @@ Content-Type: application/json
   "photo_ids": ["{{upload.response.body.$.id}}"]
 }
 
+### 4b-ME. Anna: my reports → the report just sent
+GET {{base}}/me/reports
+Authorization: Bearer {{anna}}
+
+### 4b-FAV. Anna saves the museum to favourites → 204 (idempotent)
+PUT {{base}}/me/favorites/plc_mnk
+Authorization: Bearer {{anna}}
+
+### 4b-FAV2. Anna's favourites → plc_mnk with verification badge
+GET {{base}}/me/favorites
+Authorization: Bearer {{anna}}
+
 ### 4c. Elevator now: no, temporary, confidence 0.6
 GET {{base}}/places/plc_mnk/accessibility
 
@@ -435,6 +447,13 @@ POST {{base}}/auth/demo
 Content-Type: application/json
 
 {"username": "daniel"}
+
+### 404 NOT_FOUND — favourite of unknown place
+PUT {{base}}/me/favorites/nope
+Authorization: Bearer {{anna}}
+
+### 401 UNAUTHORIZED — favourites without login
+GET {{base}}/me/favorites
 
 ### 403 FORBIDDEN — non-admin opens queue
 GET {{base}}/admin/queue

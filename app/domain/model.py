@@ -36,6 +36,7 @@ class User:
     username: str | None = None  # demo accounts
     email: str | None = None
     google_sub: str | None = None
+    favorite_place_ids: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)

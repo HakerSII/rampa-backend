@@ -204,6 +204,27 @@ class UseCases:
                   and states[o.feature].active_observation_id == o.id]
         return domain_check.check_place(place_id, states, profile, issues)
 
+    # ------------------------------------------------------------------ me (F16)
+    def list_favorites(self, user: User | None) -> list[Place]:
+        self._require_user(user)
+        return [p for p in (self.repo.get_place(i) for i in user.favorite_place_ids) if p]
+
+    def add_favorite(self, user: User | None, place_id: str) -> None:
+        self._require_user(user)
+        self.get_place(place_id)
+        if place_id not in user.favorite_place_ids:
+            user.favorite_place_ids.append(place_id)
+
+    def remove_favorite(self, user: User | None, place_id: str) -> None:
+        self._require_user(user)
+        if place_id in user.favorite_place_ids:
+            user.favorite_place_ids.remove(place_id)
+
+    def my_reports(self, user: User | None) -> list[Report]:
+        self._require_user(user)
+        mine = [(i, r) for i, r in enumerate(self.repo.list_reports()) if r.author_id == user.id]
+        return [r for _, r in sorted(mine, key=lambda t: (t[1].created_at, t[0]), reverse=True)]
+
     # ------------------------------------------------------------------ place screen (F12)
     def verification_for(self, place_id: str) -> Verification:
         states = self.get_accessibility(place_id).values()
