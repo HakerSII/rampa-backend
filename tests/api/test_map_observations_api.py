@@ -22,3 +22,10 @@ def test_map_observations_endpoint(tmp_path):
     assert (item["severity"], item["feature"], item["value"], item["temporary"]) == ("obstacle", "ramp", "no", True)
     assert r.json()["total"] == 1
     assert c.get("/api/v1/observations", params={"bbox": "bad"}).status_code == 400
+
+
+def test_since_with_unencoded_plus_in_query(tmp_path):
+    # "+00:00" in a URL arrives as " 00:00" — must still parse (front-end clients rarely encode "+")
+    c = TestClient(create_app(Settings(repo_mode="memory", media_dir=str(tmp_path))))
+    assert c.get("/api/v1/observations?since=2026-01-01T00:00:00+00:00").status_code == 200
+    assert c.get("/api/v1/observations?since=2026-01-01T00:00:00Z").status_code == 200

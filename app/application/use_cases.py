@@ -1199,8 +1199,8 @@ class UseCases:
         value_v = _enum(ObservationValue, value, "value") if value else None
         since_dt = None
         if since:
-            try:
-                since_dt = datetime.fromisoformat(since)
+            try:  # "+01:00" often arrives as " 01:00" when not URL-encoded
+                since_dt = datetime.fromisoformat(re.sub(r" (\d{2}:\d{2})$", r"+\1", since.strip()))
             except ValueError as e:
                 raise ValidationFailed("since must be an ISO date-time") from e
             if since_dt.tzinfo is None:
