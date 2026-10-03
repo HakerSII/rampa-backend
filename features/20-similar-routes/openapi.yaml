@@ -53,7 +53,7 @@ paths:
                   barriers: { type: array, items: { $ref: "#/components/schemas/RoutePoint" } }
                   helpers: { type: array, items: { $ref: "#/components/schemas/RoutePoint" } }
                   note: { type: string }
-        "400": { description: VALIDATION_ERROR (bad lat,lon) }
+        "400": { description: "VALIDATION_ERROR (bad lat,lon)" }
         "404": { description: NOT_FOUND (unknown place) }
 components:
   schemas:
