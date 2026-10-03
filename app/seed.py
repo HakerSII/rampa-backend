@@ -57,7 +57,8 @@ def load_seed(repo: Repo, clock: Clock, ids: IdGenerator, recompute) -> None:
 
     created = clock.now() - timedelta(days=60)
     for template, features in PLACES:
-        place = replace(template, owner_id="usr_ewa" if template.id in OWNED_BY_EWA else None)  # copy: no shared state
+        place = replace(template, owner_id="usr_ewa" if template.id in OWNED_BY_EWA else None,  # copy: no shared state
+                        opening_hours=[], contact={}, photo_ids=[])
         repo.add_place(place)
         for feature, value in features.items():
             repo.add_observation(Observation(

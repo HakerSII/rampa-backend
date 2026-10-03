@@ -456,6 +456,79 @@ Content-Type: application/json
 
 {"action": "confirm", "winning_observation_id": "{{ewaUpdate.response.body.$.items[0].id}}"}
 
+### O9a. Owner profile + tiles
+GET {{base}}/owner/me
+Authorization: Bearer {{ewa}}
+
+### O9b. Owner stats (managed places, reports 30 d, my updates 30 d, conflicts)
+GET {{base}}/owner/stats
+Authorization: Bearer {{ewa}}
+
+### O9c. Reply to Anna's report
+POST {{base}}/owner/reports/{{ownReport.response.body.$.id}}/reply
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"text": "Dziękujemy — serwis był rano, winda działa."}
+
+### O9d. Opening hours (shown on the place card)
+PUT {{base}}/owner/places/plc_mnk/opening-hours
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+[{"days": "Tue-Sun", "open": "10:00", "close": "18:00"}, {"days": "Mon", "closed": true}]
+
+### O9e. Edit contact + description
+PATCH {{base}}/owner/places/plc_mnk
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"contact": {"phone": "+48 12 433 55 00", "website": "https://mnk.pl"}}
+
+### O9f. Reminders ("Uzupełnij dane…", unanswered reports first)
+GET {{base}}/owner/reminders
+Authorization: Bearer {{ewa}}
+
+### O9g. Suggestions ("Rozważ: …")
+GET {{base}}/owner/suggestions
+Authorization: Bearer {{ewa}}
+
+### O9h. Place stats
+GET {{base}}/owner/places/plc_mnk/stats
+Authorization: Bearer {{ewa}}
+
+### O9i. Batch update of both places (all-or-nothing)
+POST {{base}}/owner/observations/batch
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+[{"place_id": "plc_camelot", "feature": "accessible_toilet", "value": "yes"}, {"place_id": "plc_mnk", "feature": "lowered_curb", "value": "yes"}]
+
+### O9j. CSV template
+GET {{base}}/owner/places/import/template
+Authorization: Bearer {{ewa}}
+
+### O9k. CSV import (row 3 is not her place → error, rest imported)
+POST {{base}}/owner/places/import
+Authorization: Bearer {{ewa}}
+Content-Type: multipart/form-data; boundary=----DemoBoundary
+
+------DemoBoundary
+Content-Disposition: form-data; name="file"; filename="import.csv"
+Content-Type: text/csv
+
+place_id,feature,value,temporary,comment
+plc_camelot,step_free_entrance,no,false,Dwa stopnie
+plc_ice,ramp,yes,false,nie moje
+------DemoBoundary--
+
+### 400 VALIDATION_ERROR — opening hours close before open
+PUT {{base}}/owner/places/plc_mnk/opening-hours
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+[{"days": "Mon", "open": "18:00", "close": "10:00"}]
+
 ### O10. Admin assigns Marek as owner of ICE → 200, role owner
 POST {{base}}/admin/places/plc_ice/owner
 Authorization: Bearer {{admin}}

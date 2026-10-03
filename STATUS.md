@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** F22 owner extras
+- **Task:** F23 domain gaps
 - **Who:** Claude
 - **State:** todo
-- **Next step:** green: owner profile/stats/edit/hours/photos/reply/approve/reminders/suggestions/batch/CSV
-- **Last pytest:** `uv run pytest` → red: F22
+- **Next step:** partial state, trust decay, temporary valid_until, place_type
+- **Last pytest:** `uv run pytest` → see commit
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -54,10 +54,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F19 | AI parse-text (rules) | Claude | done | e2e 4a-TXT + 400 |
 | F20 | Similar places + accessible route (heuristic) | Claude | done | e2e 1f–1h + 404 |
 | F21 | Admin extras: confidence, comments, flag, merge, revalidate, ownership requests | Claude | done | e2e 7j–7q + 409 |
-| F22 | Owner panel extras (profile, stats, edit, hours, photos, reply/approve, reminders, suggestions, batch, CSV) | Claude | red | |
+| F22 | Owner panel extras (profile, stats, edit, hours, photos, reply/approve, reminders, suggestions, batch, CSV) | Claude | done | e2e O9a–O9k + 400 |
 
 ## Log (newest first)
 
+- 2026-10-03 · F22 · done · owner profile/stats/edit/hours/photos/reply/approve/reminders/suggestions/batch/CSV
 - 2026-10-03 · F22 red: owner extras tests
 - 2026-10-03 · F21 · done · confidence, comments, FLAGGED + abuse tile, merge, revalidate, ownership requests
 - 2026-10-03 · F21 · red · admin extras tests

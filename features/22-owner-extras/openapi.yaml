@@ -1,0 +1,210 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F22 Owner panel extras
+  version: 0.1.0-mvp
+  description: >
+    Owner profile/stats, place editing, opening hours, presentation photos, place stats,
+    report reply/approve, reminders, suggestions, batch update, CSV import. Owner role + owner of the place.
+servers:
+  - url: http://localhost:8000/api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: owner
+paths:
+  /owner/me:
+    get:
+      tags: [owner]
+      summary: Owner profile
+      operationId: ownerMe
+      responses:
+        "200": { description: "{ id, display_name, email, role, verified, places }" }
+        "403": { description: FORBIDDEN }
+    patch:
+      tags: [owner]
+      summary: Update name / e-mail
+      operationId: updateOwnerMe
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, properties: { display_name: { type: string }, email: { type: string, format: email } } }
+      responses:
+        "200": { description: Profile }
+        "400": { description: VALIDATION_ERROR }
+  /owner/stats:
+    get:
+      tags: [owner]
+      summary: Owner tiles
+      operationId: ownerStats
+      responses:
+        "200": { description: "{ managed_places, avg_confidence, reports_30d, updates_30d, open_conflicts }" }
+        "403": { description: FORBIDDEN }
+  /owner/places/{placeId}:
+    parameters: [{ $ref: "#/components/parameters/PlaceId" }]
+    patch:
+      tags: [owner]
+      summary: Edit basic info and contact
+      operationId: editPlace
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                short_description: { type: string }
+                address: { type: string }
+                category: { type: string }
+                contact: { type: object, properties: { phone: { type: string }, website: { type: string }, email: { type: string } } }
+      responses:
+        "200": { description: Place }
+        "400": { description: VALIDATION_ERROR }
+        "403": { description: FORBIDDEN }
+  /owner/places/{placeId}/opening-hours:
+    parameters: [{ $ref: "#/components/parameters/PlaceId" }]
+    put:
+      tags: [owner]
+      summary: Replace opening hours
+      operationId: setOpeningHours
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              maxItems: 14
+              items:
+                type: object
+                required: [days]
+                properties:
+                  days: { type: string, examples: [Tue-Sun] }
+                  open: { type: string, examples: ["10:00"] }
+                  close: { type: string, examples: ["18:00"] }
+                  closed: { type: boolean }
+      responses:
+        "200": { description: Normalized opening hours }
+        "400": { description: "VALIDATION_ERROR (HH:MM, open < close)" }
+        "403": { description: FORBIDDEN }
+  /owner/places/{placeId}/photos:
+    parameters: [{ $ref: "#/components/parameters/PlaceId" }]
+    post:
+      tags: [owner]
+      summary: Add presentation photo (id from /uploads)
+      operationId: addPlacePhoto
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, required: [photo_id], properties: { photo_id: { type: string } } }
+      responses:
+        "201": { description: "{ photo_ids }" }
+        "400": { description: VALIDATION_ERROR (unknown photo) }
+        "403": { description: FORBIDDEN }
+  /owner/places/{placeId}/photos/{photoId}:
+    parameters:
+      - { $ref: "#/components/parameters/PlaceId" }
+      - { name: photoId, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [owner]
+      summary: Remove presentation photo
+      operationId: removePlacePhoto
+      responses:
+        "204": { description: Removed }
+        "403": { description: FORBIDDEN }
+  /owner/places/{placeId}/stats:
+    parameters: [{ $ref: "#/components/parameters/PlaceId" }]
+    get:
+      tags: [owner]
+      summary: Place stats
+      operationId: ownerPlaceStats
+      responses:
+        "200": { description: "{ observations, by_source, votes_up, votes_down, open_conflicts, last_verified, confidence }" }
+        "403": { description: FORBIDDEN }
+  /owner/reports/{reportId}/reply:
+    parameters: [{ $ref: "#/components/parameters/ReportId" }]
+    post:
+      tags: [owner]
+      summary: Reply to a user report
+      operationId: replyToReport
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, required: [text], properties: { text: { type: string } } }
+      responses:
+        "201": { description: Report with replies }
+        "403": { description: FORBIDDEN }
+        "409": { description: CONFLICT (draft) }
+  /owner/reports/{reportId}/approve:
+    parameters: [{ $ref: "#/components/parameters/ReportId" }]
+    post:
+      tags: [owner]
+      summary: Confirm report → verified_owner observation with the same value
+      operationId: approveReport
+      responses:
+        "200": { description: Observation (source verified_owner) }
+        "403": { description: FORBIDDEN }
+        "409": { description: CONFLICT (already approved) }
+  /owner/reminders:
+    get:
+      tags: [owner]
+      summary: Reminders (missing data, stale data, conflicts, unanswered reports)
+      operationId: ownerReminders
+      responses:
+        "200": { description: "{ items: [{ place_id, kind, text, priority, feature }] }" }
+  /owner/suggestions:
+    get:
+      tags: [owner]
+      summary: Improvement suggestions (features that are 'no')
+      operationId: ownerSuggestions
+      responses:
+        "200": { description: "{ items: [{ place_id, feature, text }] }" }
+  /owner/observations/batch:
+    post:
+      tags: [owner]
+      summary: Batch update across own places (all-or-nothing, 1..50)
+      operationId: ownerBatch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [place_id, feature, value]
+                properties:
+                  place_id: { type: string }
+                  feature: { type: string }
+                  value: { type: string, enum: ["yes", "no"] }
+                  temporary: { type: boolean }
+                  comment: { type: string }
+      responses:
+        "201": { description: "{ items: [Observation] }" }
+        "400": { description: VALIDATION_ERROR }
+        "403": { description: FORBIDDEN (any place not owned → nothing written) }
+  /owner/places/import/template:
+    get:
+      tags: [owner]
+      summary: CSV template
+      operationId: csvTemplate
+      responses:
+        "200":
+          description: CSV
+          content:
+            text/csv:
+              schema: { type: string }
+  /owner/places/import:
+    post:
+      tags: [owner]
+      summary: Bulk update from CSV (place_id,feature,value,temporary,comment)
+      operationId: csvImport
+      requestBody:
+        content:
+          multipart/form-data:
+            schema: { type: object, required: [file], properties: { file: { type: string, format: binary } } }
+      responses:
+        "200": { description: "{ imported, errors: [{ row, message }] }" }
+        "400": { description: VALIDATION_ERROR (bad header) }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  parameters:
+    PlaceId: { name: placeId, in: path, required: true, schema: { type: string } }
+    ReportId: { name: reportId, in: path, required: true, schema: { type: string } }

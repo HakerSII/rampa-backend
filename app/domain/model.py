@@ -64,6 +64,9 @@ class Place:
     address: str = ""
     owner_id: str | None = None
     external_id: str | None = None  # e.g. osm:<lat>,<lon>
+    opening_hours: list[dict] = field(default_factory=list)  # [{days, open, close} | {days, closed: True}]
+    contact: dict = field(default_factory=dict)  # {phone, website, email}
+    photo_ids: list[str] = field(default_factory=list)  # owner/presentation photos
 
 
 @dataclass(slots=True)
@@ -120,6 +123,8 @@ class Report:
     photo_ids: list[str] = field(default_factory=list)
     status: str = "submitted"
     observation_ids: list[str] = field(default_factory=list)
+    replies: list[dict] = field(default_factory=list)  # owner replies {author_id, text, created_at}
+    owner_status: str | None = None  # approved (owner confirmed the report)
 
 
 @dataclass(slots=True)

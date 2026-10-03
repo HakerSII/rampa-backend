@@ -123,9 +123,12 @@ async def place_activity(place_id: str, uc: UC, limit: int = 20):
 
 @router.get("/places/{place_id}/photos", response_model=GalleryOut, tags=["places"])
 async def place_photos(place_id: str, uc: UC):
-    items = [GalleryPhotoOut(id=p.id, url=p.url, author=author_out(uc, o.author_id), feature=o.feature,
-                             observation_id=o.id, created_at=iso(o.created_at))
-             for p, o in uc.place_photos(place_id)]
+    owner_id = uc.get_place(place_id).owner_id
+    items = [GalleryPhotoOut(id=p.id, url=p.url, author=author_out(uc, owner_id) if owner_id else None, kind="owner")
+             for p in uc.place_owner_photos(place_id)]
+    items += [GalleryPhotoOut(id=p.id, url=p.url, author=author_out(uc, o.author_id), feature=o.feature,
+                              observation_id=o.id, created_at=iso(o.created_at))
+              for p, o in uc.place_photos(place_id)]
     return GalleryOut(items=items, total=len(items))
 
 

@@ -47,7 +47,8 @@ sessions = Table("sessions", md, Column("token", String, primary_key=True), Colu
 places = Table("places", md, Column("id", String, primary_key=True), Column("seq", Integer), Column("name", String),
                Column("category", String), Column("lat", Float), Column("lon", Float),
                Column("short_description", String), Column("address", String), Column("owner_id", String),
-               Column("external_id", String))
+               Column("external_id", String), Column("opening_hours", JSON), Column("contact", JSON),
+               Column("photo_ids", JSON))
 states = Table("feature_states", md, Column("place_id", String, primary_key=True),
                Column("feature", String, primary_key=True), Column("state", String), Column("confidence", Float),
                Column("temporary", Boolean), Column("last_verified", String), Column("sources_count", Integer),
@@ -62,7 +63,8 @@ reports = Table("reports", md, Column("id", String, primary_key=True), Column("s
                 Column("place_id", String), Column("author_id", String), Column("element", String),
                 Column("current_state", String), Column("severity", String), Column("nature", String),
                 Column("description", String), Column("created_at", String), Column("photo_ids", JSON),
-                Column("status", String), Column("observation_ids", JSON))
+                Column("status", String), Column("observation_ids", JSON), Column("replies", JSON),
+                Column("owner_status", String))
 photos = Table("photos", md, Column("id", String, primary_key=True), Column("seq", Integer), Column("path", String),
                Column("url", String), Column("original_name", String))
 queue = Table("queue_items", md, Column("id", String, primary_key=True), Column("seq", Integer),
@@ -149,7 +151,8 @@ class SqlRepo(InMemoryRepo):
         for i, p in enumerate(self.places.values()):
             yield places, dict(id=p.id, seq=i, name=p.name, category=p.category, lat=p.location.lat,
                                lon=p.location.lon, short_description=p.short_description, address=p.address,
-                               owner_id=p.owner_id, external_id=p.external_id)
+                               owner_id=p.owner_id, external_id=p.external_id, opening_hours=list(p.opening_hours),
+                               contact=dict(p.contact), photo_ids=list(p.photo_ids))
         for by_feature in self.states.values():
             for s in by_feature.values():
                 yield states, dict(place_id=s.place_id, feature=str(s.feature), state=str(s.state),
@@ -166,7 +169,8 @@ class SqlRepo(InMemoryRepo):
             yield reports, dict(id=r.id, seq=i, place_id=r.place_id, author_id=r.author_id, element=_s(r.element),
                                 current_state=_s(r.current_state), severity=_s(r.severity), nature=_s(r.nature),
                                 description=r.description, created_at=_iso(r.created_at), photo_ids=list(r.photo_ids),
-                                status=r.status, observation_ids=list(r.observation_ids))
+                                status=r.status, observation_ids=list(r.observation_ids), replies=list(r.replies),
+                                owner_status=r.owner_status)
         for i, p in enumerate(self.photos.values()):
             yield photos, dict(id=p.id, seq=i, path=p.path, url=p.url, original_name=p.original_name)
         for i, q in enumerate(self.queue.values()):
@@ -193,7 +197,9 @@ class SqlRepo(InMemoryRepo):
                 self.sessions[r["token"]] = Session(r["token"], r["user_id"], _dt(r["expires_at"]))
             for r in rows(places):
                 self.places[r["id"]] = Place(r["id"], r["name"], r["category"], GeoPoint(r["lat"], r["lon"]),
-                                             r["short_description"], r["address"], r["owner_id"], r["external_id"])
+                                             r["short_description"], r["address"], r["owner_id"], r["external_id"],
+                                             list(r["opening_hours"] or []), dict(r["contact"] or {}),
+                                             list(r["photo_ids"] or []))
             for r in rows(states):
                 s = FeatureStateRecord(r["place_id"], FeatureKey(r["feature"]), StateValue(r["state"]),
                                        r["confidence"], r["temporary"], _dt(r["last_verified"]), r["sources_count"],
@@ -210,7 +216,8 @@ class SqlRepo(InMemoryRepo):
                     r["id"], r["place_id"], r["author_id"], _e(FeatureKey, r["element"]),
                     _e(CurrentState, r["current_state"]), _e(Severity, r["severity"]), _e(Nature, r["nature"]),
                     r["description"], _dt(r["created_at"]),
-                    list(r["photo_ids"]), r["status"], list(r["observation_ids"]))
+                    list(r["photo_ids"]), r["status"], list(r["observation_ids"]), list(r["replies"] or []),
+                    r["owner_status"])
             for r in rows(photos):
                 self.photos[r["id"]] = Photo(r["id"], r["path"], r["url"], r["original_name"])
             for r in rows(queue):

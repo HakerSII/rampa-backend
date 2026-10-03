@@ -2,7 +2,10 @@
 import secrets
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from datetime import timedelta
+import csv
+import io
+import re
+from datetime import datetime, timedelta
 
 from app.application.ports import (
     Clock,
@@ -22,6 +25,7 @@ from app.domain.stats import AdminStats, compute_stats
 from app.domain.verification import Verification, activity_type, summarize
 from app.domain.enums import (
     FEATURE_GROUP,
+    LABELS_PL,
     CurrentState,
     DecisionAction,
     FeatureKey,
@@ -104,6 +108,58 @@ class GeocodeHit:
     label: str
     place_id: str
     location: GeoPoint
+
+
+@dataclass(slots=True)
+class OwnerProfile:
+    id: str
+    display_name: str
+    email: str | None
+    role: Role
+    verified: bool
+    places: int
+
+
+@dataclass(slots=True)
+class OwnerStats:
+    managed_places: int
+    avg_confidence: float
+    reports_30d: int
+    updates_30d: int
+    open_conflicts: int
+
+
+@dataclass(slots=True)
+class OwnerPlaceStats:
+    observations: int
+    by_source: dict[str, int]
+    votes_up: int
+    votes_down: int
+    open_conflicts: int
+    last_verified: datetime | None
+    confidence: float
+
+
+@dataclass(slots=True)
+class Reminder:
+    place_id: str
+    kind: str  # missing_data | stale_data | conflict | unanswered_report
+    text: str
+    priority: str  # high | normal
+    feature: FeatureKey | None = None
+
+
+@dataclass(slots=True)
+class OwnerSuggestion:
+    place_id: str
+    feature: FeatureKey
+    text: str
+
+
+@dataclass(slots=True)
+class CsvImportResult:
+    imported: int
+    errors: list[dict]
 
 
 @dataclass(slots=True)
@@ -488,6 +544,223 @@ class UseCases:
         if owner.role == Role.USER:
             owner.role = Role.OWNER
         return place
+
+    # ------------------------------------------------------------------ owner extras (F22)
+    OWNER_WINDOW = timedelta(days=30)
+    CORE_FEATURES = (FeatureKey.STEP_FREE_ENTRANCE, FeatureKey.RAMP, FeatureKey.ELEVATOR, FeatureKey.ACCESSIBLE_TOILET)
+    CSV_FIELDS = ["place_id", "feature", "value", "temporary", "comment"]
+
+    def _own_place(self, user: User | None, place_id: str) -> Place:
+        self._require_owner(user)
+        place = self.get_place(place_id)
+        if place.owner_id != user.id:
+            raise Forbidden("you are not the owner of this place")
+        return place
+
+    def owner_profile(self, user: User | None) -> OwnerProfile:
+        self._require_owner(user)
+        return OwnerProfile(user.id, user.display_name, user.email, user.role, True,
+                            len(self.list_owner_places(user)))
+
+    def update_owner_profile(self, user: User | None, display_name: str | None = None,
+                             email: str | None = None) -> OwnerProfile:
+        self._require_owner(user)
+        if display_name is not None:
+            if not 1 <= len(display_name.strip()) <= 100:
+                raise ValidationFailed("display_name: 1..100 characters")
+            user.display_name = display_name.strip()
+        if email is not None:
+            if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email.strip()):
+                raise ValidationFailed("invalid e-mail")
+            user.email = email.strip()
+        return self.owner_profile(user)
+
+    def owner_stats(self, user: User | None) -> OwnerStats:
+        places = self.list_owner_places(user)
+        ids = {p.id for p in places}
+        since = self.clock.now() - self.OWNER_WINDOW
+        confidences = [self.verification_for(p.id).confidence for p in places]
+        reports = [r for r in self.repo.list_reports()
+                   if r.place_id in ids and r.status == "submitted" and r.created_at >= since]
+        updates = [o for p in places for o in self.repo.list_observations(p.id)
+                   if o.author_id == user.id and o.source == ObservationSource.VERIFIED_OWNER and o.created_at >= since]
+        conflicts = [q for q in self.repo.list_queue_items() if q.place_id in ids and q.status == QueueStatus.OPEN]
+        avg = round(sum(confidences) / len(confidences), 2) if confidences else 0.0
+        return OwnerStats(len(places), avg, len(reports), len(updates), len(conflicts))
+
+    def update_owner_place(self, user: User | None, place_id: str, *, name: str | None = None,
+                           short_description: str | None = None, address: str | None = None,
+                           category: str | None = None, contact: dict | None = None) -> Place:
+        place = self._own_place(user, place_id)
+        if name is not None:
+            if not 1 <= len(name.strip()) <= 200:
+                raise ValidationFailed("name: 1..200 characters")
+            place.name = name.strip()
+        for attr, value in (("short_description", short_description), ("address", address),
+                            ("category", category)):
+            if value is not None:
+                setattr(place, attr, value.strip()[:1000])
+        if contact is not None:
+            unknown = set(contact) - {"phone", "website", "email"}
+            if unknown:
+                raise ValidationFailed(f"unknown contact fields: {sorted(unknown)}")
+            place.contact = {**place.contact, **{k: str(v).strip() for k, v in contact.items()}}
+        return place
+
+    def set_opening_hours(self, user: User | None, place_id: str, hours: list[dict]) -> Place:
+        place = self._own_place(user, place_id)
+        if len(hours) > 14:
+            raise ValidationFailed("max 14 opening-hours entries")
+        normalized = []
+        for h in hours:
+            days = str(h.get("days") or "").strip()
+            if not days:
+                raise ValidationFailed("opening hours: 'days' is required")
+            if h.get("closed"):
+                normalized.append({"days": days, "closed": True})
+                continue
+            start, end = str(h.get("open") or ""), str(h.get("close") or "")
+            if not (re.fullmatch(r"\d{2}:\d{2}", start) and re.fullmatch(r"\d{2}:\d{2}", end) and start < end):
+                raise ValidationFailed(f"opening hours for {days}: open/close as HH:MM, open < close")
+            normalized.append({"days": days, "open": start, "close": end})
+        place.opening_hours = normalized
+        return place
+
+    def add_place_photo(self, user: User | None, place_id: str, photo_id: str) -> Place:
+        place = self._own_place(user, place_id)
+        self._check_photos([photo_id])
+        if photo_id not in place.photo_ids:
+            place.photo_ids.append(photo_id)
+        return place
+
+    def remove_place_photo(self, user: User | None, place_id: str, photo_id: str) -> None:
+        place = self._own_place(user, place_id)
+        if photo_id in place.photo_ids:
+            place.photo_ids.remove(photo_id)
+
+    def place_owner_photos(self, place_id: str) -> list[Photo]:
+        return [p for p in (self.repo.get_photo(i) for i in self.get_place(place_id).photo_ids) if p]
+
+    def owner_place_stats(self, user: User | None, place_id: str) -> OwnerPlaceStats:
+        self._own_place(user, place_id)
+        observations = self.repo.list_observations(place_id)
+        by_source: dict[str, int] = {}
+        for o in observations:
+            by_source[str(o.source)] = by_source.get(str(o.source), 0) + 1
+        conflicts = sum(1 for q in self.repo.list_queue_items()
+                        if q.place_id == place_id and q.status == QueueStatus.OPEN)
+        v = self.verification_for(place_id)
+        return OwnerPlaceStats(len(observations), by_source, sum(o.up_votes for o in observations),
+                               sum(o.down_votes for o in observations), conflicts, v.last_verified, v.confidence)
+
+    def _owned_report(self, user: User | None, report_id: str) -> Report:
+        self._require_owner(user)
+        report = self.repo.get_report(report_id)
+        if report is None:
+            raise NotFound(f"report not found: {report_id}")
+        self._own_place(user, report.place_id)
+        if report.status != "submitted":
+            raise ConflictError("only submitted reports can be answered")
+        return report
+
+    def reply_to_report(self, user: User | None, report_id: str, text: str) -> Report:
+        report = self._owned_report(user, report_id)
+        text = (text or "").strip()
+        if not 1 <= len(text) <= MAX_DESCRIPTION:
+            raise ValidationFailed(f"reply must have 1..{MAX_DESCRIPTION} characters")
+        report.replies.append({"author_id": user.id, "text": text, "created_at": self.clock.now().isoformat()})
+        return report
+
+    def approve_report(self, user: User | None, report_id: str) -> Observation:
+        """Owner confirms a user's report → verified_owner observation with the same value."""
+        report = self._owned_report(user, report_id)
+        if report.owner_status == "approved":
+            raise ConflictError("report already approved")
+        value = ObservationValue.YES if report.current_state == CurrentState.WORKS else ObservationValue.NO
+        obs = self._new_observation(user, report.place_id, report.element, value,
+                                    temporary=report.nature == Nature.TEMPORARY,
+                                    comment=f"Potwierdzone przez właściciela: {report.description}", photo_ids=[])
+        report.owner_status = "approved"
+        self.recompute(report.place_id, report.element)
+        return obs
+
+    def owner_reminders(self, user: User | None) -> list[Reminder]:
+        reminders = []
+        for place in self.list_owner_places(user):
+            states = self.get_accessibility(place.id)
+            for f in self.CORE_FEATURES:
+                if states[f].state == StateValue.UNKNOWN:
+                    reminders.append(Reminder(place.id, "missing_data",
+                                              f"Uzupełnij dane: {LABELS_PL[f]} — {place.name}", "normal", f))
+            if self.verification_for(place.id).status == "needs_update":
+                reminders.append(Reminder(place.id, "stale_data",
+                                          f"Sprawdź aktualność danych — {place.name}", "normal"))
+            for q in self.repo.list_queue_items():
+                if q.place_id == place.id and q.status == QueueStatus.OPEN:
+                    reminders.append(Reminder(place.id, "conflict",
+                                              f"Wyjaśnij sprzeczne zgłoszenia: {LABELS_PL[q.feature]} — {place.name}",
+                                              "high", q.feature))
+            for r in self.repo.list_reports():
+                if r.place_id == place.id and r.status == "submitted" and not r.replies and not r.owner_status:
+                    reminders.append(Reminder(place.id, "unanswered_report",
+                                              f"Odpowiedz na zgłoszenie: {r.description} — {place.name}", "high",
+                                              r.element))
+        return sorted(reminders, key=lambda r: r.priority != "high")
+
+    def owner_suggestions(self, user: User | None) -> list[OwnerSuggestion]:
+        result = []
+        for place in self.list_owner_places(user):
+            for f, st in self.get_accessibility(place.id).items():
+                if st.state == StateValue.NO:
+                    result.append(OwnerSuggestion(place.id, f, f"Rozważ: {LABELS_PL[f]} — {place.name}"))
+        return result
+
+    def owner_batch(self, user: User | None, items: list[dict]) -> list[Observation]:
+        """Several own places at once; validated completely before anything is written."""
+        self._require_owner(user)
+        if not 1 <= len(items) <= 50:
+            raise ValidationFailed("batch: 1..50 items")
+        parsed = []
+        for i in items:
+            self._own_place(user, str(i.get("place_id")))
+            parsed.append((i["place_id"], _enum(FeatureKey, i.get("feature"), "feature"),
+                           _enum(ObservationValue, i.get("value"), "value"), bool(i.get("temporary", False)),
+                           str(i.get("comment") or ""), self._check_photos(i.get("photo_ids") or ())))
+        created = [self._new_observation(user, pid, f, v, temporary=t, comment=c, photo_ids=ph)
+                   for pid, f, v, t, c, ph in parsed]
+        for pid, f in dict.fromkeys((o.place_id, o.feature) for o in created):
+            self.recompute(pid, f)
+        return created
+
+    def owner_csv_template(self) -> str:
+        return ",".join(self.CSV_FIELDS) + "\nplc_mnk,ramp,yes,false,Podjazd od strony al. 3 Maja\n"
+
+    def owner_csv_import(self, user: User | None, text: str) -> CsvImportResult:
+        """Valid rows are imported (verified_owner); invalid rows reported with their file line number."""
+        self._require_owner(user)
+        reader = csv.DictReader(io.StringIO(text))
+        if reader.fieldnames is None or [f.strip() for f in reader.fieldnames] != self.CSV_FIELDS:
+            raise ValidationFailed(f"CSV header must be: {','.join(self.CSV_FIELDS)}")
+        rows = list(reader)
+        if len(rows) > 500:
+            raise ValidationFailed("max 500 rows")
+        imported, errors, touched = 0, [], set()
+        for line, row in enumerate(rows, start=2):
+            try:
+                place_id = (row.get("place_id") or "").strip()
+                self._own_place(user, place_id)
+                feature = _enum(FeatureKey, (row.get("feature") or "").strip(), "feature")
+                value = _enum(ObservationValue, (row.get("value") or "").strip(), "value")
+                temporary = (row.get("temporary") or "").strip().lower() in ("true", "1", "yes", "tak")
+                self._new_observation(user, place_id, feature, value, temporary=temporary,
+                                      comment=(row.get("comment") or "").strip(), photo_ids=[])
+                touched.add((place_id, feature))
+                imported += 1
+            except (ValidationFailed, Forbidden, NotFound) as e:
+                errors.append({"row": line, "message": e.message})
+        for place_id, feature in touched:
+            self.recompute(place_id, feature)
+        return CsvImportResult(imported, errors)
 
     @staticmethod
     def _require_owner(user: User | None) -> None:

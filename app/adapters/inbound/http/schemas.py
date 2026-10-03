@@ -68,6 +68,8 @@ class PlaceSummary(BaseModel):
 class PlaceOut(PlaceSummary):
     short_description: str
     address: str
+    opening_hours: list[dict] = []
+    contact: dict = {}
 
 
 class PlacePage(BaseModel):
@@ -155,7 +157,8 @@ def place_summary(place: Place, yes_features: list[FeatureKey], verification=Non
 
 def place_out(place: Place, yes_features: list[FeatureKey], verification=None) -> PlaceOut:
     return PlaceOut(**place_summary(place, yes_features, verification).model_dump(),
-                    short_description=place.short_description, address=place.address)
+                    short_description=place.short_description, address=place.address,
+                    opening_hours=place.opening_hours, contact=place.contact)
 
 
 def feature_state_out(s: FeatureStateRecord) -> FeatureStateOut:
@@ -222,8 +225,16 @@ class ReportPatchIn(ReportFields):
     photo_ids: list[str] | None = None
 
 
+class ReplyOut(BaseModel):
+    author: "AuthorOut"
+    text: str
+    created_at: str
+
+
 class ReportOut(ReportFields):
     place_id: str
+    replies: list[ReplyOut] = []
+    owner_status: str | None = None
     id: str
     status: str
     author: AuthorOut
@@ -308,7 +319,9 @@ def report_out(uc, r: Report) -> ReportOut:
         id=r.id, place_id=r.place_id, element=r.element, current_state=r.current_state,
         severity=r.severity, nature=r.nature, description=r.description, photo_ids=r.photo_ids,
         status=r.status, author=author_out(uc, r.author_id), created_at=iso(r.created_at),
-        observation_ids=r.observation_ids,
+        observation_ids=r.observation_ids, owner_status=r.owner_status,
+        replies=[ReplyOut(author=author_out(uc, x["author_id"]), text=x["text"], created_at=x["created_at"])
+                 for x in r.replies],
     )
 
 
@@ -405,10 +418,11 @@ class ActivityList(BaseModel):
 class GalleryPhotoOut(BaseModel):
     id: str
     url: str
-    author: AuthorOut
-    feature: FeatureKey
-    observation_id: str
-    created_at: str
+    author: AuthorOut | None
+    kind: str = "evidence"  # evidence (from observations) | owner (presentation photos)
+    feature: FeatureKey | None = None
+    observation_id: str | None = None
+    created_at: str | None = None
 
 
 class GalleryOut(BaseModel):

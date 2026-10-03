@@ -128,6 +128,19 @@ Every error has the same shape:
 | POST | `/api/v1/owner/ownership-requests` | user | Apply for ownership |
 | GET | `/api/v1/admin/ownership-requests` | admin | Ownership requests |
 | POST | `/api/v1/admin/ownership-requests/{id}/verify` | admin | Approve / reject ownership |
+| GET/PATCH | `/api/v1/owner/me` | owner | Owner profile |
+| GET | `/api/v1/owner/stats` | owner | Owner tiles |
+| PATCH | `/api/v1/owner/places/{id}` | owner of place | Edit basic info + contact |
+| PUT | `/api/v1/owner/places/{id}/opening-hours` | owner of place | Opening hours |
+| POST/DELETE | `/api/v1/owner/places/{id}/photos[/{photoId}]` | owner of place | Presentation photos |
+| GET | `/api/v1/owner/places/{id}/stats` | owner of place | Place stats |
+| POST | `/api/v1/owner/reports/{id}/reply` | owner of place | Reply to a report |
+| POST | `/api/v1/owner/reports/{id}/approve` | owner of place | Confirm a report |
+| GET | `/api/v1/owner/reminders` | owner | Reminders |
+| GET | `/api/v1/owner/suggestions` | owner | Improvement suggestions |
+| POST | `/api/v1/owner/observations/batch` | owner | Batch update (all-or-nothing) |
+| GET | `/api/v1/owner/places/import/template` | owner | CSV template |
+| POST | `/api/v1/owner/places/import` | owner | CSV import |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -364,6 +377,26 @@ Body `{ "value": 1 }` or `{ "value": -1 }`. Voting again replaces the previous v
 | `GET /owner/reports` | `{ items: [Report] }` on my places, newest first |
 
 Owners **never overwrite** data. A contradiction with users goes to moderation.
+
+## 6a. Owner panel extras
+
+Everything requires role `owner`; place-level endpoints also require ownership of the place (otherwise 403).
+
+| Endpoint | Behaviour |
+|---|---|
+| `GET /owner/me` · `PATCH /owner/me {display_name?, email?}` | `{ id, display_name, email, role, verified, places }` |
+| `GET /owner/stats` | `{ managed_places, avg_confidence, reports_30d, updates_30d, open_conflicts }` |
+| `PATCH /owner/places/{id}` | `name`, `short_description`, `address`, `category`, `contact {phone, website, email}` → `Place` (now with `opening_hours`, `contact`) |
+| `PUT /owner/places/{id}/opening-hours` | `[{days, open, close} \| {days, closed: true}]`, HH:MM with open < close, max 14 entries |
+| `POST /owner/places/{id}/photos {photo_id}` · `DELETE …/photos/{photoId}` | presentation photos; the gallery shows them first with `kind: owner` |
+| `GET /owner/places/{id}/stats` | `{ observations, by_source, votes_up, votes_down, open_conflicts, last_verified, confidence }` |
+| `POST /owner/reports/{id}/reply {text}` | 201 report with `replies[]` (visible to the author) |
+| `POST /owner/reports/{id}/approve` | owner confirms → **verified_owner observation with the report's value**; `owner_status: approved`; second time → 409 |
+| `GET /owner/reminders` | `{ items: [{ place_id, kind, text, priority, feature }] }`: `missing_data` (unknown core features), `stale_data`, `conflict` and `unanswered_report` (high priority first) |
+| `GET /owner/suggestions` | features that are `no` on my places → "Rozważ: …" |
+| `POST /owner/observations/batch [{place_id, feature, value, …}]` | 1–50 items across own places; all validated before writing (one foreign place → 403, nothing written) |
+| `GET /owner/places/import/template` | `text/csv`: `place_id,feature,value,temporary,comment` |
+| `POST /owner/places/import` (multipart `file`) | `{ imported, errors: [{ row, message }] }`: valid rows imported, `row` is the file line number |
 
 ## 7. Admin (role `admin`)
 

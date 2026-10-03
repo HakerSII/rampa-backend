@@ -63,6 +63,7 @@ uv run python main.py                                          # http://localhos
 | 19 | AI parse-text (rules, PL + EN) | [plan](features/19-parse-text/plan.md) | [openapi](features/19-parse-text/openapi.yaml) | 30 min |
 | 20 | Similar places + accessible route A→B (heuristic) | [plan](features/20-similar-routes/plan.md) | [openapi](features/20-similar-routes/openapi.yaml) | 60 min |
 | 21 | Admin extras: confidence, comments, flag abuse, merge, revalidate, ownership requests | [plan](features/21-admin-extras/plan.md) | [openapi](features/21-admin-extras/openapi.yaml) | 90 min |
+| 22 | Owner panel extras: profile, stats, edit, hours, photos, reply/approve, reminders, suggestions, batch, CSV | [plan](features/22-owner-extras/plan.md) | [openapi](features/22-owner-extras/openapi.yaml) | 120 min |
 
 - F0 blocks all.
 - After F0: **F1, F2, F3 in parallel** (demo auth stub ships in F0, Google added in F1).
