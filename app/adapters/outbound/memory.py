@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from app.domain.enums import FeatureKey
 from app.domain.model import (
     LoginToken,
+    Question,
     FeatureStateRecord,
     Observation,
     OwnershipRequest,
@@ -25,6 +26,7 @@ class InMemoryRepo:
         self.users: dict[str, User] = {}
         self.sessions: dict[str, Session] = {}
         self.login_tokens: dict[str, LoginToken] = {}
+        self.questions: dict[str, Question] = {}
         self.places: dict[str, Place] = {}
         self.states: dict[str, dict[FeatureKey, FeatureStateRecord]] = defaultdict(dict)
         self.observations: dict[str, Observation] = {}  # insertion order = creation order
@@ -44,7 +46,7 @@ class InMemoryRepo:
 
     def all_ids(self) -> list[str]:
         return [*self.users, *self.places, *self.observations, *self.reports, *self.photos, *self.queue,
-                *self.ownership_requests]
+                *self.ownership_requests, *self.questions]
 
     # users / sessions
     def add_user(self, user: User) -> None:
@@ -147,6 +149,15 @@ class InMemoryRepo:
 
 
     # ownership requests
+    def add_question(self, q: Question) -> None:
+        self.questions[q.id] = q
+
+    def get_question(self, question_id: str) -> Question | None:
+        return self.questions.get(question_id)
+
+    def list_questions(self) -> list[Question]:
+        return list(self.questions.values())
+
     def add_ownership_request(self, req: OwnershipRequest) -> None:
         self.ownership_requests[req.id] = req
 

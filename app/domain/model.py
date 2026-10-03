@@ -49,6 +49,22 @@ class Session:
 
 
 @dataclass(slots=True)
+class Question:
+    """F34 user → owner question about a place ("Czy można wejść z psem?")."""
+    id: str
+    place_id: str
+    author_id: str
+    text: str
+    created_at: datetime
+    feature: FeatureKey | None = None
+    status: str = "open"  # open | answered
+    answer_text: str | None = None
+    answered_by: str | None = None
+    answered_at: datetime | None = None
+    outcome: str | None = None  # ObservationValue (attribute set) | planned | None (text only)
+
+
+@dataclass(slots=True)
 class LoginToken:
     """F33 one-time e-mail login code; only the SHA-256 of the code is stored."""
     token_hash: str

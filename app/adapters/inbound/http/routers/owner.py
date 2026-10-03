@@ -3,7 +3,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from app.adapters.inbound.http.deps import UC, AdminUser, CurrentUser
-from app.domain.enums import FeatureKey
+from app.domain.enums import LABELS_PL, FeatureKey
 from app.adapters.inbound.http.schemas import (
     ObservationIn,
     ObservationList,
@@ -255,3 +255,96 @@ async def csv_import(file: UploadFile, uc: UC, user: CurrentUser):
     text = (await file.read(1_000_000)).decode("utf-8-sig", errors="replace")
     r = uc.owner_csv_import(user, text)
     return CsvImportOut(imported=r.imported, errors=r.errors)
+
+
+# ---------------------------------------------------------------- F34 questions
+class QuestionAnswerOut(BaseModel):
+    text: str
+    by: str | None
+    at: str | None
+
+
+class QuestionOut(BaseModel):
+    id: str
+    place_id: str
+    place_name: str
+    author: str
+    text: str
+    feature: FeatureKey | None
+    feature_label: str | None
+    status: str
+    outcome: str | None
+    created_at: str
+    answer: QuestionAnswerOut | None
+
+
+class QuestionList(BaseModel):
+    items: list[QuestionOut]
+
+
+class QuestionIn(BaseModel):
+    text: str
+    feature: str | None = None
+
+
+class AnswerIn(BaseModel):
+    text: str
+    value: str | None = None
+    planned: bool = False
+
+
+def question_out(uc, q) -> QuestionOut:
+    place = uc.repo.get_place(q.place_id)
+    author = uc.repo.get_user(q.author_id)
+    by = uc.repo.get_user(q.answered_by) if q.answered_by else None
+    return QuestionOut(
+        id=q.id, place_id=q.place_id, place_name=place.name if place else q.place_id,
+        author=author.display_name if author else q.author_id, text=q.text, feature=q.feature,
+        feature_label=LABELS_PL[q.feature] if q.feature else None, status=q.status, outcome=q.outcome,
+        created_at=q.created_at.isoformat(),
+        answer=QuestionAnswerOut(text=q.answer_text, by=by.display_name if by else q.answered_by,
+                                 at=q.answered_at.isoformat() if q.answered_at else None) if q.answer_text else None)
+
+
+@router.post("/places/{place_id}/questions", status_code=201, response_model=QuestionOut, tags=["places"])
+async def ask_question(place_id: str, body: QuestionIn, uc: UC, user: CurrentUser):
+    """Ask the owner about this place (e.g. "Czy można wejść z psem?"); optional feature."""
+    return question_out(uc, uc.ask_question(user, place_id, body.text, body.feature))
+
+
+@router.get("/places/{place_id}/questions", response_model=QuestionList, tags=["places"])
+async def place_questions(place_id: str, uc: UC):
+    """Public Q&A of a place, newest first."""
+    return QuestionList(items=[question_out(uc, q) for q in uc.place_questions(place_id)])
+
+
+@router.get("/owner/questions", response_model=QuestionList)
+async def owner_questions(uc: UC, user: CurrentUser, status: str = "open"):
+    return QuestionList(items=[question_out(uc, q) for q in uc.owner_questions(user, status)])
+
+
+@router.post("/owner/questions/{question_id}/answer", response_model=QuestionOut)
+async def answer_question(question_id: str, body: AnswerIn, uc: UC, user: CurrentUser):
+    """value → verified_owner observation; planned → marked as planned; text only otherwise."""
+    return question_out(uc, uc.answer_question(user, question_id, body.text, body.value, body.planned))
+
+
+class FeatureCountOut(BaseModel):
+    feature: FeatureKey
+    label: str
+    questions: int
+
+
+class NeedsStatsOut(BaseModel):
+    by_feature: list[FeatureCountOut]
+    open: int
+    answered: int
+    without_feature: int
+
+
+@router.get("/admin/needs-stats", response_model=NeedsStatsOut, tags=["admin"])
+async def needs_stats(uc: UC, user: CurrentUser):
+    """Most asked features — what visitors need to know (admin: city-wide, owner: own places)."""
+    s = uc.needs_stats(user)
+    return NeedsStatsOut(by_feature=[FeatureCountOut(feature=f, label=LABELS_PL[f], questions=n) for f, n in s.by_feature],
+                         open=s.open, answered=s.answered, without_feature=s.without_feature)

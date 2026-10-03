@@ -26,6 +26,7 @@ from app.domain.enums import (
 )
 from app.domain.model import (
     LoginToken,
+    Question,
     FeatureStateRecord,
     GeoPoint,
     Observation,
@@ -51,6 +52,11 @@ sessions = Table("sessions", md, Column("token", String, primary_key=True), Colu
                  Column("expires_at", String))
 login_tokens = Table("login_tokens", md, Column("token_hash", String, primary_key=True), Column("email", String),
                      Column("created_at", String), Column("expires_at", String), Column("used", Boolean))
+questions = Table("questions", md, Column("id", String, primary_key=True), Column("seq", Integer),
+                  Column("place_id", String), Column("author_id", String), Column("text", String),
+                  Column("created_at", String), Column("feature", String), Column("status", String),
+                  Column("answer_text", String), Column("answered_by", String), Column("answered_at", String),
+                  Column("outcome", String))
 places = Table("places", md, Column("id", String, primary_key=True), Column("seq", Integer), Column("name", String),
                Column("category", String), Column("lat", Float), Column("lon", Float),
                Column("short_description", String), Column("address", String), Column("owner_id", String),
@@ -196,6 +202,11 @@ class SqlRepo(InMemoryRepo):
                               needs=list(u.needs), pref_features=list(u.pref_features))
         for s in self.sessions.values():
             yield sessions, dict(token=s.token, user_id=s.user_id, expires_at=_iso(s.expires_at))
+        for i, q in enumerate(self.questions.values()):
+            yield questions, dict(id=q.id, seq=i, place_id=q.place_id, author_id=q.author_id, text=q.text,
+                                  created_at=_iso(q.created_at), feature=_s(q.feature), status=q.status,
+                                  answer_text=q.answer_text, answered_by=q.answered_by,
+                                  answered_at=_iso(q.answered_at), outcome=q.outcome)
         for t in self.login_tokens.values():
             yield login_tokens, dict(token_hash=t.token_hash, email=t.email, created_at=_iso(t.created_at),
                                      expires_at=_iso(t.expires_at), used=t.used)
@@ -248,6 +259,11 @@ class SqlRepo(InMemoryRepo):
                                            list(r["pref_features"] or []))
             for r in rows(sessions):
                 self.sessions[r["token"]] = Session(r["token"], r["user_id"], _dt(r["expires_at"]))
+            for r in rows(questions):
+                self.questions[r["id"]] = Question(
+                    r["id"], r["place_id"], r["author_id"], r["text"], _dt(r["created_at"]),
+                    _e(FeatureKey, r["feature"]), r["status"], r["answer_text"], r["answered_by"],
+                    _dt(r["answered_at"]), r["outcome"])
             for r in rows(login_tokens):
                 self.login_tokens[r["token_hash"]] = LoginToken(r["token_hash"], r["email"], _dt(r["created_at"]),
                                                                 _dt(r["expires_at"]), bool(r["used"]))

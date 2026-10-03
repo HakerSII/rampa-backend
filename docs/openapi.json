@@ -3622,6 +3622,288 @@
         }
       }
     },
+    "/api/v1/places/{place_id}/questions": {
+      "post": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Ask Question",
+        "description": "Ask the owner about this place (e.g. \"Czy można wejść z psem?\"); optional feature.",
+        "operationId": "ask_question_api_v1_places__place_id__questions_post",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Place Questions",
+        "description": "Public Q&A of a place, newest first.",
+        "operationId": "place_questions_api_v1_places__place_id__questions_get",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/questions": {
+      "get": {
+        "summary": "Owner Questions",
+        "operationId": "owner_questions_api_v1_owner_questions_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "open",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/questions/{question_id}/answer": {
+      "post": {
+        "summary": "Answer Question",
+        "description": "value → verified_owner observation; planned → marked as planned; text only otherwise.",
+        "operationId": "answer_question_api_v1_owner_questions__question_id__answer_post",
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Question Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/needs-stats": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Needs Stats",
+        "description": "Most asked features — what visitors need to know (admin: city-wide, owner: own places).",
+        "operationId": "needs_stats_api_v1_admin_needs_stats_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NeedsStatsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/queue": {
       "get": {
         "tags": [
@@ -4917,6 +5199,35 @@
         "type": "object",
         "title": "AnonymousLoginIn"
       },
+      "AnswerIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "planned": {
+            "type": "boolean",
+            "title": "Planned",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "AnswerIn"
+      },
       "AssignOwnerIn": {
         "properties": {
           "user_id": {
@@ -5358,6 +5669,28 @@
           "items"
         ],
         "title": "Favorites"
+      },
+      "FeatureCountOut": {
+        "properties": {
+          "feature": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "questions": {
+            "type": "integer",
+            "title": "Questions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature",
+          "label",
+          "questions"
+        ],
+        "title": "FeatureCountOut"
       },
       "FeatureDictGroup": {
         "properties": {
@@ -6375,6 +6708,37 @@
           "features"
         ],
         "title": "NeedsProfileOut"
+      },
+      "NeedsStatsOut": {
+        "properties": {
+          "by_feature": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureCountOut"
+            },
+            "type": "array",
+            "title": "By Feature"
+          },
+          "open": {
+            "type": "integer",
+            "title": "Open"
+          },
+          "answered": {
+            "type": "integer",
+            "title": "Answered"
+          },
+          "without_feature": {
+            "type": "integer",
+            "title": "Without Feature"
+          }
+        },
+        "type": "object",
+        "required": [
+          "by_feature",
+          "open",
+          "answered",
+          "without_feature"
+        ],
+        "title": "NeedsStatsOut"
       },
       "ObservationIn": {
         "properties": {
@@ -7404,6 +7768,172 @@
           "name"
         ],
         "title": "PublicPlaceRef"
+      },
+      "QuestionAnswerOut": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "by",
+          "at"
+        ],
+        "title": "QuestionAnswerOut"
+      },
+      "QuestionIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "feature": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feature"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "QuestionIn"
+      },
+      "QuestionList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "QuestionList"
+      },
+      "QuestionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "place_name": {
+            "type": "string",
+            "title": "Place Name"
+          },
+          "author": {
+            "type": "string",
+            "title": "Author"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "feature": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeatureKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "feature_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feature Label"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuestionAnswerOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "place_id",
+          "place_name",
+          "author",
+          "text",
+          "feature",
+          "feature_label",
+          "status",
+          "outcome",
+          "created_at",
+          "answer"
+        ],
+        "title": "QuestionOut"
       },
       "QueueCommentOut": {
         "properties": {

@@ -150,6 +150,10 @@ Every error has the same shape:
 | GET PUT DELETE | `/api/v1/me/profile` | user | Needs profile (needs + preferred features), used by best_match and recommend |
 | POST | `/api/v1/auth/email/request` | — | Send a one-time login code / link by e-mail |
 | POST | `/api/v1/auth/email/verify` | — | Code → session (new user on first login) |
+| POST GET | `/api/v1/places/{id}/questions` | user / — | Ask the owner; public Q&A |
+| GET | `/api/v1/owner/questions` | owner | Questions on my places |
+| POST | `/api/v1/owner/questions/{id}/answer` | owner | Answer, set the attribute or mark planned |
+| GET | `/api/v1/admin/needs-stats` | admin / owner | Most asked features |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -500,6 +504,17 @@ Everything requires role `owner`; place-level endpoints also require ownership o
 | `POST /owner/observations/batch [{place_id, feature, value, …}]` | 1–50 items across own places; all validated before writing (one foreign place → 403, nothing written) |
 | `GET /owner/places/import/template` | `text/csv`: `place_id,feature,value,temporary,comment` |
 | `POST /owner/places/import` (multipart `file`) | `{ imported, errors: [{ row, message }] }`: valid rows imported, `row` is the file line number |
+
+## 6b. Questions to the owner
+
+- **Ask:** `POST /api/v1/places/{id}/questions {"text": "Czy można wejść z psem?", "feature"?: "pets_allowed"}`, logged in. `GET` returns the public Q&A of the place, newest first.
+- **Read (owner):** `GET /owner/questions?status=open|answered|all` lists questions on the owner's places; an admin sees all.
+- **Answer:** `POST /owner/questions/{id}/answer {"text": "…", "value"?: "yes", "planned"?: true}`. Allowed for the owner of the place or an admin, once per question (`409` after that).
+  - `value` creates a `verified_owner` observation for the question's feature, so the state changes through the normal trust flow;
+  - `planned` marks the answer as planned and leaves the data unchanged;
+  - with neither, the answer is text only.
+- **Needs statistics:** `GET /admin/needs-stats` returns `by_feature` (most asked features first), `open`, `answered` and `without_feature`. An admin gets the whole city, an owner only their places.
+- **Reminders:** owner reminders include `unanswered_question` (high priority).
 
 ## 7. Admin (role `admin`)
 

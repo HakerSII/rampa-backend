@@ -142,6 +142,58 @@ Content-Type: application/json
 
 {"needs": ["diabetes"]}
 
+### F34a. Anna asks the owner of Camelot: can I come with a dog?
+# @name question
+POST {{base}}/places/plc_camelot/questions
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"text": "Czy można wejść z psem?", "feature": "pets_allowed"}
+
+### F34b. Owner Ewa: open questions on her places
+GET {{base}}/owner/questions
+Authorization: Bearer {{ewa}}
+
+### F34c. Ewa answers and sets the attribute → verified_owner observation, pets_allowed = yes
+POST {{base}}/owner/questions/{{question.response.body.$.id}}/answer
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"text": "Tak, psy są mile widziane.", "value": "yes"}
+
+### F34d. Public Q&A on the place
+GET {{base}}/places/plc_camelot/questions
+
+### F34e. Jan asks about door width at MNK; Ewa marks it planned
+# @name question2
+POST {{base}}/places/plc_mnk/questions
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"text": "Jaka jest szerokość drzwi?", "feature": "wide_doors"}
+
+### F34f. … planned (data unchanged)
+POST {{base}}/owner/questions/{{question2.response.body.$.id}}/answer
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"text": "Zmierzymy drzwi w przyszłym tygodniu.", "planned": true}
+
+### F34g. Admin: needs statistics (most asked features city-wide)
+GET {{base}}/admin/needs-stats
+Authorization: Bearer {{admin}}
+
+### F34h. 409 CONFLICT — question already answered
+POST {{base}}/owner/questions/{{question.response.body.$.id}}/answer
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"text": "jeszcze raz"}
+
+### F34i. 403 FORBIDDEN — regular user cannot see needs stats
+GET {{base}}/admin/needs-stats
+Authorization: Bearer {{anna}}
+
 ### F33a. E-mail login: request a code (demo + console mailer → dev_token in the response; mail in the log)
 # @name emailReq
 POST {{base}}/auth/email/request

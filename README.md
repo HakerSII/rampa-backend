@@ -75,6 +75,7 @@ uv run python main.py                                          # http://localhos
 | 31 | Needs profile on the server `/me/profile` + `GET /places?sort=best_match` | [plan](features/31-needs-profile/plan.md) | [openapi](features/31-needs-profile/openapi.yaml) | 1.5 h |
 | 32 | Value `not_applicable` + `baby_changing_table`, `stroller_space`, `rest_areas`, `luggage_storage`; OSM `changing_table`, `dog` | [plan](features/32-not-applicable/plan.md) | specs updated | 1 h |
 | 33 | Passwordless e-mail login `/auth/email/request` + `/verify` (console / SMTP mailer) | [plan](features/33-email-login/plan.md) | [openapi](features/33-email-login/openapi.yaml) | 1.5 h |
+| 34 | Questions to the owner (answer → attribute or planned) + needs statistics | [plan](features/34-questions/plan.md) | [openapi](features/34-questions/openapi.yaml) | 2 h |
 | 12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | [plan](features/12-frontend-bridge/plan.md) | [openapi](features/12-frontend-bridge/openapi.yaml) | 45 min |
 
 - F0 blocks all.

@@ -63,6 +63,7 @@ from app.domain.model import (
     FeatureStateRecord,
     GeocodeHit,
     LoginToken,
+    Question,
     GeoPoint,
     ImageAnalysis,
     Observation,
@@ -149,6 +150,14 @@ class OwnerPlaceStats:
     open_conflicts: int
     last_verified: datetime | None
     confidence: float
+
+
+@dataclass(slots=True)
+class NeedsStats:
+    by_feature: list[tuple[FeatureKey, int]]  # most asked first
+    open: int
+    answered: int
+    without_feature: int
 
 
 @dataclass(slots=True)
@@ -590,6 +599,80 @@ class UseCases:
     def place_match(self, place_id: str, profiles: list[NeedsProfile]) -> str:
         return recommend_domain.evaluate(place_id, self.repo.states_for(place_id), profiles, [])[0]
 
+    # ------------------------------------------------------------------ questions to the owner (F34)
+    def ask_question(self, user: User | None, place_id: str, text: str, feature: str | None = None) -> Question:
+        self._require_user(user)
+        self.get_place(place_id)
+        text = (text or "").strip()
+        if not 1 <= len(text) <= MAX_DESCRIPTION:
+            raise ValidationFailed(f"text must have 1..{MAX_DESCRIPTION} characters")
+        q = Question(self.ids.new("qst"), place_id, user.id, text, self.clock.now(),
+                     _enum(FeatureKey, feature, "feature") if feature else None)
+        self.repo.add_question(q)
+        return q
+
+    def place_questions(self, place_id: str) -> list[Question]:
+        self.get_place(place_id)
+        return sorted((q for q in self.repo.list_questions() if q.place_id == place_id),
+                      key=lambda q: q.created_at, reverse=True)
+
+    def owner_questions(self, user: User | None, status: str = "open") -> list[Question]:
+        """Owner: questions on own places; admin: all."""
+        self._require_user(user)
+        if status not in ("open", "answered", "all"):
+            raise ValidationFailed("status: open|answered|all")
+        places = self._managed_place_ids(user)
+        return [q for q in self.repo.list_questions()
+                if q.place_id in places and (status == "all" or q.status == status)]
+
+    def answer_question(self, user: User | None, question_id: str, text: str, value: str | None = None,
+                        planned: bool = False) -> Question:
+        """Owner of the place or admin. value → observation (normal trust flow); planned → no data change."""
+        self._require_user(user)
+        q = self.repo.get_question(question_id)
+        if q is None:
+            raise NotFound(f"question not found: {question_id}")
+        if q.place_id not in self._managed_place_ids(user):
+            raise Forbidden("only the owner of this place or an admin can answer")
+        if q.status == "answered":
+            raise ConflictError("question already answered")
+        text = (text or "").strip()
+        if not 1 <= len(text) <= MAX_DESCRIPTION:
+            raise ValidationFailed(f"text must have 1..{MAX_DESCRIPTION} characters")
+        if value and planned:
+            raise ValidationFailed("give value or planned, not both")
+        if value and q.feature is None:
+            raise ValidationFailed("value needs a question about a feature")
+        if value:
+            v = _enum(ObservationValue, value, "value")
+            self._new_observation(user, q.place_id, q.feature, v, temporary=False, comment=text, photo_ids=[])
+            self.recompute(q.place_id, q.feature)
+            q.outcome = str(v)
+        elif planned:
+            q.outcome = "planned"
+        q.status, q.answer_text, q.answered_by, q.answered_at = "answered", text, user.id, self.clock.now()
+        return q
+
+    def needs_stats(self, user: User | None) -> NeedsStats:
+        """Most asked features (what people need to know). Admin: city-wide; owner: own places."""
+        self._require_user(user)
+        if user.role not in (Role.ADMIN, Role.OWNER):
+            raise Forbidden("owner or admin role required")
+        places = self._managed_place_ids(user)
+        qs = [q for q in self.repo.list_questions() if q.place_id in places]
+        counts: dict[FeatureKey, int] = {}
+        for q in qs:
+            if q.feature:
+                counts[q.feature] = counts.get(q.feature, 0) + 1
+        by_feature = sorted(counts.items(), key=lambda t: (-t[1], str(t[0])))
+        return NeedsStats(by_feature, sum(q.status == "open" for q in qs), sum(q.status == "answered" for q in qs),
+                          sum(q.feature is None for q in qs))
+
+    def _managed_place_ids(self, user: User) -> set[str]:
+        if user.role == Role.ADMIN:
+            return {p.id for p in self.repo.list_places()}
+        return {p.id for p in self.repo.list_places() if p.owner_id == user.id}
+
     # ------------------------------------------------------------------ needs profile (F31)
     def get_needs_profile(self, user: User | None) -> tuple[list[NeedsProfile], list[FeatureKey]]:
         self._require_user(user)
@@ -926,6 +1009,10 @@ class UseCases:
                     reminders.append(Reminder(place.id, "conflict",
                                               f"Wyjaśnij sprzeczne zgłoszenia: {LABELS_PL[q.feature]} — {place.name}",
                                               "high", q.feature))
+            for q in self.repo.list_questions():
+                if q.place_id == place.id and q.status == "open":
+                    reminders.append(Reminder(place.id, "unanswered_question",
+                                              f"Odpowiedz na pytanie: {q.text} — {place.name}", "high", q.feature))
             for r in self.repo.list_reports():
                 if r.place_id == place.id and r.status == "submitted" and not r.replies and not r.owner_status:
                     reminders.append(Reminder(place.id, "unanswered_report",
@@ -1106,6 +1193,9 @@ class UseCases:
         for req in self.repo.list_ownership_requests():
             if req.place_id == source_id:
                 req.place_id = target_id
+        for q in self.repo.list_questions():
+            if q.place_id == source_id:
+                q.place_id = target_id
         for u in [self.repo.get_user(i) for i in self.all_user_ids()]:
             if u and source_id in u.favorite_place_ids:
                 u.favorite_place_ids = list(dict.fromkeys(

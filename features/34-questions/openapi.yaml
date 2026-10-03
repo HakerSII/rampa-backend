@@ -1,0 +1,132 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F34 Questions to the owner
+  version: 0.1.0-mvp
+  description: >
+    Visitors ask about a place; the owner (or an admin) answers, optionally setting the attribute or marking it
+    planned. Most asked features are aggregated for owners and the city.
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: places
+  - name: owner
+  - name: admin
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+  schemas:
+    Question:
+      type: object
+      properties:
+        id: { type: string }
+        place_id: { type: string }
+        place_name: { type: string }
+        author: { type: string }
+        text: { type: string }
+        feature: { type: [string, "null"] }
+        status: { type: string, enum: [open, answered] }
+        outcome: { type: [string, "null"], description: "yes | partial | no | not_applicable | planned | null" }
+        created_at: { type: string, format: date-time }
+        answer:
+          type: [object, "null"]
+          properties:
+            text: { type: string }
+            by: { type: string }
+            at: { type: string, format: date-time }
+paths:
+  /places/{placeId}/questions:
+    parameters:
+      - { name: placeId, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [places]
+      summary: Ask the owner about this place
+      operationId: askQuestion
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, minLength: 1 }
+                feature: { type: string, description: FeatureKey }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Question" } } } }
+        "400": { description: "VALIDATION_ERROR" }
+        "401": { description: UNAUTHORIZED }
+        "404": { description: NOT_FOUND }
+    get:
+      tags: [places]
+      summary: Public Q&A of a place (newest first)
+      operationId: listPlaceQuestions
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Question" } }
+  /owner/questions:
+    get:
+      tags: [owner]
+      summary: Questions on my places (admin — all)
+      operationId: ownerQuestions
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [open, answered, all], default: open } }
+      responses:
+        "200": { description: OK }
+  /owner/questions/{questionId}/answer:
+    post:
+      tags: [owner]
+      summary: Answer (value → owner observation; planned → marked planned)
+      operationId: answerQuestion
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: questionId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string }
+                value: { type: string, enum: ["yes", partial, "no", not_applicable] }
+                planned: { type: boolean, default: false }
+      responses:
+        "200": { description: Answered, content: { application/json: { schema: { $ref: "#/components/schemas/Question" } } } }
+        "400": { description: "VALIDATION_ERROR (value and planned, value without feature)" }
+        "403": { description: "FORBIDDEN (not the owner of this place)" }
+        "409": { description: "CONFLICT (already answered)" }
+  /admin/needs-stats:
+    get:
+      tags: [admin]
+      summary: Most asked features (admin city-wide, owner own places)
+      operationId: needsStats
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  by_feature:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        feature: { type: string }
+                        label: { type: string }
+                        questions: { type: integer }
+                  open: { type: integer }
+                  answered: { type: integer }
+                  without_feature: { type: integer }
+        "403": { description: FORBIDDEN }
