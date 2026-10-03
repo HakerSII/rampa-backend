@@ -151,3 +151,18 @@ def test_admin_extras_persist(url):
     assert r.repo.get_observation(obs.id).flag_reason == "spam"
     assert r.repo.get_ownership_request(req.id).status == "pending"
     assert r.repo.get_place("plc_camelot") is None and len(r.repo.list_places()) == 3
+
+
+def test_owner_extras_persist(url):
+    uc = make(url)
+    ewa = uc.repo.get_user("usr_ewa")
+    uc.set_opening_hours(ewa, "plc_mnk", [{"days": "Mon", "closed": True}])
+    uc.update_owner_place(ewa, "plc_mnk", contact={"website": "https://mnk.pl"})
+    r = uc.create_report(uc.repo.get_user("usr_anna"), place_id="plc_mnk", element="ramp", current_state="works",
+                         severity="minor", nature="permanent", description="ok")
+    uc.reply_to_report(ewa, r.id, "Dzięki")
+    uc.repo.commit()
+    again = make(url)
+    place = again.repo.get_place("plc_mnk")
+    assert place.opening_hours == [{"days": "Mon", "closed": True}] and place.contact == {"website": "https://mnk.pl"}
+    assert again.repo.get_report(r.id).replies[0]["text"] == "Dzięki"

@@ -8,8 +8,8 @@
 - **Task:** F22 owner extras
 - **Who:** Claude
 - **State:** todo
-- **Next step:** 🔴 owner profile/stats, place edit, hours, photos, reply/approve, batch, reminders, suggestions, CSV
-- **Last pytest:** `uv run pytest` → see commit
+- **Next step:** green: owner profile/stats/edit/hours/photos/reply/approve/reminders/suggestions/batch/CSV
+- **Last pytest:** `uv run pytest` → red: F22
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -54,9 +54,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F19 | AI parse-text (rules) | Claude | done | e2e 4a-TXT + 400 |
 | F20 | Similar places + accessible route (heuristic) | Claude | done | e2e 1f–1h + 404 |
 | F21 | Admin extras: confidence, comments, flag, merge, revalidate, ownership requests | Claude | done | e2e 7j–7q + 409 |
+| F22 | Owner panel extras (profile, stats, edit, hours, photos, reply/approve, reminders, suggestions, batch, CSV) | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F22 red: owner extras tests
 - 2026-10-03 · F21 · done · confidence, comments, FLAGGED + abuse tile, merge, revalidate, ownership requests
 - 2026-10-03 · F21 · red · admin extras tests
 - 2026-10-03 · F20 · done · similar places, accessible route heuristic (straight line + street-level barriers ≤100 m)
