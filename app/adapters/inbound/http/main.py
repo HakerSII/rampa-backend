@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.adapters.inbound.http.errors import install_error_handlers
-from app.adapters.inbound.http.routers import admin, auth
+from app.adapters.inbound.http.routers import admin, auth, places
 from app.application.ports import IdentityVerifier
 from app.bootstrap import build_use_cases
 from app.config import Settings
@@ -21,7 +21,7 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
 
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
     install_error_handlers(app)
-    for module in (auth, admin):
+    for module in (auth, places, admin):
         app.include_router(module.router, prefix=API_PREFIX)
     app.mount("/media", StaticFiles(directory=settings.media_dir, check_dir=False), name="media")
 

@@ -35,20 +35,17 @@ def test_step0_reset(client):
     assert client.post("/api/v1/admin/demo/reset", headers=auth("anna")).status_code == 403
 
 
-@pytest.mark.xfail(strict=True, reason="F2")
 def test_step1_search_step_free(client):
     r = client.get("/api/v1/places", params={"features": "step_free_entrance"})
     ids = {p["id"] for p in r.json()["items"]}
     assert ids == {"plc_mnk", "plc_ice"}
 
 
-@pytest.mark.xfail(strict=True, reason="F2")
 def test_step2_details(client):
     assert client.get("/api/v1/places/plc_mnk").json()["name"] == "Muzeum Narodowe w Krakowie"
     assert elevator(client)["state"] == "yes"
 
 
-@pytest.mark.xfail(strict=True, reason="F2")
 def test_step3_check_wheelchair_yes(client):
     r = client.get("/api/v1/places/plc_mnk/check", params={"profile": "wheelchair"})
     assert r.json()["answer"] == "yes"
