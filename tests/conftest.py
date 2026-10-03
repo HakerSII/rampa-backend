@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -7,6 +8,9 @@ from app.adapters.outbound.memory import FixedClock, InMemoryRepo, SeqIdGenerato
 from app.application.use_cases import UseCases
 from app.domain.errors import Unauthorized
 from app.domain.model import GoogleIdentity
+
+# tests default to in-memory storage (set before app modules create the module-level app)
+os.environ.setdefault("REPO_MODE", "memory")
 
 NOW = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
 OSM_SNAPSHOT = Path(__file__).parents[1] / "data" / "osm_krakow_tauron.json"

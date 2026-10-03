@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** — F8 done; next: README §6.5 SQLAlchemy, or demo polish
+- **Task:** F9 SQLite + SQLAlchemy
 - **Who:** Claude
-- **State:** done
-- **Next step:** decide with user: persistence (SQLAlchemy) vs pitch/demo polish
-- **Last pytest:** `uv run pytest` → 170 passed
+- **State:** todo
+- **Next step:** 🟢 adapters/outbound/sql.py SqlRepo + commit middleware
+- **Last pytest:** `uv run pytest` → red: F9 tests
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -41,9 +41,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F6.1–F6.5 | AI image tags: mock + ONNX Phi-3.5 + fallback | Claude | done | real ONNX inference untested here (manual: uv sync --extra ai) |
 | F7.1–F7.4 | Owner role + verified_owner observations | Claude | done | e2e owner scenario O0–O11 + 3×403 + 400 |
 | F8.1–F8.5 | OSM import (file) + MCP client of Open API | Claude | done | MCP stdio smoke OK (tools/list + call Tauron → yes) |
+| F9.1–F9.5 | Persistence: SQLite + SQLAlchemy (write-behind SqlRepo) | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F9 · red · plan, SqlRepo + persistence tests
 - 2026-10-03 · F8 · done · OSM import (file, idempotent, 50 m match), open_data 0.6, MCP client tools via Open API; 170 passed
 - 2026-10-03 · F8 · red · plan, contract, OSM mapping/import/MCP tool tests
 - 2026-10-03 · F7 · done · owner role, verified_owner 0.85, owner panel endpoints, admin assigns owner; fixed seed shared-state bug; 150 passed
