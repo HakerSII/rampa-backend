@@ -5,12 +5,12 @@
 
 ## Current
 
-- **Task:** F12 front-end bridge (anonymous identity + pin → place) — green, not committed
+- **Task:** F12 front-end bridge — done, pushed (`85a358e`); front end `api.js` in progress in `Yannie-draft-acihy`
 - **Who:** Claude
-- **State:** green
-- **Next step:** commit F12; then the front end (`Yannie-draft-acihy`): `api.js` with type/severity mapping, token in `localStorage`, `POST /places/resolve` → `POST /reports`, votes on `observation_ids[0]`. Still open from F11: docker compose up + PG tests + F11 docs
-- **Last pytest:** `uv run pytest` → 229 passed, 7 skipped (PG); bridge tests also green with `REPO_MODE=sql`
-- **Branch:** `main`
+- **State:** done
+- **Next step:** verify Render picked up `85a358e` (`POST /api/v1/auth/anonymous` must stop returning 404). Then, for the map front end: `GET /observations?active=true&bbox=` with place location + report severity (one request instead of per-place reads); `FeatureKey`s for `escalator`, `tactile`, `sign` or drop them from the front end. Still open from F11: docker compose up + PG tests + F11 docs
+- **Last pytest:** `uv run pytest` → 230 passed, 7 skipped (PG); bridge tests also green with `REPO_MODE=sql`
+- **Branch:** `master`
 
 ## Run
 
@@ -44,10 +44,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F9.1–F9.5 | Persistence: SQLite + SQLAlchemy (write-behind SqlRepo) | Claude | done | demo flow also green on SQL; live restart keeps data |
 | F10.1–F10.4 | Gemini vision adapter (AI_MODE=gemini, config-driven) | Claude | done | live Gemini OK (gemini-3.8-flash): stairs → critical; 503s retried |
 | F11.1–F11.5 | Postgres + docker-compose, DB choice via env/config | Claude | green | Postgres runtime NOT verified (docker up not run); docs for F11 pending |
-| F12.1–F12.4 | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | Claude | green | 24 tests (use cases + HTTP two-device flow); contract 9 specs; docs + demo.http B1–B7 |
+| F12.1–F12.4 | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | Claude | done | `85a358e`; 24 tests (use cases + HTTP two-device flow); contract 9 specs; docs + demo.http B1–B7 |
 
 ## Log (newest first)
 
+- 2026-10-03 · F12 · done · committed + pushed `85a358e` (master); front end: `static/api.js` adapter (local SQLite | Rampa via `GET /api/config`), type/severity mapping, `bp.token`, resolve → report, votes on `observation_ids[0]`
 - 2026-10-03 · F12 · live · two-device flow verified over HTTP (uvicorn :8002); fix: Starlette 400 (undecodable body) mapped to NOT_A_REAL_PLACE instead of VALIDATION_ERROR; 230 passed
 - 2026-10-03 · F12 · green · login_anonymous (ANONYMOUS_AUTH, ANONYMOUS_TTL_DAYS=365), resolve_place (name ≤50 m = same place, shared _find_place with OSM import), routers, contract, docs, demo.http; 229 passed
 - 2026-10-03 · F12 · red · tests: anonymous identity, resolve, two-device HTTP flow
