@@ -719,3 +719,59 @@ Authorization: Bearer {{admin}}
 Content-Type: application/json
 
 {"action": "reject"}
+
+### =====================================================================
+### F12 — front-end bridge: device identity + pin → place
+### =====================================================================
+
+### B1. device A: anonymous identity → 201 {token, user}
+# @name deviceA
+POST {{base}}/auth/anonymous
+Content-Type: application/json
+
+{"display_name": "Telefon A"}
+
+### B2. device B: another identity → 201
+# @name deviceB
+POST {{base}}/auth/anonymous
+Content-Type: application/json
+
+{}
+
+### B3. device A: pin + name → new place → 201 created:true
+# @name pin
+POST {{base}}/places/resolve
+Authorization: Bearer {{deviceA.response.body.$.token}}
+Content-Type: application/json
+
+{"name": "Rondo Mogilskie", "lat": 50.0656, "lon": 19.9585}
+
+### B4. device B: same name 10 m away → the same place → 200 created:false
+POST {{base}}/places/resolve
+Authorization: Bearer {{deviceB.response.body.$.token}}
+Content-Type: application/json
+
+{"name": "rondo mogilskie", "lat": 50.0657, "lon": 19.9585}
+
+### B5. device A: report a broken elevator at the resolved place → 201
+# @name pinReport
+POST {{base}}/reports
+Authorization: Bearer {{deviceA.response.body.$.token}}
+Content-Type: application/json
+
+{"place_id": "{{pin.response.body.$.place.id}}", "element": "elevator", "current_state": "not_working",
+ "severity": "critical", "nature": "temporary", "description": "Winda w przejściu nie działa."}
+
+### B6. device B confirms → 200, state no, confidence 0.6
+POST {{base}}/observations/{{pinReport.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{deviceB.response.body.$.token}}
+Content-Type: application/json
+
+{"value": 1}
+
+### B7. 400 — device A cannot confirm its own report
+POST {{base}}/observations/{{pinReport.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{deviceA.response.body.$.token}}
+Content-Type: application/json
+
+{"value": 1}

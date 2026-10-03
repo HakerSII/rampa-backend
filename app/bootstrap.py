@@ -39,7 +39,8 @@ def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None
     use_cases = UseCases(
         repo, clock, ids, LocalFileStorage(settings.media_dir), verifier,
         auth_mode=settings.auth_mode, admin_emails=settings.admin_email_list,
-        session_ttl_hours=settings.session_ttl_hours, vision=vision,
+        session_ttl_hours=settings.session_ttl_hours, anonymous_auth=settings.anonymous_auth,
+        anonymous_ttl_days=settings.anonymous_ttl_days, vision=vision,
         osm=FileOsmSource(settings.osm_file),
     )
     if repo.is_empty():

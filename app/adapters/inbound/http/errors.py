@@ -15,7 +15,7 @@ STATUS_BY_CODE = {
     "FILE_TOO_LARGE": 413,
     "RATE_LIMITED": 429,
 }
-CODE_BY_STATUS = {v: k for k, v in STATUS_BY_CODE.items()}
+CODE_BY_STATUS = {v: k for k, v in reversed(STATUS_BY_CODE.items())}  # first code per status wins (400 → VALIDATION_ERROR)
 
 
 def error_body(code: str, message: str, details: dict | None = None) -> dict:

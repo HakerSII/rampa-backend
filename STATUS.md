@@ -5,11 +5,13 @@
 
 ## Current
 
-- **State:** **full plan implemented** (F0–F23) — 63/64 operations of the full contract (`/auth/login` replaced by `/auth/demo` + `/auth/google`), 69 HTTP operations (65 internal + 4 public), 13 features, 7 needs profiles
-- **Last pytest:** `uv run pytest` → 377 passed, 12 skipped (Postgres-only; 14/14 SqlRepo tests pass with `TEST_POSTGRES_URL`)
-- **e2e:** `requests/demo.http` — 129 requests, all statuses as expected (memory + SQLite; Postgres verified up to F11)
-- **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json) — up to date with F23
-- **Branch:** `feat/mvp-backend` (local commits ahead of origin — not pushed)
+- **State:** **full plan implemented** (F0–F23) + **F12b front-end bridge** (Adrian: `POST /auth/anonymous`, `POST /places/resolve`) — merged from `master`
+- **Deploy:** `master` is deployed on **Render**; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
+- **Last pytest:** see latest log entry (Postgres-only tests skipped without `TEST_POSTGRES_URL`)
+- **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
+- **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
+- **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
+- **Next for the map front end (from F12b):** `GET /observations?active=true&bbox=` with place location + report severity (one request instead of per-place reads); `FeatureKey`s for `escalator`, `tactile`, `sign` — or drop them from the front end
 
 ## Run
 
@@ -60,9 +62,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F21 | Admin extras: confidence, comments, flag, merge, revalidate, ownership requests | Claude | done | e2e 7j–7q + 409 |
 | F22 | Owner panel extras (profile, stats, edit, hours, photos, reply/approve, reminders, suggestions, batch, CSV) | Claude | done | e2e O9a–O9k + 400 |
 | F23 | Domain gaps: partial state, trust ageing, valid_until, place_type | Claude | done | e2e 1i–1k + 2×400; OSM import now 11 places |
+| F12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` (Adrian, on `master`) | Claude | done | `85a358e`; contract + demo.http B1–B7 |
 
 ## Log (newest first)
 
+- 2026-10-03 · MERGE · `master` (F12b front-end bridge) merged into `feat/mvp-backend`; conflicts resolved keeping both sides
 - 2026-10-03 · DOCS · final docs + STATUS pass for F16–F23 (README, architecture, api, PITCH, DEMO, docs index)
 - 2026-10-03 · F23 · done · partial state, trust ageing 180 d, valid_until with lazy refresh, place_type filter
 - 2026-10-03 · F23 red: domain gaps tests
@@ -88,6 +92,10 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 - 2026-10-03 · F12 · done · activity feed, gallery, verification badge; FIX: tests no longer read .env (had called real Gemini, burned free quota 20/day)
 - 2026-10-03 · F12 · red · verification + activity + photos tests
 - 2026-10-03 · F11 · done · Postgres verified in docker (port 8001, local main.py on 8000); Gemini key hit 429 quota → mock fallback OK; docs updated
+- 2026-10-03 · F12b · done · committed + pushed `85a358e` (master); front end: `static/api.js` adapter (local SQLite | Rampa via `GET /api/config`), type/severity mapping, `bp.token`, resolve → report, votes on `observation_ids[0]`
+- 2026-10-03 · F12b · live · two-device flow verified over HTTP (uvicorn :8002); fix: Starlette 400 (undecodable body) mapped to NOT_A_REAL_PLACE instead of VALIDATION_ERROR; 230 passed
+- 2026-10-03 · F12b · green · login_anonymous (ANONYMOUS_AUTH, ANONYMOUS_TTL_DAYS=365), resolve_place (name ≤50 m = same place, shared _find_place with OSM import), routers, contract, docs, demo.http; 229 passed
+- 2026-10-03 · F12b · red · tests: anonymous identity, resolve, two-device HTTP flow
 - 2026-10-03 · F11 · green · DB_ENGINE/POSTGRES_* config, db_url, SqlRepo retry, Dockerfile, .dockerignore, compose; compose config valid; PG run pending
 - 2026-10-03 · F11 · red · config/compose/PG-parametrized repo tests
 - 2026-10-03 · DOCS · docs/ (README, architecture, api, configuration, operations, openapi.json) + export script + docs tests; 198 passed

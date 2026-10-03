@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     auth_mode: Literal["demo", "google"] = "demo"
     google_client_id: str = ""
     admin_emails: str = ""  # comma-separated
+    anonymous_auth: bool = True  # POST /auth/anonymous: device identity for the map front end (any auth mode)
+    anonymous_ttl_days: int = 365  # anonymous session lifetime; the device keeps its votes this long
     media_dir: str = "media"
     demo_now: datetime | None = None  # set → FixedClock (deterministic demo)
     session_ttl_hours: int = 24

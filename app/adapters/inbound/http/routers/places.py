@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 from pydantic import BaseModel
 
 from app.adapters.inbound.http.deps import UC, CurrentUser
@@ -16,6 +16,8 @@ from app.adapters.inbound.http.schemas import (
     PlaceOut,
     PlacePage,
     PlaceSummary,
+    ResolvedPlaceOut,
+    ResolvePlaceIn,
     accessibility_out,
     activity_item_out,
     author_out,
@@ -100,6 +102,16 @@ async def geocode(q: str, uc: UC):
     """Search-box suggestions from the local place index (offline)."""
     return [GeocodeOut(label=h.label, place_id=h.place_id, location=Location(lat=h.location.lat, lon=h.location.lon))
             for h in uc.geocode(q)]
+
+
+@router.post("/places/resolve", response_model=ResolvedPlaceOut, tags=["places"],
+             responses={201: {"model": ResolvedPlaceOut, "description": "Created"}})
+async def resolve_place(body: ResolvePlaceIn, uc: UC, user: CurrentUser, response: Response):
+    """Map pin → place: the same name within 50 m is matched (200), otherwise created (201)."""
+    place, created = uc.resolve_place(user, **body.model_dump())
+    response.status_code = 201 if created else 200
+    return ResolvedPlaceOut(place=place_out(place, uc.yes_features(place.id), uc.verification_for(place.id)),
+                            created=created)
 
 
 @router.get("/places/{place_id}", response_model=PlaceOut, tags=["places"])

@@ -22,7 +22,7 @@ All examples below are real responses from the app with demo data and a fixed cl
 
 | Area | Header | How to get it |
 |---|---|---|
-| `/api/v1` (users) | `Authorization: Bearer <token>` | `POST /auth/demo` (demo mode: token = `demo-<username>`) or `POST /auth/google` |
+| `/api/v1` (users) | `Authorization: Bearer <token>` | `POST /auth/demo` (demo mode: token = `demo-<username>`), `POST /auth/google` or `POST /auth/anonymous` (device identity, any mode) |
 | `/public/v1` | `X-Api-Key: <key>` | keys in `PUBLIC_API_KEYS` (default `demo-key`) |
 
 Read endpoints for places (`/places*`, `/accessibility/features`, `GET /places/{id}/observations`) work without a token (guest). Writes need a user; owner and admin endpoints need that role.
@@ -78,9 +78,11 @@ Every error has the same shape:
 |---|---|---|---|
 | POST | `/api/v1/auth/demo` | — | Demo login (demo mode) |
 | POST | `/api/v1/auth/google` | — | Google Sign-In login (google mode) |
+| POST | `/api/v1/auth/anonymous` | — | Device identity without an account (map front end) |
 | POST | `/api/v1/auth/logout` | user | End session |
 | GET | `/api/v1/me` | user | Current user |
 | GET | `/api/v1/places` | — | Search places |
+| POST | `/api/v1/places/resolve` | user | Map pin + name → place (matched or created) |
 | GET | `/api/v1/places/{id}` | — | Place details |
 | GET | `/api/v1/places/{id}/accessibility` | — | Computed accessibility, grouped |
 | GET | `/api/v1/places/{id}/check` | — | "Can I get in?" |
@@ -160,6 +162,17 @@ Only in `AUTH_MODE=demo` (otherwise 404). Unknown username → 401.
 ### `POST /api/v1/auth/google`
 Only in `AUTH_MODE=google` (otherwise 404). Body `{ "id_token": "<Google ID token JWT>" }` → `200 { token, user }`. The token is opaque, valid for `SESSION_TTL_HOURS`. Invalid token or unverified e-mail → 401. The first login creates the user; e-mails in `ADMIN_EMAILS` get the `admin` role.
 
+### `POST /api/v1/auth/anonymous`
+Identity per **device** for the map front end, which has no accounts: every call creates a new `user` and
+returns a token valid for `ANONYMOUS_TTL_DAYS` (365). The front end stores the token and reuses it, so votes
+stay one per device and a device cannot confirm its own report. Works in every `AUTH_MODE`;
+`ANONYMOUS_AUTH=false` → 404. Body is optional: `{ "display_name": "Gość" }` (≤ 60 characters, default "Anonim").
+
+```json
+// 201
+{ "token": "…", "user": { "id": "usr_42", "display_name": "Anonim", "email": null, "role": "user" } }
+```
+
 ### `POST /api/v1/auth/logout` → 204 · `GET /api/v1/me` → `User` (401 without a valid token)
 
 ## 4. Places (read, guest allowed)
@@ -208,6 +221,25 @@ The "Ostatnie zgłoszenia i potwierdzenia" feed, newest first, with the full his
 
 ### `GET /api/v1/places/{id}/photos`
 `{ "items": [ { id, url, author, feature, observation_id, created_at } ], "total": n }`: evidence photos, newest first.
+
+### `POST /api/v1/places/resolve` (user)
+Turns a map pin into a place to report on. The front end sends the name it already has (nearest city stop,
+reverse geocoding) with the coordinates. The same name (case-insensitive) within **50 m** is the same place
+(the OSM import rule) → `200`; otherwise a new place is created → `201`. Name 1–120 characters,
+`category` defaults to `other`, `address` is optional.
+
+```json
+// request
+{ "name": "Rondo Mogilskie", "lat": 50.0656, "lon": 19.9585 }
+// 201
+{ "created": true,
+  "place": { "id": "plc_1", "name": "Rondo Mogilskie", "category": { "key": "other", "label": "Inne" },
+             "location": { "lat": 50.0656, "lon": 19.9585 }, "place_type": "venue", "distance_m": null,
+             "accessibility_summary": [],
+             "verification": { "status": "unverified", "label": "Brak danych", "last_verified": null,
+                               "confidence": 0.0, "confidence_level": "low", "sources": [] },
+             "short_description": "", "address": "", "opening_hours": [], "contact": {} } }
+```
 
 ### `GET /api/v1/places/{id}/accessibility`
 All 13 features in 7 groups; features without data come back as `unknown`.
