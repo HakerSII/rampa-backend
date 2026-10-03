@@ -137,3 +137,17 @@ def test_draft_with_empty_fields_roundtrip(url):
     uc.repo.commit()
     r = make(url).repo.get_report(d.id)
     assert (r.status, r.element, r.current_state, r.description) == ("draft", None, None, None)
+
+
+def test_admin_extras_persist(url):
+    uc = make(url)
+    adm = uc.repo.get_user("usr_admin")
+    obs = uc.add_observation(uc.repo.get_user("usr_anna"), "plc_mnk", feature="ramp", value="no")
+    uc.flag_observation(adm, obs.id, "spam")
+    req = uc.request_ownership(uc.repo.get_user("usr_jan"), "plc_ice", "manager")
+    uc.merge_places(adm, "plc_camelot", "plc_mnk")
+    uc.repo.commit()
+    r = make(url)
+    assert r.repo.get_observation(obs.id).flag_reason == "spam"
+    assert r.repo.get_ownership_request(req.id).status == "pending"
+    assert r.repo.get_place("plc_camelot") is None and len(r.repo.list_places()) == 3

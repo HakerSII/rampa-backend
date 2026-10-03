@@ -8,8 +8,8 @@
 - **Task:** F21 admin extras
 - **Who:** Claude
 - **State:** todo
-- **Next step:** 🔴 tests confidence, comments, flag, merge, revalidate, ownership requests
-- **Last pytest:** `uv run pytest` → 326 passed, 10 skipped
+- **Next step:** 🟢 flag, comments, confidence, merge, revalidate, ownership
+- **Last pytest:** `uv run pytest` → red: F21
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -53,9 +53,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F18 | Report drafts (draft → PATCH → submit) | Claude | done | e2e D1–D3 + 409 |
 | F19 | AI parse-text (rules) | Claude | done | e2e 4a-TXT + 400 |
 | F20 | Similar places + accessible route (heuristic) | Claude | done | e2e 1f–1h + 404 |
+| F21 | Admin extras: confidence, comments, flag, merge, revalidate, ownership requests | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F21 · red · admin extras tests
 - 2026-10-03 · F20 · done · similar places, accessible route heuristic (straight line + street-level barriers ≤100 m)
 - 2026-10-03 · F20 · red · similar + route heuristic tests
 - 2026-10-03 · F19 · done · parse-text rules (PL+EN), endpoint, docs
