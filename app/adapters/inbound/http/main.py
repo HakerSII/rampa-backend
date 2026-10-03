@@ -44,7 +44,8 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
     @app.get("/health", tags=["health"])
     async def health():
         return {"status": "ok", "auth_mode": settings.auth_mode, "ai_mode": settings.ai_mode,
-                "storage": settings.repo_mode}
+                "storage": settings.repo_mode,
+                "database": settings.db_dialect if settings.repo_mode == "sql" else None}
 
     return app
 

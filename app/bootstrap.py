@@ -35,7 +35,7 @@ def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None
         verifier = GoogleIdentityVerifier(settings.google_client_id)
     vision = build_vision(settings)
     ids = SeqIdGenerator()
-    repo = InMemoryRepo() if settings.repo_mode == "memory" else _sql_repo(settings.database_url)
+    repo = InMemoryRepo() if settings.repo_mode == "memory" else _sql_repo(settings.db_url)
     use_cases = UseCases(
         repo, clock, ids, LocalFileStorage(settings.media_dir), verifier,
         auth_mode=settings.auth_mode, admin_emails=settings.admin_email_list,

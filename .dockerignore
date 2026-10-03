@@ -1,0 +1,16 @@
+# secrets — never bake into the image (pass via compose environment)
+.env
+# local environments / artifacts
+.venv
+.git
+__pycache__
+*.pyc
+.pytest_cache
+models/
+media/
+data/*.db
+data/*.db-*
+# not needed at runtime
+tests/
+requests/
+features/

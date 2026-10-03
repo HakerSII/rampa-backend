@@ -1,9 +1,12 @@
-"""SQLite persistence via SQLAlchemy (Core). Write-behind cache over InMemoryRepo:
+"""SQL persistence (SQLite or Postgres) via SQLAlchemy Core. Write-behind cache over InMemoryRepo:
 load everything on start, `commit()` writes the diff since the last commit.
 Single-process only (1 uvicorn worker). Datetimes as ISO strings (keeps tz), lists/dicts as JSON."""
+import logging
+import time
 from datetime import datetime
 from pathlib import Path
 
+from sqlalchemy.exc import OperationalError
 from sqlalchemy import JSON, Boolean, Column, Float, Integer, MetaData, String, Table, create_engine, delete, insert, \
     select, update
 
@@ -32,6 +35,7 @@ from app.domain.model import (
     User,
 )
 
+log = logging.getLogger(__name__)
 md = MetaData()
 
 users = Table("users", md, Column("id", String, primary_key=True), Column("seq", Integer),
@@ -77,11 +81,19 @@ def _dt(s: str | None) -> datetime | None:
 
 
 class SqlRepo(InMemoryRepo):
-    def __init__(self, url: str):
+    def __init__(self, url: str, connect_retries: int = 15, retry_pause_s: float = 2.0):
         if url.startswith("sqlite:///"):
             Path(url.removeprefix("sqlite:///")).parent.mkdir(parents=True, exist_ok=True)
-        self.engine = create_engine(url)
-        md.create_all(self.engine)
+        self.engine = create_engine(url, pool_pre_ping=True)
+        for attempt in range(1, connect_retries + 1):  # Postgres in docker may still be booting
+            try:
+                md.create_all(self.engine)
+                break
+            except OperationalError:
+                if attempt == connect_retries:
+                    raise
+                log.warning("database not ready (attempt %s/%s), retrying…", attempt, connect_retries)
+                time.sleep(retry_pause_s)
         super().__init__()
         self._snapshot: dict[tuple[str, tuple], dict] = {}
         self._load()

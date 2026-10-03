@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** F11 Postgres + docker-compose
+- **Task:** F11 Postgres + docker-compose (green, unverified on PG)
 - **Who:** Claude
 - **State:** todo
-- **Next step:** 🟢 config DB_ENGINE/POSTGRES_*, Dockerfile, compose
-- **Last pytest:** `uv run pytest` → red: F11 tests
+- **Next step:** run: docker compose up -d --build; TEST_POSTGRES_URL=postgresql+psycopg://rampa:rampa@localhost:5432/rampa uv run --extra postgres pytest tests/adapters; then F11 docs
+- **Last pytest:** `uv run pytest` → 205 passed, 7 skipped (PG)
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -43,10 +43,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F8.1–F8.5 | OSM import (file) + MCP client of Open API | Claude | done | MCP stdio smoke OK (tools/list + call Tauron → yes) |
 | F9.1–F9.5 | Persistence: SQLite + SQLAlchemy (write-behind SqlRepo) | Claude | done | demo flow also green on SQL; live restart keeps data |
 | F10.1–F10.4 | Gemini vision adapter (AI_MODE=gemini, config-driven) | Claude | done | live Gemini OK (gemini-3.8-flash): stairs → critical; 503s retried |
-| F11.1–F11.5 | Postgres + docker-compose, DB choice via env/config | Claude | red | |
+| F11.1–F11.5 | Postgres + docker-compose, DB choice via env/config | Claude | green | Postgres runtime NOT verified (docker up not run); docs for F11 pending |
 
 ## Log (newest first)
 
+- 2026-10-03 · F11 · green · DB_ENGINE/POSTGRES_* config, db_url, SqlRepo retry, Dockerfile, .dockerignore, compose; compose config valid; PG run pending
 - 2026-10-03 · F11 · red · config/compose/PG-parametrized repo tests
 - 2026-10-03 · DOCS · docs/ (README, architecture, api, configuration, operations, openapi.json) + export script + docs tests; 198 passed
 - 2026-10-03 · F10 · live · key in .env (gitignored), model gemini-3.8-flash, retry 429/5xx, prompt vocab, physical/mobility → critical; 192 passed
