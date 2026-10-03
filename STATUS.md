@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** F14 more features + needs profiles
+- **Task:** F14 features + profiles
 - **Who:** Claude
 - **State:** todo
-- **Next step:** 🔴 tests: new FeatureKeys, profiles crutches/blind/assistance_dog/deaf
-- **Last pytest:** `uv run pytest` → 232 passed, 8 skipped
+- **Next step:** 🟢 enums, PROFILE_RULES, seed extras, suggestions
+- **Last pytest:** `uv run pytest` → red: F14 tests
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -45,10 +45,12 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F10.1–F10.4 | Gemini vision adapter (AI_MODE=gemini, config-driven) | Claude | done | live Gemini OK (gemini-3.8-flash): stairs → critical; 503s retried |
 | F11.1–F11.5 | Postgres + docker-compose, DB choice via env/config | Claude | done | verified on PG in docker |
 | F12.1–F12.3 | Place screen: activity feed, photos, verification label | Claude | done | e2e 7d–7f + 400 |
-| F13.1–F13.2 | Admin panel: stats tiles + audit history (+ column migration) | Claude | done | migration verified on SQLite + copy of real rampa.db; PG run pending (containers stopped by user) |
+| F13.1–F13.2 | Admin panel: stats tiles + audit history (+ column migration) | Claude | done | migration verified on SQLite + copy of real rampa.db; PG run pending (containers stopped) |
+| F14.1–F14.2 | +8 features, +6 needs profiles (generic check rules) | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F14 · red · profile rule tests, seeded answers, public check
 - 2026-10-03 · F13 · done · /admin/stats tiles, /places/{id}/history, QueueItem.resolved_at, SqlRepo adds missing columns
 - 2026-10-03 · F13 · red · stats/history/migration tests
 - 2026-10-03 · F12 · done · activity feed, gallery, verification badge; FIX: tests no longer read .env (had called real Gemini, burned free quota 20/day)
