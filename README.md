@@ -8,6 +8,19 @@ Full contract: [../openapi.yaml](../openapi.yaml) · full plan: [../plan_fastapi
 - Rules from full plan apply: **TDD** for domain + use cases ([§1a](../plan_fastapi.md)), **save status between steps + local commit** ([§1b](../plan_fastapi.md)).
 - Task ids `F<feature>.<n>`. Track them in [STATUS.md](STATUS.md) instead of full-plan T* ids.
 
+## Run
+
+```
+uv sync                                                        # once, online
+uv run pytest                                                  # 92 tests, ~2 s, offline
+uv run uvicorn app.adapters.inbound.http.main:app --port 8000  # http://localhost:8000/docs
+```
+
+- Demo login: `POST /api/v1/auth/demo {"username": "anna"}` → use `Authorization: Bearer demo-anna`.
+- Reset: `POST /api/v1/admin/demo/reset` with `Bearer demo-admin`.
+- Google mode: `.env` → `AUTH_MODE=google`, `GOOGLE_CLIENT_ID=…`, `ADMIN_EMAILS=…` (see `.env.example`).
+- Fixed time on stage: `DEMO_NOW=2026-10-03T12:00:00+02:00`.
+
 ## Offline / deterministic demo
 
 - Data, trust, queue: in-memory, **no network**. AI, OSM, geocoding: cut (not mocked).

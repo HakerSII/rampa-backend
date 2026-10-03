@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** contract check + live smoke
+- **Task:** — MVP backend done
 - **Who:** Claude
-- **State:** todo
-- **Next step:** tests/api/test_contract.py
-- **Last pytest:** `uv run pytest` → 67 passed
+- **State:** done
+- **Next step:** F1.0 (human): Google OAuth client → real-token login check; frontend integration (F1.5); then README §6 next steps
+- **Last pytest:** `uv run pytest` → 92 passed (unit, application, demo flow, contract)
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -40,6 +40,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 
 ## Log (newest first)
 
+- 2026-10-03 · MVP · done · contract test (20 ops × 4 specs), live uvicorn smoke OK; 92 passed
 - 2026-10-03 · F1 · done · Google Sign-In (verifier port + adapter), logout, /me, demo/google mode switch; 67 passed
 - 2026-10-03 · F4 · done · queue, detail, decision confirm/reject; test_demo_flow fully green; 58 passed
 - 2026-10-03 · F3 · done · trust, validation, reports, uploads, observations, votes; 48 passed, 2 xfail

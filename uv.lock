@@ -812,6 +812,7 @@ dev = [
     { name = "openapi-spec-validator" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "pyyaml" },
 ]
 
 [package.metadata]
@@ -830,6 +831,7 @@ dev = [
     { name = "openapi-spec-validator", specifier = ">=0.7" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-asyncio", specifier = ">=0.24" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
 ]
 
 [[package]]
