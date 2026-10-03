@@ -17,7 +17,7 @@ uv run python main.py                                          # http://localhos
 ```
 
 - E2E by hand: open `requests/demo.http` (VS Code REST Client) → "Send Request" top → bottom.
-- AI: `POST /api/v1/ai/image-tags {"photo_ids": [...]}` — `AI_MODE=mock` (default) or `onnx` (`uv sync --extra ai`, model in `models/`; any failure → mock).
+- AI: `POST /api/v1/ai/image-tags {"photo_ids": [...]}` — `AI_MODE=mock` (default) | `onnx` (`uv sync --extra ai`, model in `models/`) | `gemini` (`GEMINI_API_KEY` in `.env`, `GEMINI_MODEL`); any failure → mock.
 - OSM import: `POST /api/v1/admin/imports {"source": "osm_file"}` (admin) → Tauron Arena stops etc.
 - MCP (Claude): backend running → `.mcp.json` server `rampa` (`uv run --extra mcp python -m clients.mcp_server`); tools `check_accessibility`, `search_accessible_places`.
 - Open API: `GET /public/v1/places` with header `X-Api-Key: demo-key`.
@@ -49,6 +49,7 @@ uv run python main.py                                          # http://localhos
 | 7 | Owner role + verified_owner observations | [plan](features/07-owner/plan.md) | [openapi](features/07-owner/openapi.yaml) | 60 min |
 | 8 | OSM import (offline snapshot) + MCP client of Open API | [plan](features/08-osm-mcp/plan.md) | [openapi](features/08-osm-mcp/openapi.yaml) | 75 min |
 | 9 | Persistence: SQLite + SQLAlchemy (`REPO_MODE`, `DATABASE_URL`) | [plan](features/09-sqlite/plan.md) | — | 90 min |
+| 10 | Gemini vision (`AI_MODE=gemini`, `GEMINI_*` config) | [plan](features/10-gemini-vision/plan.md) | F6 | 45 min |
 
 - F0 blocks all.
 - After F0: **F1, F2, F3 in parallel** (demo auth stub ships in F0, Google added in F1).

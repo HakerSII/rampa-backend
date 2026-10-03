@@ -69,7 +69,8 @@ Content-Type: image/png
 ------DemoBoundary--
 
 ### 4a-AI. AI suggestions for the photo → tags winda/awaria, suggested elevator / not_working / critical
-### (AI_MODE=mock: deterministic; onnx: Phi-3.5 Vision, falls back to mock on error/timeout)
+### (AI_MODE=mock: deterministic; onnx: Phi-3.5 Vision; gemini: Google Gemini API → "model": "gemini";
+###  any error/timeout/no key → mock. Check active mode: GET /health → ai_mode)
 POST {{base}}/ai/image-tags
 Authorization: Bearer {{anna}}
 Content-Type: application/json

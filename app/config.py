@@ -17,9 +17,12 @@ class Settings(BaseSettings):
     media_dir: str = "media"
     demo_now: datetime | None = None  # set → FixedClock (deterministic demo)
     session_ttl_hours: int = 24
-    ai_mode: Literal["mock", "onnx"] = "mock"
+    ai_mode: Literal["mock", "onnx", "gemini"] = "mock"
     ai_model_path: str = "models/gpu/gpu-int4-rtn-block-32"
     ai_timeout_s: float = 60.0
+    gemini_api_key: str = ""  # secret: only in .env (gitignored)
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_api_url: str = "https://generativelanguage.googleapis.com/v1beta"
     osm_file: str = "data/osm_krakow_tauron.json"  # offline OSM snapshot
     public_api_keys: str = "demo-key"  # comma-separated X-Api-Key values for /public/v1
     public_rate_limit_per_min: int = 60
