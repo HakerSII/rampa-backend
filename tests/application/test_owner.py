@@ -89,3 +89,13 @@ async def test_assign_owner_validation(uc, place, user_id, error):
 async def test_only_admin_assigns_owner(uc):
     with pytest.raises(Forbidden):
         uc.assign_owner(user(uc, "ewa"), "plc_ice", "usr_ewa")
+
+
+async def test_demo_reset_restores_ownership_and_does_not_leak_between_instances(uc):
+    uc.assign_owner(user(uc, "admin"), "plc_ice", "usr_anna")
+    uc.reset_demo(user(uc, "admin"))
+    assert uc.get_place("plc_ice").owner_id is None
+    assert user(uc, "anna").role == Role.USER
+    from tests.conftest import make_use_cases
+    uc.assign_owner(user(uc, "admin"), "plc_ice", "usr_anna")
+    assert make_use_cases().get_place("plc_ice").owner_id is None

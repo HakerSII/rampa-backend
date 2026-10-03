@@ -2,7 +2,11 @@
 from app.domain.enums import FeatureKey, ObservationSource, StateValue, ValidationStatus
 from app.domain.model import FeatureStateRecord, Observation
 
-SOURCE_WEIGHT = {ObservationSource.ADMIN: 1.0, ObservationSource.COMMUNITY: 0.5}
+SOURCE_WEIGHT = {
+    ObservationSource.ADMIN: 1.0,
+    ObservationSource.VERIFIED_OWNER: 0.85,
+    ObservationSource.COMMUNITY: 0.5,
+}
 EVIDENCE_BONUS = 0.1
 UP_VOTE_BONUS = 0.1
 UP_VOTE_CAP = 0.3

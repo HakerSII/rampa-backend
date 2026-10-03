@@ -61,6 +61,7 @@ class Place:
     location: GeoPoint
     short_description: str = ""
     address: str = ""
+    owner_id: str | None = None
 
 
 @dataclass(slots=True)

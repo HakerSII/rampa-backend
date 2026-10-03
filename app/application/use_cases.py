@@ -46,6 +46,7 @@ from app.seed import load_seed
 DEMO_TOKEN_PREFIX = "demo-"
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
 MAX_PHOTOS = 5
+MAX_OWNER_BATCH = 10
 MAX_DESCRIPTION = 1000
 IMAGE_SIGNATURES = {b"\x89PNG\r\n\x1a\n": "png", b"\xff\xd8\xff": "jpg"}
 
@@ -180,6 +181,52 @@ class UseCases:
 
     def yes_features(self, place_id: str) -> list[FeatureKey]:
         return [f for f, s in self.repo.states_for(place_id).items() if s.state == StateValue.YES]
+
+    # ------------------------------------------------------------------ owner (F7)
+    def list_owner_places(self, user: User | None) -> list[Place]:
+        self._require_owner(user)
+        return [p for p in self.repo.list_places() if p.owner_id == user.id]
+
+    def add_owner_observations(self, user: User | None, place_id: str, items: list[dict]) -> list[Observation]:
+        """Owner update = new verified_owner observations; never overwrites state or reports."""
+        self._require_owner(user)
+        place = self.get_place(place_id)
+        if place.owner_id != user.id:
+            raise Forbidden("you are not the owner of this place")
+        if not 1 <= len(items) <= MAX_OWNER_BATCH:
+            raise ValidationFailed(f"observations: 1..{MAX_OWNER_BATCH} required")
+        parsed = [(_enum(FeatureKey, i.get("feature"), "feature"), _enum(ObservationValue, i.get("value"), "value"),
+                   bool(i.get("temporary", False)), str(i.get("comment", "")), self._check_photos(i.get("photo_ids", ())))
+                  for i in items]  # validate everything before writing anything
+        created = [self._new_observation(user, place_id, f, v, temporary=t, comment=c, photo_ids=ph)
+                   for f, v, t, c, ph in parsed]
+        for feature in dict.fromkeys(o.feature for o in created):
+            self.recompute(place_id, feature)
+        return created
+
+    def list_owner_reports(self, user: User | None) -> list[Report]:
+        self._require_owner(user)
+        owned = {p.id for p in self.list_owner_places(user)}
+        reports = [(i, r) for i, r in enumerate(self.repo.list_reports()) if r.place_id in owned]
+        return [r for _, r in sorted(reports, key=lambda t: (t[1].created_at, t[0]), reverse=True)]
+
+    def assign_owner(self, admin: User | None, place_id: str, user_id: str) -> Place:
+        self._require_admin(admin)
+        place = self.get_place(place_id)
+        owner = self.repo.get_user(user_id)
+        if owner is None:
+            raise NotFound(f"user not found: {user_id}")
+        place.owner_id = owner.id
+        if owner.role == Role.USER:
+            owner.role = Role.OWNER
+        return place
+
+    @staticmethod
+    def _require_owner(user: User | None) -> None:
+        if user is None:
+            raise Unauthorized("login required")
+        if user.role != Role.OWNER:
+            raise Forbidden("owner role required")
 
     # ------------------------------------------------------------------ AI suggestions (F6)
     async def analyze_image(self, user: User | None, photo_ids: list[str],
@@ -370,7 +417,13 @@ class UseCases:
     def _new_observation(self, user: User, place_id: str, feature: FeatureKey, value: ObservationValue, *,
                          temporary: bool, comment: str, photo_ids: list[str],
                          report_id: str | None = None) -> Observation:
-        source = ObservationSource.ADMIN if user.role == Role.ADMIN else ObservationSource.COMMUNITY
+        place = self.repo.get_place(place_id)
+        if user.role == Role.ADMIN:
+            source = ObservationSource.ADMIN
+        elif place is not None and place.owner_id == user.id:
+            source = ObservationSource.VERIFIED_OWNER
+        else:
+            source = ObservationSource.COMMUNITY
         obs = Observation(self.ids.new("obs"), place_id, feature, value, source, user.id, self.clock.now(),
                           temporary=temporary, comment=comment, evidence_ids=list(photo_ids),
                           report_id=report_id)

@@ -1,5 +1,6 @@
 """Deterministic demo data. Initial observations are 60 days old, i.e. outside
 the 30-day conflict window, so the first fresh report never conflicts with seed."""
+from dataclasses import replace
 from datetime import timedelta
 
 from app.application.ports import Clock, IdGenerator, Repo
@@ -14,8 +15,11 @@ DEMO_USERS = [
     ("ola", "Ola Wiśniewska", Role.USER),
     ("piotr", "Piotr Zieliński", Role.USER),
     ("marek", "Marek Kowalski", Role.USER),
+    ("ewa", "Ewa Nowak", Role.OWNER),  # owner of OWNED_BY_EWA
     ("admin", "Administrator", Role.ADMIN),
 ]
+
+OWNED_BY_EWA = {"plc_mnk", "plc_camelot"}
 
 PLACES = [
     (Place("plc_mnk", "Muzeum Narodowe w Krakowie", "museum", GeoPoint(50.0603, 19.9238),
@@ -42,7 +46,8 @@ def load_seed(repo: Repo, clock: Clock, ids: IdGenerator, recompute) -> None:
         repo.add_user(User(f"usr_{username}", name, role, username=username))
 
     created = clock.now() - timedelta(days=60)
-    for place, features in PLACES:
+    for template, features in PLACES:
+        place = replace(template, owner_id="usr_ewa" if template.id in OWNED_BY_EWA else None)  # copy: no shared state
         repo.add_place(place)
         for feature, value in features.items():
             repo.add_observation(Observation(

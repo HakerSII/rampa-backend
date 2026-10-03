@@ -30,6 +30,7 @@ class ObservationValue(StrEnum):
 
 class ObservationSource(StrEnum):
     COMMUNITY = "community"
+    VERIFIED_OWNER = "verified_owner"
     ADMIN = "admin"
 
 
@@ -53,6 +54,7 @@ class CheckAnswer(StrEnum):
 class Role(StrEnum):
     GUEST = "guest"
     USER = "user"
+    OWNER = "owner"
     ADMIN = "admin"
 
 

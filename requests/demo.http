@@ -13,6 +13,7 @@
 @piotr = demo-piotr
 @marek = demo-marek
 @admin = demo-admin
+@ewa = demo-ewa
 @public = http://localhost:8000/public/v1
 @apiKey = demo-key
 
@@ -188,6 +189,128 @@ GET {{public}}/places
 ### 401 UNAUTHORIZED — app Bearer token is not an API key
 GET {{public}}/places
 Authorization: Bearer {{admin}}
+
+### =====================================================================
+### F7 Owner scenario — owner says "repaired" vs users "broken" (original mockup conflict)
+### Starts with its own reset. Ewa (owner) owns plc_mnk + plc_camelot.
+### =====================================================================
+
+### O0. Reset → 204
+POST {{base}}/admin/demo/reset
+Authorization: Bearer {{admin}}
+
+### O1. Owner: my places → plc_mnk, plc_camelot
+GET {{base}}/owner/places
+Authorization: Bearer {{ewa}}
+
+### O2. Anna uploads photo → 201
+# @name ownUpload
+POST {{base}}/uploads
+Authorization: Bearer {{anna}}
+Content-Type: multipart/form-data; boundary=----DemoBoundary
+
+------DemoBoundary
+Content-Disposition: form-data; name="file"; filename="winda.png"
+Content-Type: image/png
+
+< ./winda.png
+------DemoBoundary--
+
+### O3. Anna reports broken elevator (0.6) → 201
+# @name ownReport
+POST {{base}}/reports
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{
+  "place_id": "plc_mnk", "element": "elevator", "current_state": "not_working",
+  "severity": "critical", "nature": "temporary",
+  "description": "Winda nieczynna.", "photo_ids": ["{{ownUpload.response.body.$.id}}"]
+}
+
+### O4a. Jan 👍
+POST {{base}}/observations/{{ownReport.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"value": 1}
+
+### O4b. Ola 👍
+POST {{base}}/observations/{{ownReport.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{ola}}
+Content-Type: application/json
+
+{"value": 1}
+
+### O4c. Piotr 👍 → confidence 0.9
+POST {{base}}/observations/{{ownReport.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{piotr}}
+Content-Type: application/json
+
+{"value": 1}
+
+### O5. Owner sees user reports on her places → Anna's report
+GET {{base}}/owner/reports
+Authorization: Bearer {{ewa}}
+
+### O6. Owner: "elevator repaired" → 201, source verified_owner, 0.85, validation CONFLICT
+# @name ewaUpdate
+POST {{base}}/owner/places/plc_mnk/observations
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"observations": [{"feature": "elevator", "value": "yes", "comment": "Winda naprawiona 3.10, serwis potwierdził."}]}
+
+### O7. State: elevator still no (users 0.9 > owner 0.85), CONFLICT
+GET {{base}}/places/plc_mnk/accessibility
+
+### O8. Admin queue → 1 conflict (owner vs users)
+# @name ownQueue
+GET {{base}}/admin/queue?filter=conflict
+Authorization: Bearer {{admin}}
+
+### O9. Admin confirms owner → elevator yes, 1.0, VALID
+POST {{base}}/admin/queue/{{ownQueue.response.body.$.items[0].id}}/decision
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"action": "confirm", "winning_observation_id": "{{ewaUpdate.response.body.$.items[0].id}}"}
+
+### O10. Admin assigns Marek as owner of ICE → 200, role owner
+POST {{base}}/admin/places/plc_ice/owner
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"user_id": "usr_marek"}
+
+### O11. Marek (now owner) sees ICE
+GET {{base}}/owner/places
+Authorization: Bearer {{marek}}
+
+### 403 FORBIDDEN — regular user on owner panel
+GET {{base}}/owner/places
+Authorization: Bearer {{anna}}
+
+### 403 FORBIDDEN — owner updates a place she does not own
+POST {{base}}/owner/places/plc_ice/observations
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"observations": [{"feature": "elevator", "value": "yes"}]}
+
+### 403 FORBIDDEN — non-admin assigns owner
+POST {{base}}/admin/places/plc_ice/owner
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"user_id": "usr_ewa"}
+
+### 400 VALIDATION_ERROR — empty owner batch
+POST {{base}}/owner/places/plc_mnk/observations
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"observations": []}
 
 ### =====================================================================
 ### Error paths (expected status in title)

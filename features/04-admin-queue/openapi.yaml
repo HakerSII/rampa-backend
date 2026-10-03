@@ -139,7 +139,7 @@ components:
       enum: ["yes", "no"]
     ObservationSource:
       type: string
-      enum: [community, admin]
+      enum: [community, verified_owner, admin]
     ValidationStatus:
       type: string
       enum: [VALID, CONFLICT, REJECTED]

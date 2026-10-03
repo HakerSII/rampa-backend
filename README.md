@@ -43,6 +43,7 @@ uv run python main.py                                          # http://localhos
 | 4 | Moderation queue (admin) | [plan](features/04-admin-queue/plan.md) | [openapi](features/04-admin-queue/openapi.yaml) | 45–60 min |
 | 5 | Open API (`/public/v1`, X-Api-Key, rate limit) | [plan](features/05-open-api/plan.md) | [openapi](features/05-open-api/openapi.yaml) | 45 min |
 | 6 | AI photo suggestions (mock / Phi-3.5 ONNX + fallback) | [plan](features/06-ai-image-tags/plan.md) | [openapi](features/06-ai-image-tags/openapi.yaml) | 60 min |
+| 7 | Owner role + verified_owner observations | [plan](features/07-owner/plan.md) | [openapi](features/07-owner/openapi.yaml) | 60 min |
 
 - F0 blocks all.
 - After F0: **F1, F2, F3 in parallel** (demo auth stub ships in F0, Google added in F1).
@@ -52,7 +53,7 @@ uv run python main.py                                          # http://localhos
 
 ## 1. Demo scenario (trimmed, end-to-end)
 
-Seeded accounts (`demo` mode): `anna` (reporter), `jan`, `ola`, `piotr` (voters), `marek` (2nd user), `admin`.
+Seeded accounts (`demo` mode): `anna` (reporter), `jan`, `ola`, `piotr` (voters), `marek` (2nd user), `ewa` (owner of `plc_mnk`, `plc_camelot`), `admin`.
 Place `plc_mnk` (National Museum), feature `elevator`, seeded `yes` (observation 60 days old).
 
 1. Search step-free places → `GET /places?features=step_free_entrance` (F2)
@@ -72,7 +73,7 @@ Place `plc_mnk` (National Museum), feature `elevator`, seeded `yes` (observation
 
 | Cut | Why / replacement |
 |---|---|
-| Owner panel (`/owner/*`), roles `owner`, `api_client` | conflict by 2nd `user`; roles left: `guest`, `user`, `admin` |
+| Owner panel extras (stats, reminders, CSV), ownership requests, role `api_client` | F7 adds `owner` (admin assigns); main demo still uses 2nd `user`, owner variant in demo.http |
 | AI `/ai/parse-text` | not needed for demo; image tags done in F6 |
 | OSM import, `/geocode` | places from seed only |
 | Open API (`/public/v1/*`) | later, same use cases |
@@ -161,6 +162,6 @@ Photo(id, path, url)
 
 1. ~~Open API (`/public/v1/*`)~~ → done as F5.
 2. ~~`POST /ai/image-tags` with mock~~ → done as F6 (real Phi-3.5: `uv sync --extra ai`, `AI_MODE=onnx`).
-3. `owner` role + `verified_owner` observations: conflict as in original scenario.
+3. ~~`owner` role + `verified_owner` observations~~ → done as F7 (demo.http section "F7 Owner scenario").
 4. OSM import / MCP integration: see [../plan_fastapi.md](../plan_fastapi.md) (phases 4–5).
 5. SQLAlchemy instead of in-memory: `Repo` port stays, add adapter (full plan T0.6).

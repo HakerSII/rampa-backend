@@ -85,6 +85,9 @@ class InMemoryRepo:
     def get_report(self, report_id: str) -> Report | None:
         return self.reports.get(report_id)
 
+    def list_reports(self) -> list[Report]:
+        return list(self.reports.values())
+
     def add_photo(self, photo: Photo) -> None:
         self.photos[photo.id] = photo
 
