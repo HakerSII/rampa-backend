@@ -25,7 +25,7 @@ flowchart TB
     end
     subgraph CORE[Application + domain]
         UC[application/use_cases.py<br/>UseCases]
-        PORTS[application/ports.py<br/>Repo · Clock · IdGenerator · FileStorage<br/>IdentityVerifier · VisionAnalyzer · OsmSource<br/>Geocoder · WalkingRouter]
+        PORTS[application/ports.py<br/>Repo · Clock · IdGenerator · FileStorage<br/>IdentityVerifier · VisionAnalyzer · OsmSource<br/>Geocoder · WalkingRouter · QueryInterpreter · Mailer]
         DOM[domain/<br/>model · enums · trust · validation · check<br/>suggestions · osm · geo · errors]
     end
     subgraph OUT[Outbound adapters]
@@ -36,6 +36,7 @@ flowchart TB
         VIS[vision_mock / vision_onnx / vision_gemini]
         OSMF[osm_file.py · osm_live.py<br/>Nominatim · Overpass]
         OSRM[osrm.py walking route]
+        REC[recommender_claude.py · mailer.py]
     end
     HTTP --> UC
     MCPC -.HTTP.-> HTTP

@@ -5,14 +5,14 @@
 
 ## Current
 
-- **State:** todo
+- **State:** done
 - **Deploy:** **Render**, automatic after every merge to `master` (Docker service `rampa-backend` + `rampa-backend-postgres`); see docs/operations.md; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
 - **Last pytest:** `uv run pytest` → 557 passed, 16 skipped
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
 - **Front-end needs (from F12b):** done — `GET /observations` map layer (F24), `escalator` + full feature model (F25). Front end to map `tactile` → `tactile_paths`, `sign` → `sign_language_interpreter`.
-- **Plan:** F0–F29 + F12b done. **Next plan: [PLAN-GAPS.md](PLAN-GAPS.md)** (gaps vs Accessly description, F30–F39), start with F30.
+- **Plan:** F0–F37 + F12b done. [PLAN-GAPS.md](PLAN-GAPS.md): F30–F37 done, F38 deferred (reason in the file), F39 blocked (dataset).
 
 ## Run
 
@@ -79,11 +79,12 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F35 | In-app notifications — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F35a–d; table notifications |
 | F36 | Admin: new-place queue, activity, trends — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F36a–g; fixed fragile 409 e2e (used stale id after reset) |
 | F37 | City config — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F37a; data/cities/krakow.json |
-| F38 | PostGIS + Alembic — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
-| F39 | City open-data import (blocked: dataset) — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
+| F38 | PostGIS + Alembic — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | deferred | write-behind cache → PostGIS unused until SQL-backed repo; no local Postgres check |
+| F39 | City open-data import (blocked: dataset) — [PLAN-GAPS.md](PLAN-GAPS.md) | — | blocked | needs dataset + licence choice |
 
 ## Log (newest first)
 
+- 2026-10-03 · PLAN-GAPS: F30–F37 done, F38 deferred, F39 blocked; docs updated
 - 2026-10-03 · F37 green: city config JSON + GET /city
 - 2026-10-03 · F37 red
 - 2026-10-03 · F36 green: new_place queue, activity, trends, coverage

@@ -132,12 +132,14 @@ Full description: **[docs/architecture.md](docs/architecture.md)**. In short:
 app/
   domain/          pure rules: model, enums, trust, validation, check, suggestions, text_parse, osm, geo,
                    verification, history, stats, route, errors
-  application/     ports.py (Repo, Clock, IdGenerator, FileStorage, IdentityVerifier, VisionAnalyzer, OsmSource, Geocoder, WalkingRouter)
+  application/     ports.py (Repo, Clock, IdGenerator, FileStorage, IdentityVerifier, VisionAnalyzer, OsmSource, Geocoder,
+                   WalkingRouter, QueryInterpreter, Mailer)
                    use_cases.py (all use cases)
   adapters/
     inbound/http/  FastAPI app, middleware (commit), auth deps, errors, schemas, rate limit,
                    routers: auth, me, places, observations, ai, owner, admin, public
-    outbound/      memory, sql (SQLite/Postgres), files, google_auth, vision_mock/onnx/gemini, osm_file, osm_live (Nominatim/Overpass), osrm
+    outbound/      memory, sql (SQLite/Postgres), files, google_auth, vision_mock/onnx/gemini, osm_file, osm_live (Nominatim/Overpass), osrm,
+                   recommender_claude, mailer (console/SMTP)
   bootstrap.py     composition root (config → adapters)
 clients/           MCP server (client of the Open API)
 tests/             unit · application · adapters · api (contract, demo flow, docs)
@@ -166,7 +168,7 @@ See **[docs/architecture.md §4](docs/architecture.md#4-domain-model)**. Key rul
 ## 6. Next
 
 1. Frontend from the mockups (map, place card, report form, owner and admin panels) against this API.
-2. Google OAuth client (F1.0) → real logins; fresh Gemini quota or a paid key before the demo.
-3. Fully SQL-backed repository (per-row writes instead of whole-cache reload) for high write load; PostGIS for geo search.
-4. City open data (BIP, ZTP) as further `open_data` sources; caching for Nominatim/OSRM answers.
-5. Accessibility rules for the 22 informational features (today only some take part in `check`).
+2. Google OAuth client (F1.0) → real logins; fresh Gemini quota or a paid key; `ANTHROPIC_API_KEY` for `AI_RECOMMENDER=claude`; SMTP for e-mail login.
+3. F38 (deferred): fully SQL-backed repository, then PostGIS for geo search + Alembic migrations. See [PLAN-GAPS.md](PLAN-GAPS.md).
+4. F39 (blocked): city open data (BIP, ZTP) once a dataset and its licence are chosen; caching for Nominatim/OSRM answers.
+5. Accessibility rules for the informational features (today only some take part in `check`).
