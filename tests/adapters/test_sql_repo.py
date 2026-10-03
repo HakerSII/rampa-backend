@@ -129,3 +129,11 @@ def test_favorites_persist(url):
     uc.add_favorite(uc.repo.get_user("usr_anna"), "plc_ice")
     uc.repo.commit()
     assert make(url).repo.get_user("usr_anna").favorite_place_ids == ["plc_ice"]
+
+
+def test_draft_with_empty_fields_roundtrip(url):
+    uc = make(url)
+    d = uc.create_report(uc.repo.get_user("usr_anna"), place_id="plc_mnk", draft=True)
+    uc.repo.commit()
+    r = make(url).repo.get_report(d.id)
+    assert (r.status, r.element, r.current_state, r.description) == ("draft", None, None, None)
