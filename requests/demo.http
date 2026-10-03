@@ -194,6 +194,22 @@ Content-Type: application/json
 GET {{base}}/admin/needs-stats
 Authorization: Bearer {{anna}}
 
+### F35a. Anna's notifications → "question_answered" (Ewa answered in F34c), unread count
+# @name notes
+GET {{base}}/me/notifications
+Authorization: Bearer {{anna}}
+
+### F35b. Mark it read
+POST {{base}}/me/notifications/{{notes.response.body.$.items[0].id}}/read
+Authorization: Bearer {{anna}}
+
+### F35c. Mark all read → {"marked": n}
+POST {{base}}/me/notifications/read-all
+Authorization: Bearer {{anna}}
+
+### F35d. 401 UNAUTHORIZED — guest
+GET {{base}}/me/notifications
+
 ### F33a. E-mail login: request a code (demo + console mailer → dev_token in the response; mail in the log)
 # @name emailReq
 POST {{base}}/auth/email/request

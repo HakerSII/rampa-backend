@@ -26,6 +26,7 @@ from app.domain.enums import (
 )
 from app.domain.model import (
     LoginToken,
+    Notification,
     Question,
     FeatureStateRecord,
     GeoPoint,
@@ -57,6 +58,10 @@ questions = Table("questions", md, Column("id", String, primary_key=True), Colum
                   Column("created_at", String), Column("feature", String), Column("status", String),
                   Column("answer_text", String), Column("answered_by", String), Column("answered_at", String),
                   Column("outcome", String))
+notifications = Table("notifications", md, Column("id", String, primary_key=True), Column("seq", Integer),
+                      Column("user_id", String), Column("kind", String), Column("text", String),
+                      Column("created_at", String), Column("place_id", String), Column("ref_id", String),
+                      Column("read", Boolean))
 places = Table("places", md, Column("id", String, primary_key=True), Column("seq", Integer), Column("name", String),
                Column("category", String), Column("lat", Float), Column("lon", Float),
                Column("short_description", String), Column("address", String), Column("owner_id", String),
@@ -207,6 +212,10 @@ class SqlRepo(InMemoryRepo):
                                   created_at=_iso(q.created_at), feature=_s(q.feature), status=q.status,
                                   answer_text=q.answer_text, answered_by=q.answered_by,
                                   answered_at=_iso(q.answered_at), outcome=q.outcome)
+        for i, n in enumerate(self.notifications.values()):
+            yield notifications, dict(id=n.id, seq=i, user_id=n.user_id, kind=n.kind, text=n.text,
+                                      created_at=_iso(n.created_at), place_id=n.place_id, ref_id=n.ref_id,
+                                      read=n.read)
         for t in self.login_tokens.values():
             yield login_tokens, dict(token_hash=t.token_hash, email=t.email, created_at=_iso(t.created_at),
                                      expires_at=_iso(t.expires_at), used=t.used)
@@ -264,6 +273,10 @@ class SqlRepo(InMemoryRepo):
                     r["id"], r["place_id"], r["author_id"], r["text"], _dt(r["created_at"]),
                     _e(FeatureKey, r["feature"]), r["status"], r["answer_text"], r["answered_by"],
                     _dt(r["answered_at"]), r["outcome"])
+            for r in rows(notifications):
+                self.notifications[r["id"]] = Notification(r["id"], r["user_id"], r["kind"], r["text"],
+                                                           _dt(r["created_at"]), r["place_id"], r["ref_id"],
+                                                           bool(r["read"]))
             for r in rows(login_tokens):
                 self.login_tokens[r["token_hash"]] = LoginToken(r["token_hash"], r["email"], _dt(r["created_at"]),
                                                                 _dt(r["expires_at"]), bool(r["used"]))

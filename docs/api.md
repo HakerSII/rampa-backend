@@ -154,6 +154,8 @@ Every error has the same shape:
 | GET | `/api/v1/owner/questions` | owner | Questions on my places |
 | POST | `/api/v1/owner/questions/{id}/answer` | owner | Answer, set the attribute or mark planned |
 | GET | `/api/v1/admin/needs-stats` | admin / owner | Most asked features |
+| GET | `/api/v1/me/notifications` | user | My notifications (`?unread=true`), unread count |
+| POST | `/api/v1/me/notifications/{id}/read`, `/read-all` | user | Mark read |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -605,6 +607,20 @@ Favourites are stored per user (`users.favorites`, JSON) and survive restarts in
 - every item gets `match` whenever a profile is known.
 
 `POST /ai/recommend` merges the stored needs and features of a logged-in user.
+
+## 7a2. Notifications
+
+In-app notifications are created inside the use cases. The actor is never notified about their own action.
+
+| `kind` | When | To |
+|---|---|---|
+| `question_answered` | owner / admin answered a question | asker |
+| `report_reply`, `report_approved` | owner replied to / approved a report | report author |
+| `observation_confirmed`, `observation_rejected` | moderator decided a conflict | each author in the item |
+| `ownership_decided` | admin accepted / rejected an ownership request | applicant |
+| `abuse_decided` | admin decided an abuse report | each reporter |
+
+`GET /api/v1/me/notifications?unread=true` → `{items (newest first), unread}`. Mark one read with `POST …/{id}/read` (204; someone else's id → 404), or all with `POST …/read-all` → `{marked}`. Push or e-mail delivery can be added later through the `Mailer` port (F33).
 
 ## 7b. Admin extras
 

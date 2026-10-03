@@ -7,7 +7,7 @@
 
 - **State:** todo
 - **Deploy:** **Render**, automatic after every merge to `master` (Docker service `rampa-backend` + `rampa-backend-postgres`); see docs/operations.md; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
-- **Last pytest:** `uv run pytest` → red: F35
+- **Last pytest:** `uv run pytest` → 535 passed, 16 skipped
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
@@ -76,7 +76,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F32 | Value n/a + missing attributes — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F32a–d; 39 features |
 | F33 | Email magic-link login — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F33a–e; SMTP adapter tested with fake smtplib (no real server); table login_tokens |
 | F34 | Questions to owner + needs stats — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F34a–i; table questions |
-| F35 | In-app notifications — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | red |  |
+| F35 | In-app notifications — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F35a–d; table notifications |
 | F36 | Admin: new-place queue, activity, trends — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
 | F37 | City config — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
 | F38 | PostGIS + Alembic — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
@@ -84,6 +84,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 
 ## Log (newest first)
 
+- 2026-10-03 · F35 green: in-app notifications
 - 2026-10-03 · F35 red
 - 2026-10-03 · F34 green: questions to owner + needs stats
 - 2026-10-03 · F34 red

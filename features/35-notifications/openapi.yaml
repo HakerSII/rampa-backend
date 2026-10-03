@@ -1,0 +1,72 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F35 Notifications
+  version: 0.1.0-mvp
+  description: In-app notifications about the user's questions, reports and requests.
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: me
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+paths:
+  /me/notifications:
+    get:
+      tags: [me]
+      summary: My notifications (newest first)
+      operationId: listNotifications
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: unread, in: query, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unread: { type: integer }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        kind:
+                          type: string
+                          enum: [question_answered, report_reply, report_approved, observation_confirmed,
+                                 observation_rejected, ownership_decided, abuse_decided]
+                        text: { type: string }
+                        created_at: { type: string, format: date-time }
+                        place_id: { type: [string, "null"] }
+                        ref_id: { type: [string, "null"] }
+                        read: { type: boolean }
+        "401": { description: UNAUTHORIZED }
+  /me/notifications/{notificationId}/read:
+    post:
+      tags: [me]
+      summary: Mark one as read
+      operationId: readNotification
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: notificationId, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Read }
+        "404": { description: "NOT_FOUND (not mine)" }
+  /me/notifications/read-all:
+    post:
+      tags: [me]
+      summary: Mark all as read
+      operationId: readAllNotifications
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: Number marked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  marked: { type: integer }

@@ -65,6 +65,19 @@ class Question:
 
 
 @dataclass(slots=True)
+class Notification:
+    """F35 in-app notification for one user."""
+    id: str
+    user_id: str
+    kind: str
+    text: str
+    created_at: datetime
+    place_id: str | None = None
+    ref_id: str | None = None  # question / report / queue item / ownership request id
+    read: bool = False
+
+
+@dataclass(slots=True)
 class LoginToken:
     """F33 one-time e-mail login code; only the SHA-256 of the code is stored."""
     token_hash: str

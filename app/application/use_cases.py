@@ -63,6 +63,7 @@ from app.domain.model import (
     FeatureStateRecord,
     GeocodeHit,
     LoginToken,
+    Notification,
     Question,
     GeoPoint,
     ImageAnalysis,
@@ -228,6 +229,11 @@ EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]{2,}")
 MAX_EMAIL = 254
 EMAIL_TOKEN_TTL = timedelta(minutes=15)
 EMAIL_MAX_REQUESTS = 3
+
+
+def _seq(entity_id: str) -> int:
+    tail = entity_id.rsplit("_", 1)[-1]
+    return int(tail) if tail.isdigit() else 0
 
 
 def _hash(code: str) -> str:
@@ -651,6 +657,8 @@ class UseCases:
         elif planned:
             q.outcome = "planned"
         q.status, q.answer_text, q.answered_by, q.answered_at = "answered", text, user.id, self.clock.now()
+        self._notify(q.author_id, user, "question_answered",
+                     f"Odpowiedź na Twoje pytanie — {self._place_name(q.place_id)}: {text}", q.place_id, q.id)
         return q
 
     def needs_stats(self, user: User | None) -> NeedsStats:
@@ -672,6 +680,36 @@ class UseCases:
         if user.role == Role.ADMIN:
             return {p.id for p in self.repo.list_places()}
         return {p.id for p in self.repo.list_places() if p.owner_id == user.id}
+
+    # ------------------------------------------------------------------ notifications (F35)
+    def _notify(self, user_id: str, actor: User | None, kind: str, text: str, place_id: str | None = None,
+                ref_id: str | None = None) -> None:
+        if actor is not None and actor.id == user_id:
+            return  # nobody is notified about their own action
+        self.repo.add_notification(Notification(self.ids.new("ntf"), user_id, kind, text[:300], self.clock.now(),
+                                                place_id, ref_id))
+
+    def _place_name(self, place_id: str) -> str:
+        place = self.repo.get_place(place_id)
+        return place.name if place else place_id
+
+    def list_notifications(self, user: User | None, unread_only: bool = False) -> list[Notification]:
+        self._require_user(user)
+        items = [n for n in self.repo.list_notifications(user.id) if not (unread_only and n.read)]
+        return sorted(items, key=lambda n: (n.created_at, _seq(n.id)), reverse=True)
+
+    def mark_notification_read(self, user: User | None, notification_id: str) -> None:
+        self._require_user(user)
+        n = next((n for n in self.repo.list_notifications(user.id) if n.id == notification_id), None)
+        if n is None:
+            raise NotFound(f"notification not found: {notification_id}")
+        n.read = True
+
+    def mark_all_notifications_read(self, user: User | None) -> int:
+        unread = self.list_notifications(user, unread_only=True)
+        for n in unread:
+            n.read = True
+        return len(unread)
 
     # ------------------------------------------------------------------ needs profile (F31)
     def get_needs_profile(self, user: User | None) -> tuple[list[NeedsProfile], list[FeatureKey]]:
@@ -978,6 +1016,9 @@ class UseCases:
         if not 1 <= len(text) <= MAX_DESCRIPTION:
             raise ValidationFailed(f"reply must have 1..{MAX_DESCRIPTION} characters")
         report.replies.append({"author_id": user.id, "text": text, "created_at": self.clock.now().isoformat()})
+        self._notify(report.author_id, user, "report_reply",
+                     f"Właściciel odpowiedział na Twoje zgłoszenie — {self._place_name(report.place_id)}: {text}",
+                     report.place_id, report.id)
         return report
 
     def approve_report(self, user: User | None, report_id: str) -> Observation:
@@ -991,6 +1032,9 @@ class UseCases:
                                     comment=f"Potwierdzone przez właściciela: {report.description}", photo_ids=[])
         report.owner_status = "approved"
         self.recompute(report.place_id, report.element)
+        self._notify(report.author_id, user, "report_approved",
+                     f"Właściciel potwierdził Twoje zgłoszenie — {self._place_name(report.place_id)}",
+                     report.place_id, report.id)
         return obs
 
     def owner_reminders(self, user: User | None) -> list[Reminder]:
@@ -1245,6 +1289,9 @@ class UseCases:
         if approved:
             self.assign_owner(admin, req.place_id, req.user_id)
         req.status, req.decided_at = ("approved" if approved else "rejected"), self.clock.now()
+        self._notify(req.user_id, admin, "ownership_decided",
+                     f"Wniosek o przejęcie {'zaakceptowany' if approved else 'odrzucony'} — "
+                     f"{self._place_name(req.place_id)}", req.place_id, req.id)
         return req
 
     # ------------------------------------------------------------------ moderation (F4)
@@ -1300,6 +1347,12 @@ class UseCases:
             for o in observations:
                 o.validation = ValidationStatus.REJECTED
             item.status, item.decision, item.resolved_at = QueueStatus.RESOLVED, "rejected", self.clock.now()
+        label, place = LABELS_PL[item.feature], self._place_name(item.place_id)
+        for author in dict.fromkeys(o.author_id for o in observations):
+            ok = any(o.validation == ValidationStatus.VALID for o in observations if o.author_id == author)
+            self._notify(author, admin, "observation_confirmed" if ok else "observation_rejected",
+                         f"Moderator {'potwierdził' if ok else 'odrzucił'} Twoją informację: {label} — {place}",
+                         item.place_id, item.id)
         return self.recompute(item.place_id, item.feature)
 
     def _decide_abuse(self, item: QueueItem, action: DecisionAction) -> FeatureStateRecord:
@@ -1309,6 +1362,11 @@ class UseCases:
             obs.validation, obs.flag_reason = ValidationStatus.FLAGGED, f"Zgłoszenia nadużycia: {reasons}"[:200]
         item.status, item.resolved_at = QueueStatus.RESOLVED, self.clock.now()
         item.decision = "approved" if action == DecisionAction.CONFIRM else "rejected"
+        verdict = "oznaczona jako nadużycie" if action == DecisionAction.CONFIRM else "pozostaje bez zmian"
+        for reporter in dict.fromkeys(c["author_id"] for c in item.comments):
+            self._notify(reporter, None, "abuse_decided",
+                         f"Dziękujemy za zgłoszenie — informacja {verdict} ({self._place_name(item.place_id)})",
+                         item.place_id, item.id)
         return self.recompute(item.place_id, item.feature)
 
     def report_abuse(self, user: User | None, observation_id: str, reason: str) -> QueueItem:

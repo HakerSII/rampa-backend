@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from app.domain.enums import FeatureKey
 from app.domain.model import (
     LoginToken,
+    Notification,
     Question,
     FeatureStateRecord,
     Observation,
@@ -27,6 +28,7 @@ class InMemoryRepo:
         self.sessions: dict[str, Session] = {}
         self.login_tokens: dict[str, LoginToken] = {}
         self.questions: dict[str, Question] = {}
+        self.notifications: dict[str, Notification] = {}
         self.places: dict[str, Place] = {}
         self.states: dict[str, dict[FeatureKey, FeatureStateRecord]] = defaultdict(dict)
         self.observations: dict[str, Observation] = {}  # insertion order = creation order
@@ -46,7 +48,7 @@ class InMemoryRepo:
 
     def all_ids(self) -> list[str]:
         return [*self.users, *self.places, *self.observations, *self.reports, *self.photos, *self.queue,
-                *self.ownership_requests, *self.questions]
+                *self.ownership_requests, *self.questions, *self.notifications]
 
     # users / sessions
     def add_user(self, user: User) -> None:
@@ -149,6 +151,12 @@ class InMemoryRepo:
 
 
     # ownership requests
+    def add_notification(self, n: Notification) -> None:
+        self.notifications[n.id] = n
+
+    def list_notifications(self, user_id: str) -> list[Notification]:
+        return [n for n in self.notifications.values() if n.user_id == user_id]
+
     def add_question(self, q: Question) -> None:
         self.questions[q.id] = q
 
