@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** F12 place screen (activity, photos, verification)
+- **Task:** F12 place screen
 - **Who:** Claude
 - **State:** todo
-- **Next step:** 🔴 tests for /places/{id}/activity, /photos, verification label
-- **Last pytest:** `uv run pytest` → 206 passed, 7 skipped (PG; 14/14 with TEST_POSTGRES_URL)
+- **Next step:** 🟢 domain/verification.py, use cases, HTTP
+- **Last pytest:** `uv run pytest` → red: F12 tests
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -43,10 +43,12 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F8.1–F8.5 | OSM import (file) + MCP client of Open API | Claude | done | MCP stdio smoke OK (tools/list + call Tauron → yes) |
 | F9.1–F9.5 | Persistence: SQLite + SQLAlchemy (write-behind SqlRepo) | Claude | done | demo flow also green on SQL; live restart keeps data |
 | F10.1–F10.4 | Gemini vision adapter (AI_MODE=gemini, config-driven) | Claude | done | live Gemini OK (gemini-3.8-flash): stairs → critical; 503s retried |
-| F11.1–F11.5 | Postgres + docker-compose, DB choice via env/config | Claude | done | verified: compose up, demo.http 68/68 on PG, SqlRepo 7/7 on PG, restart keeps data; fixed empty DEMO_NOW crash |
+| F11.1–F11.5 | Postgres + docker-compose, DB choice via env/config | Claude | done | verified on PG in docker |
+| F12.1–F12.3 | Place screen: activity feed, photos, verification label | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F12 · red · verification + activity + photos tests
 - 2026-10-03 · F11 · done · Postgres verified in docker (port 8001, local main.py on 8000); Gemini key hit 429 quota → mock fallback OK; docs updated
 - 2026-10-03 · F11 · green · DB_ENGINE/POSTGRES_* config, db_url, SqlRepo retry, Dockerfile, .dockerignore, compose; compose config valid; PG run pending
 - 2026-10-03 · F11 · red · config/compose/PG-parametrized repo tests
