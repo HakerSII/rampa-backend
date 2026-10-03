@@ -1,12 +1,12 @@
 # Mini MVP — trimmed plan, split by feature
 
-Full contract: [../openapi.yaml](../openapi.yaml) · full plan: [../plan_fastapi.md](../plan_fastapi.md) · API notes: [../api.md](../api.md) · status: [../STATUS.md](../STATUS.md)
+Full contract: [../openapi.yaml](../openapi.yaml) · full plan: [../plan_fastapi.md](../plan_fastapi.md) · API notes: [../api.md](../api.md) · status: [STATUS.md](STATUS.md)
 
 - Effort: ~5.5–7 h solo, ~3–3.5 h for 2–3 devs in parallel after F0.
 - Per feature: `plan.md` (scope, model, tasks, DoD) + `openapi.yaml`.
 - Each `openapi.yaml` = valid **subset** of full contract: same paths (`/api/v1/...`), schema names, enum values. Merge back = copy, no renames.
 - Rules from full plan apply: **TDD** for domain + use cases ([§1a](../plan_fastapi.md)), **save status between steps + local commit** ([§1b](../plan_fastapi.md)).
-- Task ids `F<feature>.<n>`. Track them in [../STATUS.md](../STATUS.md) instead of full-plan T* ids.
+- Task ids `F<feature>.<n>`. Track them in [STATUS.md](STATUS.md) instead of full-plan T* ids.
 
 ## Offline / deterministic demo
 
@@ -136,7 +136,7 @@ Photo(id, path, url)
 - `POST /admin/demo/reset` (or restart) → demo repeatable, identical numbers.
 - **Fully offline** in `AUTH_MODE=demo`. Only network code: `GoogleIdentityVerifier` (F1), used in `AUTH_MODE=google` only.
 - Every `features/*/openapi.yaml` passes `openapi-spec-validator`.
-- [../STATUS.md](../STATUS.md) current; local commit per task.
+- [STATUS.md](STATUS.md) current; local commit per task.
 
 ## 6. Next (beyond MVP, by value)
 
