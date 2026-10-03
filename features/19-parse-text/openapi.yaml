@@ -1,0 +1,50 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F19 AI parse-text
+  version: 0.1.0-mvp
+  description: Description → suggested observations (keyword rules, PL + EN, offline). Suggestion only.
+servers:
+  - url: http://localhost:8000/api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: ai
+paths:
+  /ai/parse-text:
+    post:
+      tags: [ai]
+      summary: Free text → suggested observations
+      operationId: parseText
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, minLength: 1, maxLength: 1000, examples: ["winda od dwóch tygodni nie działa"] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        feature: { type: string }
+                        label: { type: string }
+                        value: { type: string, enum: ["yes", "no"] }
+                        temporary: { type: boolean }
+                        confidence: { type: number }
+                  model: { type: string, enum: [rules] }
+        "400": { description: VALIDATION_ERROR (empty / too long) }
+        "401": { description: UNAUTHORIZED }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }

@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** F19 parse-text
+- **Task:** F20 similar + routes
 - **Who:** Claude
 - **State:** todo
-- **Next step:** 🟢 domain/text_parse.py + endpoint
-- **Last pytest:** `uv run pytest` → red: F19
+- **Next step:** 🔴 tests /places/{id}/similar, /routes/accessible
+- **Last pytest:** `uv run pytest` → 314 passed, 10 skipped
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -51,10 +51,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F16 | Me: favourites + my reports | Claude | done | e2e 4b-ME/FAV + 404/401 |
 | F17 | Geo search (near/radius/bbox/sort/pages/map), categories, geocode | Claude | done | e2e 1b–1e + 400 |
 | F18 | Report drafts (draft → PATCH → submit) | Claude | done | e2e D1–D3 + 409 |
-| F19 | AI parse-text (rules) | Claude | red | |
+| F19 | AI parse-text (rules) | Claude | done | e2e 4a-TXT + 400 |
 
 ## Log (newest first)
 
+- 2026-10-03 · F19 · done · parse-text rules (PL+EN), endpoint, docs
 - 2026-10-03 · F19 · red · parse-text rule tests
 - 2026-10-03 · F18 · done · drafts: POST draft, PATCH, submit; nullable report fields in SQL
 - 2026-10-03 · F18 · red · drafts tests

@@ -1536,6 +1536,66 @@
         }
       }
     },
+    "/api/v1/ai/parse-text": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Parse Text",
+        "description": "Description → suggested observations (rules, PL + EN, offline). Suggestion only.",
+        "operationId": "parse_text_api_v1_ai_parse_text_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseTextIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseTextOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ai/image-tags": {
       "post": {
         "tags": [
@@ -3750,6 +3810,40 @@
         ],
         "title": "OwnerReports"
       },
+      "ParseTextIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "ParseTextIn"
+      },
+      "ParseTextOut": {
+        "properties": {
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/TextSuggestionOut"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "suggestions",
+          "model"
+        ],
+        "title": "ParseTextOut"
+      },
       "PhotoOut": {
         "properties": {
           "id": {
@@ -4604,6 +4698,37 @@
           "confidence"
         ],
         "title": "TagOut"
+      },
+      "TextSuggestionOut": {
+        "properties": {
+          "feature": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ObservationValue"
+          },
+          "temporary": {
+            "type": "boolean",
+            "title": "Temporary"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature",
+          "label",
+          "value",
+          "temporary",
+          "confidence"
+        ],
+        "title": "TextSuggestionOut"
       },
       "UserOut": {
         "properties": {

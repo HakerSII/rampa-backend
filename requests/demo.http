@@ -110,6 +110,13 @@ Content-Type: application/json
 
 {"photo_ids": ["{{upload.response.body.$.id}}"], "place_id": "plc_mnk"}
 
+### 4a-TXT. AI from text: "winda od dwóch tygodni nie działa" → elevator / no / temporary
+POST {{base}}/ai/parse-text
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"text": "Winda od dwóch tygodni nie działa, ale podjazd jest odśnieżony"}
+
 ### 4b. Anna reports broken elevator → 201, observation_ids[0]
 # @name report
 POST {{base}}/reports
@@ -523,6 +530,13 @@ Authorization: Bearer {{anna}}
 Content-Type: application/json
 
 {"photo_ids": ["{{screenshot.response.body.$.id}}"]}
+
+### 400 VALIDATION_ERROR — parse-text with empty text
+POST {{base}}/ai/parse-text
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"text": ""}
 
 ### 400 VALIDATION_ERROR — AI with unknown photo
 POST {{base}}/ai/image-tags

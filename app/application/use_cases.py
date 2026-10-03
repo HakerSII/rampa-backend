@@ -15,6 +15,7 @@ from app.application.ports import (
 )
 from app.domain import check as domain_check, osm as domain_osm, suggestions, trust, validation
 from app.domain.geo import haversine_m, in_bbox, parse_bbox
+from app.domain.text_parse import TextSuggestion, parse_text
 from app.domain.history import HistoryEvent, build_history
 from app.domain.stats import AdminStats, compute_stats
 from app.domain.verification import Verification, activity_type, summarize
@@ -504,6 +505,13 @@ class UseCases:
             raise Forbidden("history is visible to admins and the place owner")
         queue = [q for q in self.repo.list_queue_items() if q.place_id == place_id]
         return build_history(self.repo.list_observations(place_id), queue)
+
+    def parse_text(self, user: User | None, text: str) -> list[TextSuggestion]:
+        """F19: description → suggested observations (rules). Suggestion only."""
+        self._require_user(user)
+        if not 1 <= len((text or "").strip()) <= MAX_DESCRIPTION:
+            raise ValidationFailed(f"text must have 1..{MAX_DESCRIPTION} characters")
+        return parse_text(text)
 
     # ------------------------------------------------------------------ moderation (F4)
     def list_queue(self, admin: User | None, filter: str = "all", status: str = "open") -> list[QueueItem]:

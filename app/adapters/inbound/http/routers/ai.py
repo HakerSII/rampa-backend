@@ -1,9 +1,8 @@
+from fastapi import APIRouter
 from pydantic import BaseModel
 
-from fastapi import APIRouter
-
 from app.adapters.inbound.http.deps import UC, CurrentUser
-from app.domain.enums import CurrentState, FeatureKey, Severity
+from app.domain.enums import LABELS_PL, CurrentState, FeatureKey, ObservationValue, Severity
 
 router = APIRouter(tags=["ai"])
 
@@ -40,6 +39,31 @@ class ImageTagsOut(BaseModel):
     detected: str
     suggested: SuggestedOut | None
     model: str
+
+
+class ParseTextIn(BaseModel):
+    text: str
+
+
+class TextSuggestionOut(BaseModel):
+    feature: FeatureKey
+    label: str
+    value: ObservationValue
+    temporary: bool
+    confidence: float
+
+
+class ParseTextOut(BaseModel):
+    suggestions: list[TextSuggestionOut]
+    model: str
+
+
+@router.post("/ai/parse-text", response_model=ParseTextOut)
+async def parse_text(body: ParseTextIn, uc: UC, user: CurrentUser):
+    """Description → suggested observations (rules, PL + EN, offline). Suggestion only."""
+    return ParseTextOut(model="rules", suggestions=[
+        TextSuggestionOut(feature=s.feature, label=LABELS_PL[s.feature], value=s.value, temporary=s.temporary,
+                          confidence=s.confidence) for s in uc.parse_text(user, body.text)])
 
 
 @router.post("/ai/image-tags", response_model=ImageTagsOut)

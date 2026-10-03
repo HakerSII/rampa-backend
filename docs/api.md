@@ -117,6 +117,7 @@ Every error has the same shape:
 | GET | `/api/v1/geocode?q=` | — | Search-box suggestions (local index) |
 | PATCH | `/api/v1/reports/{id}` | author | Edit a draft |
 | POST | `/api/v1/reports/{id}/submit` | author | Submit a draft → observation |
+| POST | `/api/v1/ai/parse-text` | user | Free text → suggested observations |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -306,6 +307,22 @@ Body `{ "value": 1 }` or `{ "value": -1 }`. Voting again replaces the previous v
 - `POST /reports/{id}/submit` runs full validation (a 400 message lists missing fields), creates the observation and recomputes the state. Submitting again → 409.
 - Without `draft` (the default) the report is submitted immediately, as in §5.
 - Drafts appear in `GET /me/reports` and are hidden from owner reports and admin stats.
+
+## 5b. AI from text
+
+`POST /api/v1/ai/parse-text {"text": "Winda od dwóch tygodni nie działa, ale podjazd jest odśnieżony"}` →
+
+```json
+{ "suggestions": [
+    { "feature": "elevator", "label": "Winda", "value": "no", "temporary": true, "confidence": 0.8 },
+    { "feature": "ramp", "label": "Podjazd", "value": "yes", "temporary": false, "confidence": 0.8 } ],
+  "model": "rules" }
+```
+- Keyword rules in PL and EN, run offline. The text is split into clauses (`. , ; ! ?`, "ale", "but").
+- Each clause gets features and a polarity: negation ("nie działa", "brak", "zepsuta", "zastawiony" …) → `no`; confirmation ("działa", "naprawiona", "jest" …) → `yes`.
+- "Bez schodów" → step-free entrance `yes`; stairs mentioned → `no` (confidence 0.6).
+- "od …", "remont", "dziś" → `temporary`.
+- It's a **suggestion only** and pre-fills the report form. Text must be 1–1000 characters.
 
 ## 6. Owner (role `owner`)
 
