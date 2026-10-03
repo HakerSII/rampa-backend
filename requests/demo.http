@@ -269,6 +269,14 @@ Content-Type: application/json
 
 {"text": "<img src=x onerror=alert(1)>"}
 
+### F43. Rate limits — response headers show nothing until a limit is hit. To see 429 + Retry-After, send this
+### request more than AI_RATE_LIMIT_PER_MIN (10) times within a minute with the same token.
+POST {{base}}/ai/recommend
+Authorization: Bearer {{ola}}
+Content-Type: application/json
+
+{"query": "kawiarnia w centrum"}
+
 ### F33a. E-mail login: request a code (demo + console mailer → dev_token in the response; mail in the log)
 # @name emailReq
 POST {{base}}/auth/email/request

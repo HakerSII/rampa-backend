@@ -7,7 +7,7 @@
 
 - **State:** todo
 - **Deploy:** **Render**, automatic after every merge to `master` (Docker service `rampa-backend` + `rampa-backend-postgres`); see docs/operations.md; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
-- **Last pytest:** `uv run pytest` → 582 passed, 16 skipped
+- **Last pytest:** `uv run pytest` → 590 passed, 16 skipped
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
@@ -84,10 +84,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F40 | One LLM filter-tool schema (Claude + Gemini), AI_RECOMMENDER=gemini — option A | Claude | done | schema in domain; guard test; e2e unchanged (needs a key, rules path covered by F30a–d) |
 | F41 | Public remote MCP (Streamable HTTP /mcp) as a separate Render service | Claude | done | own env file .mcpenv (gitignored, template .mcpenv.example); verified live: local MCP (HTTP) + .mcpenv → https://rampa-backend.onrender.com → real data; compose env_file |
 | F42 | XSS hardening: input text cleaning, http(s) links, security headers | Claude | done | tests/api/test_xss.py (17); e2e F42a–c; headers + clean text verified |
-| F43 | Rate limits: /ai/* per user + per IP, login per IP (429 + Retry-After) | Claude | red | |
+| F43 | Rate limits: /ai/* per user + per IP, login per IP (429 + Retry-After) | Claude | done | tests/api/test_rate_limits.py (8); e2e unchanged with defaults + F43 request; CORS outermost so 429 reaches browsers |
 
 ## Log (newest first)
 
+- 2026-10-03 · F43 green: rate limits on /ai/* and login
 - 2026-10-03 · F42 green: XSS hardening (clean text, http links, security headers)
 - 2026-10-03 · F41: .mcpenv for the MCP service, verified against Render backend
 - 2026-10-03 · F41 green: remote MCP over HTTP + compose + Render guide (docs/mcp.md)

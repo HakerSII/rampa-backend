@@ -72,6 +72,18 @@ Every error has the same shape:
 | Report `current_state` / `severity` / `nature` | `works·partially_works·not_working` / `critical·obstacle·minor` / `permanent·temporary·unknown` |
 | Role | `guest`, `user`, `owner`, `admin` |
 
+### Rate limits (F43)
+
+| Where | Key | Default | Setting |
+|---|---|---|---|
+| `/api/v1/ai/*` | user (Bearer token; guests: IP) | 10 / min | `AI_RATE_LIMIT_PER_MIN` |
+| `/api/v1/ai/*` | IP | 30 / min | `AI_RATE_LIMIT_PER_IP_PER_MIN` |
+| `POST /api/v1/auth/*` (not logout) | IP | 20 / min | `AUTH_RATE_LIMIT_PER_MIN` |
+| `/public/v1/*` | `X-Api-Key` | 60 / min | `PUBLIC_RATE_LIMIT_PER_MIN` |
+| `POST /auth/email/request` | e-mail address | 3 / 15 min | — |
+
+Exceeded → `429 {"error": {"code": "RATE_LIMITED", …}}` with a `Retry-After` header (seconds), which CORS exposes to the browser. Limits are per process: with several workers the effective limit is the limit × the number of workers. The client IP behind Render comes from `TRUSTED_PROXY_HOPS=1`.
+
 ### Security of text and responses (F42)
 
 - **User text is plain text.** Every string in a JSON request body loses HTML tags, `<`, `>` and control characters before validation; newlines and tabs are kept. Example: `"<script>alert(1)</script>Stromy"` is stored as `"alert(1)Stromy"`. Text that is empty after cleaning fails like empty text (400). The same applies to upload file names and to the image description returned by the AI model.

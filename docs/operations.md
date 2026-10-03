@@ -44,6 +44,7 @@ The backend is **deployed on Render** and **deploys automatically after every me
 - **Configuration:** environment variables in the Render dashboard (service → Environment), same names as `.env.example`. Secrets (`GEMINI_API_KEY`, `DATABASE_URL`, `GOOGLE_CLIENT_ID`) live there only, never in git.
 - **Database migrations:** automatic at start. New tables are created and missing columns added; the log shows `schema: added column …`. An empty database is seeded once.
 - **After a deploy:** open `/health` on the service URL (shown in the Render dashboard). It should return `"storage": "sql", "database": "postgresql"`. Then run `requests/demo.http` against it with `@base` set to the service URL.
+- **Rate limits on Render:** set `TRUSTED_PROXY_HOPS=1`, so limits count the real client IP rather than Render's proxy.
 - **Live OSM on Render:** set `GEOCODER=nominatim` and `ROUTER=osrm` to use Nominatim and OSRM. The Overpass import (`{"source":"overpass"}`) runs only on admin request; every live service falls back to offline data.
 - **Locally, never use the Render internal DB URL** (`dpg-…`): it only resolves inside Render, so a local start hangs on connection retries. Use `REPO_MODE=memory`, local SQLite or Docker.
 
@@ -152,5 +153,6 @@ A test fails if `docs/openapi.json` is stale, so re-export after changing endpoi
 | `port is already allocated` / wrong server answers on 8000 | another process uses 8000 → `API_PORT=8001 docker compose up -d` |
 | Gemini 429 "exceeded your current quota" | the key's free quota is used up; fallback serves mock; wait or use another key/plan |
 | Data differs between two servers | Both must use the same database (`DATABASE_URL`); since F29 each request reloads when another worker committed. Separate SQLite files per container never sync |
+| `429 RATE_LIMITED` on `/ai/*` or login | Wait `Retry-After` seconds, or raise `AI_RATE_LIMIT_*` / `AUTH_RATE_LIMIT_PER_MIN` (`0` = off). Behind Render set `TRUSTED_PROXY_HOPS=1`, otherwise all users share the proxy's IP |
 | `409 CONFLICT` "concurrent update by another worker" | Two workers wrote at the same moment; the later write was dropped. Retry the request |
 | `VIRTUAL_ENV … does not match` warning | another venv is active (e.g. the outer project's); `deactivate` or ignore |

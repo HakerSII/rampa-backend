@@ -290,7 +290,8 @@ It is a **client of the Open API**, not part of the backend process. With in-mem
 | Prompt injection | the model gets only the query and returns only enum filters (forced tool call, unknown values dropped); facts, ranking and reasons come from the DB; image analysis is a suggestion only |
 | Upload abuse | PNG/JPG signature check, size limit, generated file names (no path traversal) |
 | Secrets | `.env` / `.mcpenv` gitignored and dockerignored, keys only in headers, login codes stored as SHA-256 |
-| **Open** | production must not run `AUTH_MODE=demo` (anyone becomes admin with `demo-admin`); no rate limit on `/ai/*`, `/auth/anonymous`, `/auth/email/request` beyond the per-address e-mail limit; the public `demo-key` |
+| Abuse / cost (F43) | rate limits: `/ai/*` per user + per IP, login per IP, Open API per key, login e-mails per address → `429` + `Retry-After` |
+| **Open** | production must not run `AUTH_MODE=demo` (anyone becomes admin with `demo-admin`); the public `demo-key`; limits are per process (in memory) |
 
 ## 9. Design decisions and known limits
 

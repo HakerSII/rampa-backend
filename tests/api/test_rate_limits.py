@@ -66,3 +66,12 @@ def test_limiter_forgets_old_windows():
     t[0] = 61.0
     lim.hit("ip-new")                                             # over max_keys → expired windows dropped
     assert len(lim._windows) == 1
+
+
+def test_429_reaches_the_browser_with_cors_headers(tmp_path):
+    c = app(tmp_path, auth_rate_limit_per_min=1)
+    origin = {"Origin": "https://front.example"}
+    c.post("/api/v1/auth/anonymous", json={}, headers=origin)
+    r = c.post("/api/v1/auth/anonymous", json={}, headers=origin)
+    assert r.status_code == 429 and r.headers["access-control-allow-origin"] == "*"
+    assert "retry-after" in r.headers["access-control-expose-headers"].lower()

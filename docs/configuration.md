@@ -26,6 +26,11 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | **Open API** | | |
 | `PUBLIC_API_KEYS` | `demo-key` | comma list of valid `X-Api-Key` values |
 | `PUBLIC_RATE_LIMIT_PER_MIN` | `60` | requests per minute per key (fixed window, in memory) |
+| **Rate limits (F43)** | | 60 s window, in memory, per process; `0` = off; exceeded → `429` + `Retry-After` |
+| `AI_RATE_LIMIT_PER_MIN` | `10` | `/api/v1/ai/*` per user (Bearer token; guests per IP) |
+| `AI_RATE_LIMIT_PER_IP_PER_MIN` | `30` | `/api/v1/ai/*` per IP (caps many anonymous accounts from one machine) |
+| `AUTH_RATE_LIMIT_PER_MIN` | `20` | login endpoints (`POST /auth/*` except logout) per IP |
+| `TRUSTED_PROXY_HOPS` | `0` | `0` = socket IP (X-Forwarded-For ignored, cannot be spoofed) · **Render: `1`** = the address Render's proxy appended to X-Forwarded-For |
 | **OSM** | | |
 | `OSM_FILE` | `data/osm_krakow_tauron.json` | snapshot used by `POST /admin/imports {"source":"osm_file"}` and as the Overpass fallback |
 | `GEOCODER` | `local` | `local` = place index only (offline, deterministic) · `nominatim` = local places first, then Nominatim hits in Kraków; failure → local |
