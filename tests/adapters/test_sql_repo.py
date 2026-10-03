@@ -122,3 +122,10 @@ def test_adds_missing_columns_to_existing_tables(url):
     r = make(url)  # restart → migration adds column, data still loads
     assert "resolved_at" in {c["name"] for c in inspect(r.repo.engine).get_columns("queue_items")}
     assert len(r.repo.list_places()) == 4
+
+
+def test_favorites_persist(url):
+    uc = make(url)
+    uc.add_favorite(uc.repo.get_user("usr_anna"), "plc_ice")
+    uc.repo.commit()
+    assert make(url).repo.get_user("usr_anna").favorite_place_ids == ["plc_ice"]

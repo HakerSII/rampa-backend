@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** — plan (F11–F15) done
+- **Task:** F16–F23 full plan: F16 me
 - **Who:** Claude
-- **State:** done
-- **Next step:** optional: verify F13 migration on Postgres (containers stopped); push; frontend; Google OAuth client; fresh Gemini quota before demo
-- **Last pytest:** `uv run pytest` → 259 passed, 8 skipped
+- **State:** todo
+- **Next step:** 🟢 favorites + my reports
+- **Last pytest:** `uv run pytest` → red: F16
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -48,9 +48,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F13.1–F13.2 | Admin panel: stats tiles + audit history (+ column migration) | Claude | done | migration verified on SQLite + copy of real rampa.db; PG run pending (containers stopped) |
 | F14.1–F14.2 | +8 features, +6 needs profiles (generic check rules) | Claude | done | e2e 3b–3f + 400 |
 | F15 | Pitch + stage demo script | Claude | done | docs/PITCH.md, docs/DEMO.md |
+| F16 | Me: favourites + my reports | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F16 · red · me/favorites/reports tests
 - 2026-10-03 · F15 · done · docs/PITCH.md (pitch, evidence, Q&A), docs/DEMO.md (stage script, pre-flight, fallbacks)
 - 2026-10-03 · F14 · done · 13 features / 7 groups, 7 needs profiles via rule table, seed extras, AI keywords, specs+docs updated
 - 2026-10-03 · F14 · red · profile rule tests, seeded answers, public check
