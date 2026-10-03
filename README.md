@@ -16,6 +16,7 @@ uv run pytest                                                  # 92 tests, ~2 s,
 uv run python main.py                                          # http://localhost:8000/docs
 ```
 
+- E2E by hand: open `requests/demo.http` (VS Code REST Client) → "Send Request" top → bottom.
 - Demo login: `POST /api/v1/auth/demo {"username": "anna"}` → use `Authorization: Bearer demo-anna`.
 - Reset: `POST /api/v1/admin/demo/reset` with `Bearer demo-admin`.
 - Google mode: `.env` → `AUTH_MODE=google`, `GOOGLE_CLIENT_ID=…`, `ADMIN_EMAILS=…` (see `.env.example`).

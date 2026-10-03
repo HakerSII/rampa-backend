@@ -1,0 +1,189 @@
+### =====================================================================
+### Kraków bez barier — MVP e2e demo (VS Code "REST Client", humao.rest-client)
+###
+### 1. Start server:  uv run python main.py
+### 2. Click "Send Request" above each block, top → bottom (requests pass ids along via @name).
+### 3. Start again any time with step 0 (reset).
+### =====================================================================
+
+@base = http://localhost:8000/api/v1
+@anna = demo-anna
+@jan = demo-jan
+@ola = demo-ola
+@piotr = demo-piotr
+@marek = demo-marek
+@admin = demo-admin
+
+### ---------------------------------------------------------------------
+### 0. Reset demo data (admin) → 204
+POST {{base}}/admin/demo/reset
+Authorization: Bearer {{admin}}
+
+### Demo login (optional — demo tokens are just "demo-<username>") → 200 {token, user}
+POST {{base}}/auth/demo
+Content-Type: application/json
+
+{"username": "anna"}
+
+### Who am I → 200 role=user
+GET {{base}}/me
+Authorization: Bearer {{anna}}
+
+### ---------------------------------------------------------------------
+### 1. Search step-free places → plc_mnk, plc_ice
+GET {{base}}/places?features=step_free_entrance
+
+### Feature dictionary (filters)
+GET {{base}}/accessibility/features
+
+### ---------------------------------------------------------------------
+### 2. Place details
+GET {{base}}/places/plc_mnk
+
+### 2b. Accessibility → elevator: yes (seed, confidence 0.5)
+GET {{base}}/places/plc_mnk/accessibility
+
+### ---------------------------------------------------------------------
+### 3. Can I get in by wheelchair? → answer: yes
+GET {{base}}/places/plc_mnk/check?profile=wheelchair
+
+### ---------------------------------------------------------------------
+### 4a. Anna uploads a photo → 201 {id: ph_…, url}
+# @name upload
+POST {{base}}/uploads
+Authorization: Bearer {{anna}}
+Content-Type: multipart/form-data; boundary=----DemoBoundary
+
+------DemoBoundary
+Content-Disposition: form-data; name="file"; filename="winda.png"
+Content-Type: image/png
+
+< ./winda.png
+------DemoBoundary--
+
+### 4b. Anna reports broken elevator → 201, observation_ids[0]
+# @name report
+POST {{base}}/reports
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{
+  "place_id": "plc_mnk",
+  "element": "elevator",
+  "current_state": "not_working",
+  "severity": "critical",
+  "nature": "temporary",
+  "description": "Winda przy wejściu głównym nieczynna, kartka o awarii.",
+  "photo_ids": ["{{upload.response.body.$.id}}"]
+}
+
+### 4c. Elevator now: no, temporary, confidence 0.6
+GET {{base}}/places/plc_mnk/accessibility
+
+### 4d. Active observations (alerts)
+GET {{base}}/places/plc_mnk/observations?feature=elevator
+Authorization: Bearer {{jan}}
+
+### ---------------------------------------------------------------------
+### 5a. Jan confirms 👍
+POST {{base}}/observations/{{report.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"value": 1}
+
+### 5b. Ola confirms 👍
+POST {{base}}/observations/{{report.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{ola}}
+Content-Type: application/json
+
+{"value": 1}
+
+### 5c. Piotr confirms 👍 → feature_state.confidence 0.9
+POST {{base}}/observations/{{report.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{piotr}}
+Content-Type: application/json
+
+{"value": 1}
+
+### 5d. Check → answer: partial (get in, elevator broken)
+GET {{base}}/places/plc_mnk/check?profile=wheelchair
+
+### ---------------------------------------------------------------------
+### 6a. Marek says the elevator works → 201, creates conflict
+# @name marek
+POST {{base}}/places/plc_mnk/observations
+Authorization: Bearer {{marek}}
+Content-Type: application/json
+
+{"feature": "elevator", "value": "yes", "comment": "Winda działa, sprawdzone rano."}
+
+### 6b. Elevator: still no, validation CONFLICT
+GET {{base}}/places/plc_mnk/accessibility
+
+### 6c. Admin: moderation queue → 1 conflict item
+# @name queue
+GET {{base}}/admin/queue?filter=conflict
+Authorization: Bearer {{admin}}
+
+### 6d. Admin: conflict detail (both observations, votes, photo)
+GET {{base}}/admin/queue/{{queue.response.body.$.items[0].id}}
+Authorization: Bearer {{admin}}
+
+### ---------------------------------------------------------------------
+### 7a. Admin confirms Marek → status approved, elevator yes, confidence 1.0, VALID
+POST {{base}}/admin/queue/{{queue.response.body.$.items[0].id}}/decision
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{
+  "action": "confirm",
+  "winning_observation_id": "{{marek.response.body.$.id}}",
+  "comment": "Sprawdzone telefonicznie z muzeum."
+}
+
+### 7b. Check → answer: yes
+GET {{base}}/places/plc_mnk/check?profile=wheelchair
+
+### 7c. History kept: Anna's observation REJECTED, not deleted (active=false shows all)
+GET {{base}}/places/plc_mnk/observations?feature=elevator&active=false
+
+### =====================================================================
+### Error paths (expected status in title)
+### =====================================================================
+
+### 404 NOT_FOUND — unknown place
+GET {{base}}/places/nope
+
+### 400 VALIDATION_ERROR — unknown feature in filter
+GET {{base}}/places?features=teleporter
+
+### 401 UNAUTHORIZED — report without token
+POST {{base}}/reports
+Content-Type: application/json
+
+{"place_id": "plc_mnk", "element": "ramp", "current_state": "works", "severity": "minor", "nature": "permanent", "description": "x"}
+
+### 401 UNAUTHORIZED — unknown demo user
+POST {{base}}/auth/demo
+Content-Type: application/json
+
+{"username": "daniel"}
+
+### 403 FORBIDDEN — non-admin opens queue
+GET {{base}}/admin/queue
+Authorization: Bearer {{anna}}
+
+### 400 VALIDATION_ERROR — author votes on own observation (run after 4b)
+POST {{base}}/observations/{{report.response.body.$.observation_ids[0]}}/votes
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"value": 1}
+
+### 409 CONFLICT — decide twice on the same item (run after 7a)
+POST {{base}}/admin/queue/{{queue.response.body.$.items[0].id}}/decision
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"action": "reject"}
