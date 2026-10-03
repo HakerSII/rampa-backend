@@ -32,6 +32,7 @@ from app.domain.enums import (
     Nature,
     NeedsProfile,
     ObservationSource,
+    PlaceType,
     ObservationValue,
     QueueStatus,
     Role,
@@ -87,6 +88,7 @@ class PlaceQuery:
     sort: str | None = None
     page: int = 1
     page_size: int = 20
+    place_types: list[str] | None = None
 
 
 @dataclass(slots=True)
@@ -189,6 +191,10 @@ class ImageTagsResult:
     model: str
 
 
+REPORT_VALUE = {CurrentState.WORKS: ObservationValue.YES, CurrentState.PARTIALLY_WORKS: ObservationValue.PARTIAL,
+                CurrentState.NOT_WORKING: ObservationValue.NO}
+
+
 def _enum(enum_cls, value, field: str):
     try:
         return enum_cls(value)
@@ -283,6 +289,7 @@ class UseCases:
                 continue
             if q and q.lower() not in place.name.lower():
                 continue
+            self._refresh_expired(place.id)
             states = self.repo.states_for(place.id)
             if features and not all(f in states and states[f].state == StateValue.YES for f in features):
                 continue
@@ -313,8 +320,13 @@ class UseCases:
         except ValueError as e:
             raise ValidationFailed(str(e)) from e
 
+        types = set(query.place_types or [])
+        for t in types:
+            _enum(PlaceType, t, "place_type")
         items = []
         for p in self.search_places(query.features, query.category, query.q):
+            if types and p.place_type not in types:
+                continue
             distance = round(haversine_m(query.near, p.location)) if query.near else None
             if query.near and distance > (query.radius_m or DEFAULT_RADIUS_M):
                 continue
@@ -357,6 +369,7 @@ class UseCases:
     def get_accessibility(self, place_id: str) -> dict[FeatureKey, FeatureStateRecord]:
         """All MVP features; missing = unknown."""
         self.get_place(place_id)
+        self._refresh_expired(place_id)
         states = self.repo.states_for(place_id)
         return {f: states.get(f) or FeatureStateRecord(place_id, f, StateValue.UNKNOWN) for f in FeatureKey}
 
@@ -476,7 +489,8 @@ class UseCases:
                 result.places_matched += 1
             else:
                 place = Place(self.ids.new("plc_osm"), p.name, domain_osm.map_category(p.category),
-                              GeoPoint(p.lat, p.lon), "Import: OpenStreetMap", external_id=p.external_id)
+                              GeoPoint(p.lat, p.lon), "Import: OpenStreetMap", external_id=p.external_id,
+                              place_type=PlaceType.OTHER)
                 self.repo.add_place(place)
                 result.places_created += 1
             for feature, value in features:
@@ -676,7 +690,7 @@ class UseCases:
         report = self._owned_report(user, report_id)
         if report.owner_status == "approved":
             raise ConflictError("report already approved")
-        value = ObservationValue.YES if report.current_state == CurrentState.WORKS else ObservationValue.NO
+        value = REPORT_VALUE[report.current_state]
         obs = self._new_observation(user, report.place_id, report.element, value,
                                     temporary=report.nature == Nature.TEMPORARY,
                                     comment=f"Potwierdzone przez właściciela: {report.description}", photo_ids=[])
@@ -725,7 +739,7 @@ class UseCases:
             self._own_place(user, str(i.get("place_id")))
             parsed.append((i["place_id"], _enum(FeatureKey, i.get("feature"), "feature"),
                            _enum(ObservationValue, i.get("value"), "value"), bool(i.get("temporary", False)),
-                           str(i.get("comment") or ""), self._check_photos(i.get("photo_ids") or ())))
+                           str(i.get("comment") or ""), self._check_photos(i.get("photo_ids") or ())))  # noqa: E501
         created = [self._new_observation(user, pid, f, v, temporary=t, comment=c, photo_ids=ph)
                    for pid, f, v, t, c, ph in parsed]
         for pid, f in dict.fromkeys((o.place_id, o.feature) for o in created):
@@ -979,8 +993,9 @@ class UseCases:
     def recompute(self, place_id: str, feature: FeatureKey) -> FeatureStateRecord:
         """observations → validation (conflict → queue) → trust → state. Sync block = atomic."""
         observations = self.repo.list_observations(place_id, feature)
+        now = self.clock.now()
         for o in observations:
-            o.confidence = trust.observation_confidence(o)
+            o.confidence = trust.observation_confidence(o, now)
         conflicting = validation.conflicting_observations(observations, self.clock.now())
         item = self.repo.find_open_queue_item(place_id, feature)
         if conflicting:
@@ -992,7 +1007,8 @@ class UseCases:
             else:
                 item = QueueItem(self.ids.new("q"), place_id, feature, self.clock.now(), new_ids)
                 self.repo.add_queue_item(item)
-        state = trust.compute_feature_state(place_id, feature, observations, conflict_open=item is not None)
+        state = trust.compute_feature_state(place_id, feature, observations, conflict_open=item is not None,
+                                            now=now)
         self.repo.save_state(state)
         return state
 
@@ -1082,7 +1098,7 @@ class UseCases:
             raise ValidationFailed(f"missing fields: {', '.join(missing)}")
 
     def _submit(self, user: User, report: Report) -> None:
-        value = ObservationValue.YES if report.current_state == CurrentState.WORKS else ObservationValue.NO
+        value = REPORT_VALUE[report.current_state]
         obs = self._new_observation(user, report.place_id, report.element, value,
                                     temporary=report.nature == Nature.TEMPORARY, comment=report.description,
                                     photo_ids=report.photo_ids, report_id=report.id)
@@ -1101,15 +1117,38 @@ class UseCases:
 
     def add_observation(self, user: User | None, place_id: str, *, feature: str, value: str,
                         temporary: bool = False, comment: str = "",
-                        photo_ids: list[str] | tuple = ()) -> Observation:
+                        photo_ids: list[str] | tuple = (), valid_until: str | datetime | None = None) -> Observation:
         self._require_user(user)
         self.get_place(place_id)
         feature_v = _enum(FeatureKey, feature, "feature")
         value_v = _enum(ObservationValue, value, "value")
-        obs = self._new_observation(user, place_id, feature_v, value_v, temporary=temporary,
+        until = self._parse_valid_until(valid_until)
+        obs = self._new_observation(user, place_id, feature_v, value_v, temporary=temporary or until is not None,
                                     comment=comment, photo_ids=self._check_photos(photo_ids))
+        obs.valid_until = until
         self.recompute(place_id, feature_v)
         return obs
+
+    def _parse_valid_until(self, raw: str | datetime | None) -> datetime | None:
+        if raw in (None, ""):
+            return None
+        try:
+            until = raw if isinstance(raw, datetime) else datetime.fromisoformat(str(raw))
+        except ValueError as e:
+            raise ValidationFailed("valid_until must be an ISO date-time") from e
+        if until.tzinfo is None:
+            until = until.replace(tzinfo=self.clock.now().tzinfo)
+        if until <= self.clock.now():
+            raise ValidationFailed("valid_until must be in the future")
+        return until
+
+    def _refresh_expired(self, place_id: str) -> None:
+        """Temporary issues past valid_until stop counting: recompute their features lazily on read."""
+        now = self.clock.now()
+        for feature, state in self.repo.states_for(place_id).items():
+            obs = self.repo.get_observation(state.active_observation_id) if state.active_observation_id else None
+            if obs and obs.valid_until and obs.valid_until <= now:
+                self.recompute(place_id, feature)
 
     def list_observations(self, place_id: str, feature: FeatureKey | None = None,
                           active: bool = True) -> list[Observation]:

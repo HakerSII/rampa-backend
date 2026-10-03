@@ -48,7 +48,7 @@ places = Table("places", md, Column("id", String, primary_key=True), Column("seq
                Column("category", String), Column("lat", Float), Column("lon", Float),
                Column("short_description", String), Column("address", String), Column("owner_id", String),
                Column("external_id", String), Column("opening_hours", JSON), Column("contact", JSON),
-               Column("photo_ids", JSON))
+               Column("photo_ids", JSON), Column("place_type", String))
 states = Table("feature_states", md, Column("place_id", String, primary_key=True),
                Column("feature", String, primary_key=True), Column("state", String), Column("confidence", Float),
                Column("temporary", Boolean), Column("last_verified", String), Column("sources_count", Integer),
@@ -58,7 +58,7 @@ observations = Table("observations", md, Column("id", String, primary_key=True),
                      Column("source", String), Column("author_id", String), Column("created_at", String),
                      Column("temporary", Boolean), Column("comment", String), Column("evidence_ids", JSON),
                      Column("votes", JSON), Column("validation", String), Column("confidence", Float),
-                     Column("report_id", String), Column("flag_reason", String))
+                     Column("report_id", String), Column("flag_reason", String), Column("valid_until", String))
 reports = Table("reports", md, Column("id", String, primary_key=True), Column("seq", Integer),
                 Column("place_id", String), Column("author_id", String), Column("element", String),
                 Column("current_state", String), Column("severity", String), Column("nature", String),
@@ -152,7 +152,7 @@ class SqlRepo(InMemoryRepo):
             yield places, dict(id=p.id, seq=i, name=p.name, category=p.category, lat=p.location.lat,
                                lon=p.location.lon, short_description=p.short_description, address=p.address,
                                owner_id=p.owner_id, external_id=p.external_id, opening_hours=list(p.opening_hours),
-                               contact=dict(p.contact), photo_ids=list(p.photo_ids))
+                               contact=dict(p.contact), photo_ids=list(p.photo_ids), place_type=p.place_type)
         for by_feature in self.states.values():
             for s in by_feature.values():
                 yield states, dict(place_id=s.place_id, feature=str(s.feature), state=str(s.state),
@@ -164,7 +164,7 @@ class SqlRepo(InMemoryRepo):
                                      source=str(o.source), author_id=o.author_id, created_at=_iso(o.created_at),
                                      temporary=o.temporary, comment=o.comment, evidence_ids=list(o.evidence_ids),
                                      votes=dict(o.votes), validation=str(o.validation), confidence=o.confidence,
-                                     report_id=o.report_id, flag_reason=o.flag_reason)
+                                     report_id=o.report_id, flag_reason=o.flag_reason, valid_until=_iso(o.valid_until))
         for i, r in enumerate(self.reports.values()):
             yield reports, dict(id=r.id, seq=i, place_id=r.place_id, author_id=r.author_id, element=_s(r.element),
                                 current_state=_s(r.current_state), severity=_s(r.severity), nature=_s(r.nature),
@@ -199,7 +199,7 @@ class SqlRepo(InMemoryRepo):
                 self.places[r["id"]] = Place(r["id"], r["name"], r["category"], GeoPoint(r["lat"], r["lon"]),
                                              r["short_description"], r["address"], r["owner_id"], r["external_id"],
                                              list(r["opening_hours"] or []), dict(r["contact"] or {}),
-                                             list(r["photo_ids"] or []))
+                                             list(r["photo_ids"] or []), r["place_type"] or "venue")
             for r in rows(states):
                 s = FeatureStateRecord(r["place_id"], FeatureKey(r["feature"]), StateValue(r["state"]),
                                        r["confidence"], r["temporary"], _dt(r["last_verified"]), r["sources_count"],
@@ -210,7 +210,7 @@ class SqlRepo(InMemoryRepo):
                     r["id"], r["place_id"], FeatureKey(r["feature"]), ObservationValue(r["value"]),
                     ObservationSource(r["source"]), r["author_id"], _dt(r["created_at"]), r["temporary"],
                     r["comment"], list(r["evidence_ids"]), dict(r["votes"]), ValidationStatus(r["validation"]),
-                    r["confidence"], r["report_id"], r["flag_reason"])
+                    r["confidence"], r["report_id"], r["flag_reason"], _dt(r["valid_until"]))
             for r in rows(reports):
                 self.reports[r["id"]] = Report(
                     r["id"], r["place_id"], r["author_id"], _e(FeatureKey, r["element"]),

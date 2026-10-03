@@ -73,11 +73,13 @@ async def search_places(uc: UC, features: Annotated[str | None, Query()] = None,
                         category: str | None = None, q: str | None = None,
                         lat: float | None = None, lon: float | None = None, radius_m: int | None = None,
                         bbox: str | None = None, sort: str | None = None,
-                        page: int = 1, page_size: int = 20, view: Literal["list", "map"] = "list"):
+                        page: int = 1, page_size: int = 20, view: Literal["list", "map"] = "list",
+                        place_type: str | None = None):
     if (lat is None) != (lon is None):
         raise ValidationFailed("lat and lon must be given together")
     query = PlaceQuery(parse_features(features), category, q, GeoPoint(lat, lon) if lat is not None else None,
-                       radius_m, bbox, sort, page, page_size)
+                       radius_m, bbox, sort, page, page_size,
+                       [t.strip() for t in place_type.split(",") if t.strip()] if place_type else None)
     if view == "map":
         markers = [MapMarker(id=p.id, name=p.name, location=Location(lat=p.location.lat, lon=p.location.lon),
                              category=p.category, marker=m) for p, m in uc.map_markers(query)]

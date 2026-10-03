@@ -39,7 +39,7 @@ paths:
                       properties:
                         feature: { type: string }
                         label: { type: string }
-                        value: { type: string, enum: ["yes", "no"] }
+                        value: { type: string, enum: ["yes", partial, "no"] }
                         temporary: { type: boolean }
                         confidence: { type: number }
                   model: { type: string, enum: [rules] }

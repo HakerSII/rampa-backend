@@ -14,7 +14,8 @@ def is_active(o: Observation) -> bool:
 
 def conflicting_observations(observations: list[Observation], now: datetime) -> list[Observation]:
     window = [o for o in observations
-              if is_active(o) and o.created_at >= now - CONFLICT_WINDOW]
+              if is_active(o) and o.created_at >= now - CONFLICT_WINDOW
+              and not (o.valid_until and o.valid_until <= now)]
     if len({o.value for o in window}) >= 2 and len({o.author_id for o in window}) >= 2:
         return window
     return []

@@ -67,6 +67,33 @@ GET {{base}}/routes/accessible?from=plc_mnk&to=plc_urzad&profile=blind
 ### 404 NOT_FOUND — route from unknown place
 GET {{base}}/routes/accessible?from=nowhere&to=plc_urzad
 
+### 1i. Filter by place type (venue / shop / public_transport_stop / platform / parking / office / …)
+GET {{base}}/places?place_type=office
+
+### 1j. "Partially accessible": Jan reports ICE entrance works only partly (value partial)
+POST {{base}}/places/plc_ice/observations
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"feature": "ramp", "value": "partial", "comment": "Podjazd jest, ale stromy"}
+
+### 1k. Temporary issue with end date: lift on ICE closed until tomorrow (valid_until)
+POST {{base}}/places/plc_ice/observations
+Authorization: Bearer {{ola}}
+Content-Type: application/json
+
+{"feature": "platform_elevator", "value": "no", "temporary": true, "valid_until": "2099-01-01T00:00:00+00:00"}
+
+### 400 VALIDATION_ERROR — valid_until in the past
+POST {{base}}/places/plc_ice/observations
+Authorization: Bearer {{ola}}
+Content-Type: application/json
+
+{"feature": "platform_elevator", "value": "no", "valid_until": "2000-01-01T00:00:00+00:00"}
+
+### 400 VALIDATION_ERROR — unknown place type
+GET {{base}}/places?place_type=spaceport
+
 ### Feature dictionary (filters)
 GET {{base}}/accessibility/features
 
@@ -574,7 +601,7 @@ Content-Type: application/json
 GET {{public}}/places?q=tauron
 X-Api-Key: {{apiKey}}
 
-### I2. Admin imports OSM → 18 points, 10 places created, 7 unnamed skipped
+### I2. Admin imports OSM → 18 points, 11 places created (wheelchair=limited → partial), 7 unnamed skipped
 POST {{base}}/admin/imports
 Authorization: Bearer {{admin}}
 Content-Type: application/json

@@ -30,12 +30,14 @@ class FeatureGroupKey(StrEnum):
 
 class StateValue(StrEnum):
     YES = "yes"
+    PARTIAL = "partial"
     NO = "no"
     UNKNOWN = "unknown"
 
 
 class ObservationValue(StrEnum):
     YES = "yes"
+    PARTIAL = "partial"
     NO = "no"
 
 
@@ -79,7 +81,19 @@ class Role(StrEnum):
 
 class CurrentState(StrEnum):
     WORKS = "works"
+    PARTIALLY_WORKS = "partially_works"
     NOT_WORKING = "not_working"
+
+
+class PlaceType(StrEnum):
+    VENUE = "venue"
+    SHOP = "shop"
+    PUBLIC_TRANSPORT_STOP = "public_transport_stop"
+    PLATFORM = "platform"
+    PARKING = "parking"
+    OFFICE = "office"
+    STREET_SEGMENT = "street_segment"
+    OTHER = "other"
 
 
 class Severity(StrEnum):

@@ -67,6 +67,7 @@ class Place:
     opening_hours: list[dict] = field(default_factory=list)  # [{days, open, close} | {days, closed: True}]
     contact: dict = field(default_factory=dict)  # {phone, website, email}
     photo_ids: list[str] = field(default_factory=list)  # owner/presentation photos
+    place_type: str = "venue"  # PlaceType value
 
 
 @dataclass(slots=True)
@@ -86,6 +87,7 @@ class Observation:
     confidence: float = 0.0
     report_id: str | None = None
     flag_reason: str | None = None  # set when validation == FLAGGED
+    valid_until: datetime | None = None  # temporary issue end; after it the observation no longer counts
 
     @property
     def up_votes(self) -> int:

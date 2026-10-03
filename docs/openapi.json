@@ -545,6 +545,22 @@
               "default": "list",
               "title": "View"
             }
+          },
+          {
+            "name": "place_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Place Type"
+            }
           }
         ],
         "responses": {
@@ -4300,6 +4316,17 @@
             "title": "Photo Ids",
             "default": []
           },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
           "place_id": {
             "type": "string",
             "title": "Place Id"
@@ -4520,6 +4547,7 @@
         "type": "string",
         "enum": [
           "works",
+          "partially_works",
           "not_working"
         ],
         "title": "CurrentState"
@@ -5372,6 +5400,17 @@
             "type": "array",
             "title": "Photo Ids",
             "default": []
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
           }
         },
         "type": "object",
@@ -5458,6 +5497,17 @@
           "created_at": {
             "type": "string",
             "title": "Created At"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
           }
         },
         "type": "object",
@@ -5493,6 +5543,7 @@
         "type": "string",
         "enum": [
           "yes",
+          "partial",
           "no"
         ],
         "title": "ObservationValue"
@@ -5954,6 +6005,11 @@
             ],
             "title": "Distance M"
           },
+          "place_type": {
+            "type": "string",
+            "title": "Place Type",
+            "default": "venue"
+          },
           "short_description": {
             "type": "string",
             "title": "Short Description"
@@ -6130,6 +6186,11 @@
               }
             ],
             "title": "Distance M"
+          },
+          "place_type": {
+            "type": "string",
+            "title": "Place Type",
+            "default": "venue"
           }
         },
         "type": "object",
@@ -6200,7 +6261,14 @@
       "PublicFeature": {
         "properties": {
           "value": {
-            "type": "boolean",
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string"
+              }
+            ],
             "title": "Value"
           },
           "temporary": {
@@ -7014,6 +7082,7 @@
         "type": "string",
         "enum": [
           "yes",
+          "partial",
           "no",
           "unknown"
         ],

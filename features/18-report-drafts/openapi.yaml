@@ -51,7 +51,7 @@ components:
       type: object
       properties:
         element: { type: string }
-        current_state: { type: string, enum: [works, not_working] }
+        current_state: { type: string, enum: [works, partially_works, not_working] }
         severity: { type: string, enum: [critical, obstacle, minor] }
         nature: { type: string, enum: [permanent, temporary, unknown] }
         description: { type: string, maxLength: 1000 }

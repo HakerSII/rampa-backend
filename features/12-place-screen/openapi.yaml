@@ -85,7 +85,7 @@ components:
         label: { type: string, examples: ["Zgłoszono utrudnienie"] }
         observation_id: { type: string }
         feature: { type: string }
-        value: { type: string, enum: ["yes", "no"] }
+        value: { type: string, enum: ["yes", partial, "no"] }
         source: { type: string }
         author: { $ref: "#/components/schemas/Author" }
         comment: { type: string }

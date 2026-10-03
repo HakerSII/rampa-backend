@@ -136,7 +136,7 @@ components:
       enum: [entrance, inside, toilet, hearing, vision, mobility, other]
     FeatureStateValue:
       type: string
-      enum: ["yes", "no", unknown]
+      enum: ["yes", partial, "no", unknown]
       description: Full enum also has partial (cut in MVP)
     ObservationSource:
       type: string

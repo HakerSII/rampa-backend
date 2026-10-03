@@ -64,6 +64,8 @@ def check_place(place_id: str, states: dict[F, FeatureStateRecord], profile: P,
         used = required_yes + downgrades
         broken = any(s.state == StateValue.NO for s in downgrades)
         answer = CheckAnswer.PARTIAL if broken else CheckAnswer.YES
+    elif any(s.state == StateValue.PARTIAL for s in required):
+        used, answer = [s for s in required if s.state == StateValue.PARTIAL], CheckAnswer.PARTIAL
     elif required:
         used, answer = required, CheckAnswer.NO
     else:

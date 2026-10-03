@@ -63,6 +63,7 @@ class PlaceSummary(BaseModel):
     accessibility_summary: list[FeatureKey]
     verification: VerificationOut | None = None
     distance_m: int | None = None
+    place_type: str = "venue"
 
 
 class PlaceOut(PlaceSummary):
@@ -147,6 +148,7 @@ def place_summary(place: Place, yes_features: list[FeatureKey], verification=Non
                   distance: int | None = None) -> PlaceSummary:
     return PlaceSummary(
         distance_m=distance,
+        place_type=place.place_type,
         verification=verification_out(verification) if verification else None,
         id=place.id, name=place.name,
         category=Category(key=place.category, label=CATEGORY_LABELS.get(place.category, place.category)),
@@ -248,6 +250,7 @@ class ObservationIn(BaseModel):
     temporary: bool = False
     comment: str = ""
     photo_ids: list[str] = []
+    valid_until: str | None = None  # ISO date-time; temporary issue end (future)
 
 
 class VotesOut(BaseModel):
@@ -276,6 +279,7 @@ class ObservationOut(BaseModel):
     validation: ValidationOut
     confidence: float
     created_at: str
+    valid_until: str | None = None
 
 
 class ObservationList(BaseModel):
@@ -310,7 +314,7 @@ def observation_out(uc, o: Observation, me: User | None = None) -> ObservationOu
         evidence=[photo_out(p) for p in photos],
         votes=VotesOut(up=o.up_votes, down=o.down_votes, my_vote=o.votes.get(me.id) if me else None),
         validation=ValidationOut(status=o.validation, reason=reason),
-        confidence=o.confidence, created_at=iso(o.created_at),
+        confidence=o.confidence, created_at=iso(o.created_at), valid_until=iso(o.valid_until),
     )
 
 

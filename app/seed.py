@@ -21,6 +21,7 @@ DEMO_USERS = [
 ]
 
 OWNED_BY_EWA = {"plc_mnk", "plc_camelot"}
+PLACE_TYPES = {"plc_urzad": "office"}
 
 PLACES = [
     (Place("plc_mnk", "Muzeum Narodowe w Krakowie", "museum", GeoPoint(50.0603, 19.9238),
@@ -58,7 +59,7 @@ def load_seed(repo: Repo, clock: Clock, ids: IdGenerator, recompute) -> None:
     created = clock.now() - timedelta(days=60)
     for template, features in PLACES:
         place = replace(template, owner_id="usr_ewa" if template.id in OWNED_BY_EWA else None,  # copy: no shared state
-                        opening_hours=[], contact={}, photo_ids=[])
+                        opening_hours=[], contact={}, photo_ids=[], place_type=PLACE_TYPES.get(template.id, "venue"))
         repo.add_place(place)
         for feature, value in features.items():
             repo.add_observation(Observation(
