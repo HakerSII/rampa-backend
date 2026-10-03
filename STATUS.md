@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** — F10 done, live-verified
+- **Task:** — docs done
 - **Who:** Claude
 - **State:** done
-- **Next step:** demo polish / push
-- **Last pytest:** `uv run pytest` → 192 passed
+- **Next step:** push; demo polish
+- **Last pytest:** `uv run pytest` → 198 passed
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -46,6 +46,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 
 ## Log (newest first)
 
+- 2026-10-03 · DOCS · docs/ (README, architecture, api, configuration, operations, openapi.json) + export script + docs tests; 198 passed
 - 2026-10-03 · F10 · live · key in .env (gitignored), model gemini-3.8-flash, retry 429/5xx, prompt vocab, physical/mobility → critical; 192 passed
 - 2026-10-03 · F10 · done · Gemini REST adapter (httpx, key in header), config GEMINI_*, fallback to mock; 188 passed
 - 2026-10-03 · F10 · red · Gemini adapter tests (MockTransport)
