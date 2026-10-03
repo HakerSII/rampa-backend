@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Query, Response
 from pydantic import BaseModel
 
-from app.adapters.inbound.http.deps import UC, CurrentUser
+from app.adapters.inbound.http.deps import UC, CurrentUser, OptionalUser
 from app.adapters.inbound.http.schemas import (
     CATEGORY_LABELS,
     AccessibilityOut,
@@ -70,24 +70,36 @@ class GeocodeOut(BaseModel):
     location: Location
 
 
+def parse_profiles(raw: str | None) -> list[NeedsProfile]:
+    try:
+        return [NeedsProfile(p.strip()) for p in (raw or "").split(",") if p.strip()]
+    except ValueError as e:
+        raise ValidationFailed(f"invalid profile: {raw}") from e
+
+
 @router.get("/places", response_model=PlacePage | MapMarkers, tags=["places"])
 async def search_places(uc: UC, features: Annotated[str | None, Query()] = None,
                         category: str | None = None, q: str | None = None,
                         lat: float | None = None, lon: float | None = None, radius_m: int | None = None,
                         bbox: str | None = None, sort: str | None = None,
                         page: int = 1, page_size: int = 20, view: Literal["list", "map"] = "list",
-                        place_type: str | None = None):
+                        place_type: str | None = None, profile: str | None = None,
+                        me: OptionalUser = None):
     if (lat is None) != (lon is None):
         raise ValidationFailed("lat and lon must be given together")
     query = PlaceQuery(parse_features(features), category, q, GeoPoint(lat, lon) if lat is not None else None,
                        radius_m, bbox, sort, page, page_size,
-                       [t.strip() for t in place_type.split(",") if t.strip()] if place_type else None)
+                       [t.strip() for t in place_type.split(",") if t.strip()] if place_type else None,
+                       parse_profiles(profile) or (uc.get_needs_profile(me)[0] if me else None) or None)
     if view == "map":
         markers = [MapMarker(id=p.id, name=p.name, location=Location(lat=p.location.lat, lon=p.location.lon),
                              category=p.category, marker=m) for p, m in uc.map_markers(query)]
         return MapMarkers(total=len(markers), items=markers)
     r = uc.find_places(query)
     items = [place_summary(p, uc.yes_features(p.id), uc.verification_for(p.id), d) for p, d in r.items]
+    if query.profiles:  # F31: how well each place fits the profile
+        for item in items:
+            item.match = uc.place_match(item.id, query.profiles)
     return PlacePage(items=items, page=r.page, page_size=r.page_size, total=r.total)
 
 
@@ -233,3 +245,34 @@ async def accessible_route(uc: UC, to: str, origin: Annotated[str, Query(alias="
 @router.get("/accessibility/features", response_model=list[FeatureDictGroup], tags=["dictionaries"])
 async def list_features():
     return feature_dictionary()
+
+
+# ---------------------------------------------------------------- F37 city
+class CityAreaOut(BaseModel):
+    key: str
+    center: Location
+    radius_m: int
+
+
+class CityGroupOut(BaseModel):
+    key: str
+    categories: list[str]
+
+
+class CityOut(BaseModel):
+    name: str
+    center: Location
+    viewbox: list[float]
+    areas: list[CityAreaOut]
+    category_groups: list[CityGroupOut]
+
+
+@router.get("/city", response_model=CityOut, tags=["dictionaries"])
+async def city(uc: UC):
+    """Configured city (CITY_CONFIG): map centre and box, named areas, category groups."""
+    c = uc.city
+    return CityOut(name=c.name, center=Location(lat=c.center.lat, lon=c.center.lon), viewbox=list(c.viewbox),
+                   areas=[CityAreaOut(key=k, center=Location(lat=a.center.lat, lon=a.center.lon), radius_m=a.radius_m)
+                          for k, a in c.areas.items()],
+                   category_groups=[CityGroupOut(key=k, categories=list(g.categories))
+                                    for k, g in c.category_groups.items()])

@@ -1,0 +1,64 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F31 Needs profile + best match
+  version: 0.1.0-mvp
+  description: >
+    The user's needs (never diagnoses) stored on the server; places sorted by how well they fit them.
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: me
+  - name: places
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+  schemas:
+    NeedsProfile:
+      type: object
+      properties:
+        needs:
+          type: array
+          maxItems: 10
+          items: { type: string, enum: [wheelchair, crutches, stroller, blind, low_vision, deaf, assistance_dog] }
+        features: { type: array, maxItems: 10, items: { type: string, description: FeatureKey } }
+paths:
+  /me/profile:
+    get:
+      tags: [me]
+      summary: My needs profile
+      operationId: getNeedsProfile
+      security: [{ bearer: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/NeedsProfile" } } } }
+        "401": { description: UNAUTHORIZED }
+    put:
+      tags: [me]
+      summary: Replace my needs profile (empty lists clear it)
+      operationId: setNeedsProfile
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/NeedsProfile" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/NeedsProfile" } } } }
+        "400": { description: "VALIDATION_ERROR (unknown need / feature, more than 10)" }
+        "401": { description: UNAUTHORIZED }
+    delete:
+      tags: [me]
+      summary: Delete my needs profile
+      operationId: deleteNeedsProfile
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { description: UNAUTHORIZED }
+  /places:
+    get:
+      tags: [places]
+      summary: "Search places; sort=best_match uses profile= or the stored needs profile"
+      operationId: searchPlacesBestMatch
+      parameters:
+        - { name: sort, in: query, schema: { type: string, enum: [nearest, name, recently_verified, best_match] } }
+        - { name: profile, in: query, schema: { type: string }, description: "CSV of needs, e.g. wheelchair,blind" }
+      responses:
+        "200": { description: "Items get match: yes | partial | unknown | no when a profile is known" }
+        "400": { description: "VALIDATION_ERROR (best_match without any profile, unknown profile)" }

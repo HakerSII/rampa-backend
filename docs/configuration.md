@@ -31,7 +31,16 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `GEOCODER` | `local` | `local` = place index only (offline, deterministic) · `nominatim` = local places first, then Nominatim hits in Kraków; failure → local |
 | `NOMINATIM_URL` | `https://nominatim.openstreetmap.org/search` | Nominatim search endpoint |
 | `OVERPASS_URL` | `https://overpass-api.de/api/interpreter` | used by `POST /admin/imports {"source":"overpass"}`; failure / empty → `OSM_FILE` |
-| `OSM_CENTER_LAT`, `OSM_CENTER_LON`, `OSM_RADIUS_M` | `50.0647`, `19.945`, `1500` | Overpass search area (Rynek Główny) |
+| `CITY_CONFIG` | `data/cities/krakow.json` | city JSON (F37): name, `viewbox`, `center`, `osm_radius_m`, named `areas` with keywords, `category_groups` with categories + keywords. Invalid file → the app does not start |
+| `OSM_CENTER_LAT`, `OSM_CENTER_LON`, `OSM_RADIUS_M` | from the city file | override the Overpass search area |
+| `EMAIL_LOGIN` | `true` | `POST /auth/email/request` + `/verify` (any `AUTH_MODE`) |
+| `MAILER` | `console` | `console` = mail written to the log (with `AUTH_MODE=demo` the code is also returned as `dev_token`) · `smtp` = real e-mail |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | —, `587`, —, — | SMTP server (STARTTLS); **password is a secret** |
+| `MAIL_FROM` | `noreply@rampa.local` | sender address |
+| `EMAIL_LINK_URL` | — | front-end page taking `?token=`; empty → the mail contains only the code |
+| `AI_RECOMMENDER` | `rules` | `POST /ai/recommend` interpreter: `rules` (offline, PL+EN keywords) · `claude` (Claude API, forced tool call; facts never from the model). Failure → rules |
+| `ANTHROPIC_API_KEY` | — | **secret**; needed for `AI_RECOMMENDER=claude` |
+| `CLAUDE_MODEL` | `claude-sonnet-5-5` | model for the recommender (compare with `claude-opus-5-5` on the test queries) |
 | `ROUTER` | `straight` | `GET /routes/accessible` path: `straight` = straight-line heuristic (offline) · `osrm` = walking path from OSRM; failure → straight |
 | `OSRM_URL` | `https://routing.openstreetmap.de/routed-foot` | OSRM server with a `foot` profile (FOSSGIS) |
 | `EXTERNAL_TIMEOUT_S` | `10` | timeout for Nominatim (Overpass: at least 25 s) |

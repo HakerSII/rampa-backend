@@ -6,6 +6,7 @@ from app.domain.enums import FeatureKey, ObservationValue
 
 UNNAMED = "Brak nazwy"
 MATCH_RADIUS_M = 50.0
+DOG = {"yes": ObservationValue.YES, "leashed": ObservationValue.YES, "no": ObservationValue.NO}
 YES_NO = {"yes": ObservationValue.YES, "limited": ObservationValue.PARTIAL, "no": ObservationValue.NO}
 
 
@@ -17,6 +18,8 @@ class OsmPoint:
     category: str
     lat: float
     lon: float
+    changing_table: str = ""  # F32 OSM changing_table=yes|no
+    dog: str = ""             # F32 OSM dog=yes|leashed|no
 
     @property
     def external_id(self) -> str:
@@ -29,6 +32,10 @@ def map_features(p: OsmPoint) -> list[tuple[FeatureKey, ObservationValue]]:
         result.append((FeatureKey.STEP_FREE_ENTRANCE, YES_NO[p.wheelchair]))
     if p.toilet in YES_NO:
         result.append((FeatureKey.ACCESSIBLE_TOILET, YES_NO[p.toilet]))
+    if p.changing_table in ("yes", "no"):
+        result.append((FeatureKey.BABY_CHANGING_TABLE, YES_NO[p.changing_table]))
+    if p.dog in DOG:
+        result.append((FeatureKey.PETS_ALLOWED, DOG[p.dog]))
     return result
 
 

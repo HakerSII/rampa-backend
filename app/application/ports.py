@@ -6,8 +6,11 @@ from typing import Protocol
 
 from app.domain.enums import FeatureKey
 from app.domain.osm import OsmPoint
+from app.domain.recommend import Intent
 from app.domain.route import RoutePath
 from app.domain.model import (
+    Notification,
+    Question,
     GeoPoint,
     GeocodeHit,
     FeatureStateRecord,
@@ -74,6 +77,11 @@ class Repo(Protocol):
         ...
 
     # ownership requests
+    def add_notification(self, n: Notification) -> None: ...
+    def list_notifications(self, user_id: str) -> list[Notification]: ...
+    def add_question(self, q: Question) -> None: ...
+    def get_question(self, question_id: str) -> Question | None: ...
+    def list_questions(self) -> list[Question]: ...
     def add_ownership_request(self, req: OwnershipRequest) -> None: ...
     def get_ownership_request(self, req_id: str) -> OwnershipRequest | None: ...
     def list_ownership_requests(self) -> list[OwnershipRequest]: ...
@@ -110,6 +118,22 @@ class OsmSource(Protocol):
 class WalkingRouter(Protocol):
     async def walk(self, a: GeoPoint, b: GeoPoint) -> RoutePath | None:
         """Walking path; None = no route; raise on failure (use case falls back to the straight line)."""
+        ...
+
+
+class QueryInterpreter(Protocol):
+    model: str
+
+    async def interpret(self, query: str) -> Intent:
+        """Query → needs + filters only (never facts). Raise on failure → rules."""
+        ...
+
+
+class Mailer(Protocol):
+    name: str
+
+    async def send(self, to: str, subject: str, text: str) -> None:
+        """Raise on failure."""
         ...
 
 

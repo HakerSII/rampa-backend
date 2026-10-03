@@ -10,7 +10,6 @@ from app.domain.osm import OsmPoint
 
 log = logging.getLogger(__name__)
 
-KRAKOW_VIEWBOX = "19.79,50.13,20.22,49.97"  # lon1,lat1,lon2,lat2
 CATEGORY_TAGS = ("amenity", "tourism", "shop", "leisure", "office", "public_transport")
 
 
@@ -29,14 +28,16 @@ class _LazyClient:
 
 
 class NominatimGeocoder(_LazyClient):
-    def __init__(self, url: str, user_agent: str, *, timeout_s: float = 10.0, viewbox: str = KRAKOW_VIEWBOX,
+    def __init__(self, url: str, user_agent: str, *, timeout_s: float = 10.0, viewbox: str = "",
                  transport: httpx.AsyncBaseTransport | None = None):
         super().__init__(user_agent, timeout_s, transport)
-        self.url, self.viewbox = url, viewbox
+        self.url, self.viewbox = url, viewbox  # lon1,lat1,lon2,lat2 from the city config (F37); "" = unbounded
 
     async def search(self, q: str) -> list[GeocodeHit]:
-        r = await self.client.get(self.url, params={"q": q, "format": "jsonv2", "limit": 5,
-                                                    "viewbox": self.viewbox, "bounded": 1})
+        params = {"q": q, "format": "jsonv2", "limit": 5}
+        if self.viewbox:
+            params |= {"viewbox": self.viewbox, "bounded": 1}
+        r = await self.client.get(self.url, params=params)
         r.raise_for_status()
         return [GeocodeHit(row.get("display_name") or q, None, GeoPoint(float(row["lat"]), float(row["lon"])))
                 for row in r.json() if row.get("lat") is not None and row.get("lon") is not None]
@@ -64,7 +65,8 @@ class OverpassOsmSource(_LazyClient):
             tags = el.get("tags", {})
             category = next((tags[t] for t in CATEGORY_TAGS if tags.get(t)), "inne")
             points.append(OsmPoint(tags.get("name", ""), tags.get("wheelchair", ""),
-                                   tags.get("toilets:wheelchair", ""), category, float(geo["lat"]), float(geo["lon"])))
+                                   tags.get("toilets:wheelchair", ""), category, float(geo["lat"]), float(geo["lon"]),
+                                   tags.get("changing_table", ""), tags.get("dog", "")))
         return points
 
 

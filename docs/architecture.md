@@ -25,7 +25,7 @@ flowchart TB
     end
     subgraph CORE[Application + domain]
         UC[application/use_cases.py<br/>UseCases]
-        PORTS[application/ports.py<br/>Repo · Clock · IdGenerator · FileStorage<br/>IdentityVerifier · VisionAnalyzer · OsmSource<br/>Geocoder · WalkingRouter]
+        PORTS[application/ports.py<br/>Repo · Clock · IdGenerator · FileStorage<br/>IdentityVerifier · VisionAnalyzer · OsmSource<br/>Geocoder · WalkingRouter · QueryInterpreter · Mailer]
         DOM[domain/<br/>model · enums · trust · validation · check<br/>suggestions · osm · geo · errors]
     end
     subgraph OUT[Outbound adapters]
@@ -36,6 +36,7 @@ flowchart TB
         VIS[vision_mock / vision_onnx / vision_gemini]
         OSMF[osm_file.py · osm_live.py<br/>Nominatim · Overpass]
         OSRM[osrm.py walking route]
+        REC[recommender_claude.py · mailer.py]
     end
     HTTP --> UC
     MCPC -.HTTP.-> HTTP
@@ -118,8 +119,8 @@ sequenceDiagram
 | Entity | Key fields | Notes |
 |---|---|---|
 | `Place` | id, name, category, `place_type`, location (`GeoPoint`), address, `owner_id`, `external_id`, `opening_hours`, `contact`, `photo_ids` (owner photos) | Descriptive data only; accessibility lives in states |
-| `Observation` | place, feature, value `yes/partial/no`, source, author, created_at, temporary, `valid_until`, comment, evidence (photo ids), votes `{user: ±1}`, validation (`VALID/CONFLICT/REJECTED/FLAGGED`), `flag_reason`, confidence | Never deleted, only `validation` changes |
-| `FeatureStateRecord` | place, feature, state `yes/partial/no/unknown`, confidence, temporary, last_verified, sources_count, validation, active_observation_id | **Computed**, never written by hand |
+| `Observation` | place, feature, value `yes/partial/no/not_applicable`, source, author, created_at, temporary, `valid_until`, comment, evidence (photo ids), votes `{user: ±1}`, validation (`VALID/CONFLICT/REJECTED/FLAGGED`), `flag_reason`, confidence | Never deleted, only `validation` changes |
+| `FeatureStateRecord` | place, feature, state `yes/partial/no/not_applicable/unknown`, confidence, temporary, last_verified, sources_count, validation, active_observation_id | **Computed**, never written by hand |
 | `Report` | element, current_state `works/partially_works/not_working`, severity, nature, description, photos, status `draft/submitted`, observation_ids, owner `replies`, `owner_status` | The UI form; a draft may be incomplete; on submit it creates one observation |
 | `QueueItem` | place, feature, observation_ids, status `open/resolved`, decision, `resolved_at`, moderator `comments` | One open item per place + feature |
 | `OwnershipRequest` | place, user, justification, status `pending/approved/rejected`, decided_at | "I'm the owner" → admin verifies |
@@ -128,15 +129,15 @@ sequenceDiagram
 
 **Place types:** `venue`, `shop`, `public_transport_stop`, `platform`, `parking`, `office`, `street_segment`, `other`.
 
-**Accessibility features (35, 8 groups):**
+**Accessibility features (39, 8 groups):**
 - *entrance*: `step_free_entrance`, `ramp`, `elevator_entrance`, `wide_doors`, `automatic_doors`, `call_bell`
-- *inside*: `elevator`, `escalator`, `spacious_interior`, `high_contrast_info`, `tactile_info`
-- *toilet*: `accessible_toilet`, `adult_changing_table`, `turning_space`, `extra_accessible_toilets`
+- *inside*: `elevator`, `escalator`, `spacious_interior`, `high_contrast_info`, `tactile_info`, `stroller_space`, `rest_areas`
+- *toilet*: `accessible_toilet`, `adult_changing_table`, `baby_changing_table`, `turning_space`, `extra_accessible_toilets`
 - *hearing*: `induction_loop`, `sign_language_interpreter`, `video_captions`, `fm_system`
 - *vision*: `braille`, `tactile_paths`, `good_lighting`, `high_contrast_markings`, `accessible_digital_materials`, `audio_description`
 - *mobility*: `lowered_curb`, `platform_elevator`, `crutches_friendly`
 - *parking*: `disabled_parking`, `marked_parking`, `level_surface`, `more_than_n_spots`, `drop_off_zone`
-- *other*: `assistance_dog_allowed`, `pets_allowed`
+- *other*: `assistance_dog_allowed`, `pets_allowed`, `luggage_storage`
 
 This is the full model from the contract plus `escalator` (requested by the front end). `partially_inaccessible_exhibition` is left out because its meaning is inverted (`yes` = bad). For the front end: `tactile` → `tactile_paths`, `sign` → `sign_language_interpreter` (to confirm).
 
@@ -284,7 +285,7 @@ It is a **client of the Open API**, not part of the backend process. With in-mem
 | Observations + computed state | Trust, history, conflicts, "Yanosik" model | More logic than a flag; mitigated by pure, tested domain functions |
 | Hexagon with mock/offline adapters | Offline, deterministic demo; fast tests | More files; ports only where there are ≥2 implementations |
 | Sync `Repo` + write-behind SQLite | Atomic use cases, persistence without a rewrite | Single process |
-| 35 features, states `yes/partial/no/unknown` | Full model + `escalator`; all user questions from the brief | Only some features take part in `check` rules; the rest are informational |
+| 39 features, states `yes/partial/no/not_applicable/unknown` | Full model + `escalator`; all user questions from the brief | Only some features take part in `check` rules; the rest are informational |
 | Route A→B: OSRM opt-in, straight line default | Offline demo stays deterministic; real path when online; honest `engine` + `note` | Not turn-by-turn; barriers only where places have street-level data |
 | `/geocode` from the local index | Offline demo | No address search outside known places |
 | AI = suggestion only + fallback | AI never corrupts data; demo never breaks | Keyword mapping is simple (PL/EN) |

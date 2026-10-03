@@ -40,10 +40,24 @@ class Settings(BaseSettings):
     geocoder: Literal["local", "nominatim"] = "local"
     nominatim_url: str = "https://nominatim.openstreetmap.org/search"
     overpass_url: str = "https://overpass-api.de/api/interpreter"
-    osm_center_lat: float = 50.0647  # Rynek Główny
-    osm_center_lon: float = 19.9450
-    osm_radius_m: int = 1500
+    osm_center_lat: float | None = None  # None → city centre (F37)
+    osm_center_lon: float | None = None
+    osm_radius_m: int | None = None      # None → city osm_radius_m
+    city_config: str = ""  # F37: JSON file with the city (empty → data/cities/krakow.json)
     external_timeout_s: float = 10.0
+    # F33 e-mail login (magic link / code): console (logs; demo returns dev_token) | smtp
+    email_login: bool = True
+    mailer: Literal["console", "smtp"] = "console"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""  # secret: only in .env / Render env
+    mail_from: str = "noreply@rampa.local"
+    email_link_url: str = ""  # front-end page that takes ?token=…; empty → code only
+    # F30 recommendations: rules (offline) | claude (needs ANTHROPIC_API_KEY); failure → rules
+    ai_recommender: Literal["rules", "claude"] = "rules"
+    anthropic_api_key: str = ""  # secret: only in .env / Render env
+    claude_model: str = "claude-sonnet-5-5"
     router: Literal["straight", "osrm"] = "straight"  # F28: GET /route geometry
     osrm_url: str = "https://routing.openstreetmap.de/routed-foot"  # FOSSGIS OSRM, foot profile
     http_user_agent: str = "RampaKrakowBezBarier/0.1 (HackYeah 2026)"  # OSM usage policy: identify the app

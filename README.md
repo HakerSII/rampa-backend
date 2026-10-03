@@ -71,6 +71,14 @@ uv run python main.py                                          # http://localhos
 | 27 | Live OSM: Nominatim geocoder (`GEOCODER=nominatim`), Overpass import `{"source":"overpass"}`; fallback to local / snapshot | [plan](features/27-live-geo/plan.md) | endpoints unchanged | 45 min |
 | 28 | Walking route from OSRM (`ROUTER=osrm`), barriers along the real path; fallback straight line | [plan](features/28-osrm-route/plan.md) | `engine` field added | 45 min |
 | 29 | Multi-worker consistency: `meta.data_version`, reload when stale, 409 on concurrent write | [plan](features/29-multi-worker/plan.md) | 409 on any write | 45 min |
+| 30 | AI recommendations `POST /ai/recommend` (rules / Claude tool call; facts only from DB) | [plan](features/30-ai-recommend/plan.md) | [openapi](features/30-ai-recommend/openapi.yaml) | 2 h |
+| 31 | Needs profile on the server `/me/profile` + `GET /places?sort=best_match` | [plan](features/31-needs-profile/plan.md) | [openapi](features/31-needs-profile/openapi.yaml) | 1.5 h |
+| 32 | Value `not_applicable` + `baby_changing_table`, `stroller_space`, `rest_areas`, `luggage_storage`; OSM `changing_table`, `dog` | [plan](features/32-not-applicable/plan.md) | specs updated | 1 h |
+| 33 | Passwordless e-mail login `/auth/email/request` + `/verify` (console / SMTP mailer) | [plan](features/33-email-login/plan.md) | [openapi](features/33-email-login/openapi.yaml) | 1.5 h |
+| 34 | Questions to the owner (answer → attribute or planned) + needs statistics | [plan](features/34-questions/plan.md) | [openapi](features/34-questions/openapi.yaml) | 2 h |
+| 35 | In-app notifications `/me/notifications` (answers, replies, decisions) | [plan](features/35-notifications/plan.md) | [openapi](features/35-notifications/openapi.yaml) | 1.5 h |
+| 36 | Admin: `new_place` queue, activity grid, trends, coverage | [plan](features/36-admin-insights/plan.md) | [openapi](features/36-admin-insights/openapi.yaml) | 2 h |
+| 37 | City configuration JSON (`CITY_CONFIG`) + `GET /city` | [plan](features/37-city-config/plan.md) | [openapi](features/37-city-config/openapi.yaml) | 1 h |
 | 12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | [plan](features/12-frontend-bridge/plan.md) | [openapi](features/12-frontend-bridge/openapi.yaml) | 45 min |
 
 - F0 blocks all.
@@ -110,7 +118,7 @@ Everything from the full contract is implemented except the items below, which a
 | `action=escalate` | done (F26): `status: escalated`, decidable later |
 | Persistence | write-behind cache over SQLite/Postgres (F9/F11); several workers via data version + reload + 409 on a write race (F29). Not for high write throughput |
 | DDD aggregate + domain events + UoW | light hexagon: logic in pure domain functions + use cases; conflicts create queue items directly |
-| Features | 35 (full model + `escalator`); `partially_inaccessible_exhibition` left out (inverted meaning) |
+| Features | 39 (full model + `escalator` + 4 from the Accessly description, F32), value `not_applicable`; `partially_inaccessible_exhibition` left out (inverted meaning) |
 | Media storage | local `media/` folder (S3 later) |
 | Frontend | not in this repo (mockups in the hackathon PDF) |
 
@@ -124,12 +132,14 @@ Full description: **[docs/architecture.md](docs/architecture.md)**. In short:
 app/
   domain/          pure rules: model, enums, trust, validation, check, suggestions, text_parse, osm, geo,
                    verification, history, stats, route, errors
-  application/     ports.py (Repo, Clock, IdGenerator, FileStorage, IdentityVerifier, VisionAnalyzer, OsmSource, Geocoder, WalkingRouter)
+  application/     ports.py (Repo, Clock, IdGenerator, FileStorage, IdentityVerifier, VisionAnalyzer, OsmSource, Geocoder,
+                   WalkingRouter, QueryInterpreter, Mailer)
                    use_cases.py (all use cases)
   adapters/
     inbound/http/  FastAPI app, middleware (commit), auth deps, errors, schemas, rate limit,
                    routers: auth, me, places, observations, ai, owner, admin, public
-    outbound/      memory, sql (SQLite/Postgres), files, google_auth, vision_mock/onnx/gemini, osm_file, osm_live (Nominatim/Overpass), osrm
+    outbound/      memory, sql (SQLite/Postgres), files, google_auth, vision_mock/onnx/gemini, osm_file, osm_live (Nominatim/Overpass), osrm,
+                   recommender_claude, mailer (console/SMTP)
   bootstrap.py     composition root (config → adapters)
 clients/           MCP server (client of the Open API)
 tests/             unit · application · adapters · api (contract, demo flow, docs)
@@ -158,7 +168,7 @@ See **[docs/architecture.md §4](docs/architecture.md#4-domain-model)**. Key rul
 ## 6. Next
 
 1. Frontend from the mockups (map, place card, report form, owner and admin panels) against this API.
-2. Google OAuth client (F1.0) → real logins; fresh Gemini quota or a paid key before the demo.
-3. Fully SQL-backed repository (per-row writes instead of whole-cache reload) for high write load; PostGIS for geo search.
-4. City open data (BIP, ZTP) as further `open_data` sources; caching for Nominatim/OSRM answers.
-5. Accessibility rules for the 22 informational features (today only some take part in `check`).
+2. Google OAuth client (F1.0) → real logins; fresh Gemini quota or a paid key; `ANTHROPIC_API_KEY` for `AI_RECOMMENDER=claude`; SMTP for e-mail login.
+3. F38 (deferred): fully SQL-backed repository, then PostGIS for geo search + Alembic migrations. See [PLAN-GAPS.md](PLAN-GAPS.md).
+4. F39 (blocked): city open data (BIP, ZTP) once a dataset and its licence are chosen; caching for Nominatim/OSRM answers.
+5. Accessibility rules for the informational features (today only some take part in `check`).

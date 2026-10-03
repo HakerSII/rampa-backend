@@ -1,0 +1,45 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F37 City configuration
+  version: 0.1.0-mvp
+  description: The configured city (CITY_CONFIG JSON) — the front end sets up its map from it.
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: dictionaries
+paths:
+  /city:
+    get:
+      tags: [dictionaries]
+      summary: Configured city — centre, map box, named areas, category groups
+      operationId: getCity
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: { type: string, example: Kraków }
+                  center:
+                    type: object
+                    properties:
+                      lat: { type: number }
+                      lon: { type: number }
+                  viewbox: { type: array, minItems: 4, maxItems: 4, items: { type: number }, description: "lon1, lat1, lon2, lat2" }
+                  areas:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key: { type: string, example: centrum }
+                        center: { type: object }
+                        radius_m: { type: integer }
+                  category_groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key: { type: string, example: gastronomy }
+                        categories: { type: array, items: { type: string } }

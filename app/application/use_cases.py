@@ -1,5 +1,7 @@
 """All MVP use cases (application layer). Depends only on domain + ports."""
 import logging
+import hashlib
+import math
 import secrets
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -15,12 +17,17 @@ from app.application.ports import (
     IdGenerator,
     Geocoder,
     OsmSource,
+    Mailer,
+    QueryInterpreter,
     WalkingRouter,
     Repo,
     VisionAnalyzer,
 )
 from app.domain import check as domain_check, osm as domain_osm, suggestions, trust, validation
 from app.domain.geo import haversine_m, in_bbox, parse_bbox
+from app.domain import recommend as recommend_domain
+from app.domain.city import City
+from app.domain.recommend import Intent, Recommendation
 from app.domain.route import RouteResult, plan_route
 from app.domain.text_parse import TextSuggestion, parse_text
 from app.domain.history import HistoryEvent, build_history
@@ -44,6 +51,7 @@ from app.domain.enums import (
     ValidationStatus,
 )
 from app.domain.errors import (
+    RateLimited,
     ConflictError,
     FileTooLarge,
     Forbidden,
@@ -56,6 +64,9 @@ from app.domain.model import (
     CheckResult,
     FeatureStateRecord,
     GeocodeHit,
+    LoginToken,
+    Notification,
+    Question,
     GeoPoint,
     ImageAnalysis,
     Observation,
@@ -80,7 +91,8 @@ ANONYMOUS_NAME = "Anonim"
 IMAGE_SIGNATURES = {b"\x89PNG\r\n\x1a\n": "png", b"\xff\xd8\xff": "jpg"}
 
 
-SORTS = (None, "nearest", "name", "recently_verified")
+SORTS = (None, "nearest", "name", "recently_verified", "best_match")
+MAX_NEEDS = 10
 DEFAULT_RADIUS_M = 2000
 
 
@@ -96,6 +108,7 @@ class PlaceQuery:
     page: int = 1
     page_size: int = 20
     place_types: list[str] | None = None
+    profiles: list[NeedsProfile] | None = None  # F31 best_match
 
 
 @dataclass(slots=True)
@@ -143,6 +156,45 @@ class OwnerPlaceStats:
 
 
 @dataclass(slots=True)
+class ActivityCell:
+    lat: float
+    lon: float
+    observations: int
+    reports: int
+
+
+@dataclass(slots=True)
+class TrendDay:
+    day: str
+    observations: int
+    reports: int
+    questions: int
+    queue_items: int
+
+
+@dataclass(slots=True)
+class CategoryCoverage:
+    category: str
+    places: int
+    with_data: int
+    avg_known_features: float
+
+
+@dataclass(slots=True)
+class Coverage:
+    categories: list[CategoryCoverage]
+    most_missing: list[tuple[FeatureKey, int]]
+
+
+@dataclass(slots=True)
+class NeedsStats:
+    by_feature: list[tuple[FeatureKey, int]]  # most asked first
+    open: int
+    answered: int
+    without_feature: int
+
+
+@dataclass(slots=True)
 class Reminder:
     place_id: str
     kind: str  # missing_data | stale_data | conflict | unanswered_report
@@ -168,6 +220,14 @@ class CsvImportResult:
 class PlaceConfidence:
     overall: float
     by_group: dict[str, float]
+    note: str
+
+
+@dataclass(slots=True)
+class RecommendResult:
+    intent: Intent
+    items: list[Recommendation]
+    model: str
     note: str
 
 
@@ -198,6 +258,21 @@ REPORT_VALUE = {CurrentState.WORKS: ObservationValue.YES, CurrentState.PARTIALLY
 log = logging.getLogger(__name__)
 
 
+EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]{2,}")
+MAX_EMAIL = 254
+EMAIL_TOKEN_TTL = timedelta(minutes=15)
+EMAIL_MAX_REQUESTS = 3
+
+
+def _seq(entity_id: str) -> int:
+    tail = entity_id.rsplit("_", 1)[-1]
+    return int(tail) if tail.isdigit() else 0
+
+
+def _hash(code: str) -> str:
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
 def _enum(enum_cls, value, field: str):
     try:
         return enum_cls(value)
@@ -212,7 +287,9 @@ class UseCases:
                  anonymous_auth: bool = True, anonymous_ttl_days: int = 365,
                  vision: VisionAnalyzer | None = None, osm: OsmSource | None = None,
                  geocoder: Geocoder | None = None, osm_live: OsmSource | None = None,
-                 router: WalkingRouter | None = None):
+                 router: WalkingRouter | None = None, recommender: QueryInterpreter | None = None,
+                 mailer: Mailer | None = None, email_login: bool = True, email_dev_token: bool = False,
+                 email_link_url: str = "", city: City | None = None):
         self.repo = repo
         self.clock = clock
         self.ids = ids
@@ -228,6 +305,12 @@ class UseCases:
         self.geocoder = geocoder
         self.osm_live = osm_live
         self.router = router
+        self.recommender = recommender
+        self.mailer = mailer
+        self.email_login = email_login
+        self.email_dev_token = email_dev_token  # demo + console mailer only: code returned in the response
+        self.email_link_url = email_link_url
+        self.city = city or recommend_domain.default_city()
 
     # ------------------------------------------------------------------ multi-worker (F29)
     def sync(self, force: bool = False) -> bool:
@@ -264,7 +347,9 @@ class UseCases:
         if not identity.email_verified:
             raise Unauthorized("Google e-mail not verified")
         role = Role.ADMIN if identity.email.lower() in self.admin_emails else Role.USER
-        user = self.repo.find_user_by_google_sub(identity.sub)
+        user = self.repo.find_user_by_google_sub(identity.sub) or self.repo.find_user_by_email(identity.email)
+        if user is not None:
+            user.google_sub = identity.sub  # same verified e-mail as an e-mail login (F33) → same account
         if user is None:
             user = User(self.ids.new("usr"), identity.name or identity.email, role,
                         email=identity.email, google_sub=identity.sub)
@@ -283,6 +368,42 @@ class UseCases:
         user = User(self.ids.new("usr"), name, Role.USER)
         self.repo.add_user(user)
         return self._new_session(user, self.anonymous_ttl), user
+
+    # ------------------------------------------------------------------ e-mail login (F33)
+    async def request_email_login(self, email: str) -> str | None:
+        """Send a one-time code (15 min, single use). Same answer for known and unknown addresses.
+        Returns the code only in demo + console mode (e2e / stage), never with a real mailer."""
+        if not self.email_login or self.mailer is None:
+            raise NotFound("e-mail login disabled (EMAIL_LOGIN=false)")
+        email = (email or "").strip().lower()
+        if len(email) > MAX_EMAIL or not EMAIL_RE.fullmatch(email):
+            raise ValidationFailed("invalid e-mail address")
+        now = self.clock.now()
+        recent = [t for t in self.repo.list_login_tokens(email) if t.created_at > now - EMAIL_TOKEN_TTL]
+        if len(recent) >= EMAIL_MAX_REQUESTS:
+            wait = int((min(t.created_at for t in recent) + EMAIL_TOKEN_TTL - now).total_seconds()) + 1
+            raise RateLimited("too many login e-mails for this address, try later", retry_after=wait)
+        code = secrets.token_urlsafe(24)
+        self.repo.add_login_token(LoginToken(_hash(code), email, now, now + EMAIL_TOKEN_TTL))
+        link = f"{self.email_link_url}?token={code}" if self.email_link_url else ""
+        text = (f"Kod logowania: {code}\n\n" + (f"Albo kliknij: {link}\n\n" if link else "")
+                + "Kod jest ważny 15 min i działa jeden raz. Jeśli to nie Ty — zignoruj tę wiadomość.")
+        await self.mailer.send(email, "Kraków bez barier — logowanie", text)
+        return code if self.email_dev_token else None
+
+    def verify_email_login(self, code: str) -> tuple[str, User]:
+        token = self.repo.get_login_token(_hash((code or "").strip()))
+        if token is None or token.used or token.expires_at <= self.clock.now():
+            raise Unauthorized("login code invalid, used or expired")
+        token.used = True
+        user = self.repo.find_user_by_email(token.email)
+        role = Role.ADMIN if token.email in self.admin_emails else Role.USER
+        if user is None:
+            user = User(self.ids.new("usr"), token.email.split("@")[0][:MAX_DISPLAY_NAME], role, email=token.email)
+            self.repo.add_user(user)
+        elif role == Role.ADMIN:
+            user.role = Role.ADMIN
+        return self._new_session(user), user
 
     def logout(self, token: str | None) -> None:
         if token:
@@ -343,7 +464,10 @@ class UseCases:
 
     def _filter_and_sort(self, query: PlaceQuery) -> list[tuple[Place, int | None]]:
         if query.sort not in SORTS:
-            raise ValidationFailed(f"sort must be one of: nearest, name, recently_verified (got {query.sort})")
+            raise ValidationFailed(f"sort must be one of: nearest, name, recently_verified, best_match "
+                                   f"(got {query.sort})")
+        if query.sort == "best_match" and not query.profiles:
+            raise ValidationFailed("sort=best_match needs profile= or a stored needs profile (PUT /me/profile)")
         if query.sort == "nearest" and query.near is None:
             raise ValidationFailed("sort=nearest needs lat and lon")
         try:
@@ -370,6 +494,11 @@ class UseCases:
             items.sort(key=lambda t: t[1])
         elif sort == "name":
             items.sort(key=lambda t: t[0].name.casefold())
+        elif sort == "best_match":
+            score = {p.id: recommend_domain.evaluate(p.id, self.repo.states_for(p.id), query.profiles, [])
+                     for p, _ in items}
+            items.sort(key=lambda t: (score[t[0].id][0] == "no", -score[t[0].id][1],
+                                      t[1] if t[1] is not None else 0, t[0].name.casefold()))
         elif sort == "recently_verified":
             last = {p.id: self.verification_for(p.id).last_verified for p, _ in items}
             items.sort(key=lambda t: (last[t[0].id] is not None, last[t[0].id] or 0), reverse=True)
@@ -458,6 +587,42 @@ class UseCases:
         places = [(p, self.repo.states_for(p.id)) for p in self.repo.list_places()]
         return plan_route(a, b, profile, places, path)
 
+    async def recommend(self, user: User | None, query: str, profile: NeedsProfile | None = None,
+                        lat: float | None = None, lon: float | None = None, limit: int = 5) -> RecommendResult:
+        """F30: query → needs/filters (model or rules) → ranking + reasons + missing from the DB only."""
+        query = (query or "").strip()
+        if not 1 <= len(query) <= recommend_domain.MAX_QUERY:
+            raise ValidationFailed(f"query must have 1..{recommend_domain.MAX_QUERY} characters")
+        if not 1 <= limit <= 20:
+            raise ValidationFailed("limit 1..20")
+        intent, model = None, "rules"
+        if self.recommender is not None:
+            try:
+                intent, model = await self.recommender.interpret(query), self.recommender.model
+            except Exception as e:  # noqa: BLE001 — network / quota / bad answer → rules
+                log.warning("recommender failed (%s) → rules", e)
+        if intent is None:
+            intent = recommend_domain.interpret_rules(query, self.city)
+        recognised = not intent.empty
+        stored_needs, stored_features = self.get_needs_profile(user) if user else ([], [])
+        for p in [*stored_needs, *([profile] if profile else [])]:
+            if p not in intent.profiles:
+                intent.profiles.append(p)
+        for f in stored_features:
+            if f not in intent.features:
+                intent.features.append(f)
+        origin = GeoPoint(lat, lon) if lat is not None and lon is not None else None
+        places = []
+        for p in self.repo.list_places():
+            self._refresh_expired(p.id)
+            states = self.repo.states_for(p.id)
+            sources = {o.id: str(o.source) for o in self.repo.list_observations(p.id)}
+            places.append((p, states, sources))
+        items = recommend_domain.rank(places, intent, origin, self.clock.now(), limit, self.city)
+        note = ("Wyniki tylko z bazy; brakujące lub stare dane są w `missing`." if recognised else
+                "Nie rozpoznano potrzeb ani rodzaju miejsca — pokazuję miejsca z danymi; doprecyzuj zapytanie.")
+        return RecommendResult(intent, items, model, note)
+
     def _resolve_point(self, raw: str) -> GeoPoint:
         """Place id or 'lat,lon'."""
         place = self.repo.get_place(raw)
@@ -470,6 +635,210 @@ class UseCases:
         except ValueError as e:
             raise ValidationFailed(f"point must be 'lat,lon' or a place id: {raw}") from e
         return GeoPoint(lat, lon)
+
+    def place_match(self, place_id: str, profiles: list[NeedsProfile]) -> str:
+        return recommend_domain.evaluate(place_id, self.repo.states_for(place_id), profiles, [])[0]
+
+    # ------------------------------------------------------------------ questions to the owner (F34)
+    def ask_question(self, user: User | None, place_id: str, text: str, feature: str | None = None) -> Question:
+        self._require_user(user)
+        self.get_place(place_id)
+        text = (text or "").strip()
+        if not 1 <= len(text) <= MAX_DESCRIPTION:
+            raise ValidationFailed(f"text must have 1..{MAX_DESCRIPTION} characters")
+        q = Question(self.ids.new("qst"), place_id, user.id, text, self.clock.now(),
+                     _enum(FeatureKey, feature, "feature") if feature else None)
+        self.repo.add_question(q)
+        return q
+
+    def place_questions(self, place_id: str) -> list[Question]:
+        self.get_place(place_id)
+        return sorted((q for q in self.repo.list_questions() if q.place_id == place_id),
+                      key=lambda q: q.created_at, reverse=True)
+
+    def owner_questions(self, user: User | None, status: str = "open") -> list[Question]:
+        """Owner: questions on own places; admin: all."""
+        self._require_user(user)
+        if status not in ("open", "answered", "all"):
+            raise ValidationFailed("status: open|answered|all")
+        places = self._managed_place_ids(user)
+        return [q for q in self.repo.list_questions()
+                if q.place_id in places and (status == "all" or q.status == status)]
+
+    def answer_question(self, user: User | None, question_id: str, text: str, value: str | None = None,
+                        planned: bool = False) -> Question:
+        """Owner of the place or admin. value → observation (normal trust flow); planned → no data change."""
+        self._require_user(user)
+        q = self.repo.get_question(question_id)
+        if q is None:
+            raise NotFound(f"question not found: {question_id}")
+        if q.place_id not in self._managed_place_ids(user):
+            raise Forbidden("only the owner of this place or an admin can answer")
+        if q.status == "answered":
+            raise ConflictError("question already answered")
+        text = (text or "").strip()
+        if not 1 <= len(text) <= MAX_DESCRIPTION:
+            raise ValidationFailed(f"text must have 1..{MAX_DESCRIPTION} characters")
+        if value and planned:
+            raise ValidationFailed("give value or planned, not both")
+        if value and q.feature is None:
+            raise ValidationFailed("value needs a question about a feature")
+        if value:
+            v = _enum(ObservationValue, value, "value")
+            self._new_observation(user, q.place_id, q.feature, v, temporary=False, comment=text, photo_ids=[])
+            self.recompute(q.place_id, q.feature)
+            q.outcome = str(v)
+        elif planned:
+            q.outcome = "planned"
+        q.status, q.answer_text, q.answered_by, q.answered_at = "answered", text, user.id, self.clock.now()
+        self._notify(q.author_id, user, "question_answered",
+                     f"Odpowiedź na Twoje pytanie — {self._place_name(q.place_id)}: {text}", q.place_id, q.id)
+        return q
+
+    def needs_stats(self, user: User | None) -> NeedsStats:
+        """Most asked features (what people need to know). Admin: city-wide; owner: own places."""
+        self._require_user(user)
+        if user.role not in (Role.ADMIN, Role.OWNER):
+            raise Forbidden("owner or admin role required")
+        places = self._managed_place_ids(user)
+        qs = [q for q in self.repo.list_questions() if q.place_id in places]
+        counts: dict[FeatureKey, int] = {}
+        for q in qs:
+            if q.feature:
+                counts[q.feature] = counts.get(q.feature, 0) + 1
+        by_feature = sorted(counts.items(), key=lambda t: (-t[1], str(t[0])))
+        return NeedsStats(by_feature, sum(q.status == "open" for q in qs), sum(q.status == "answered" for q in qs),
+                          sum(q.feature is None for q in qs))
+
+    def _managed_place_ids(self, user: User) -> set[str]:
+        if user.role == Role.ADMIN:
+            return {p.id for p in self.repo.list_places()}
+        return {p.id for p in self.repo.list_places() if p.owner_id == user.id}
+
+    # ------------------------------------------------------------------ admin insights (F36)
+    def admin_activity(self, admin: User | None, days: int = 30, cell_deg: float = 0.005,
+                       bbox: str | None = None) -> list[ActivityCell]:
+        """Observations + reports per grid cell in the last `days` (cell centres, busiest first)."""
+        self._require_admin(admin)
+        if not (1 <= days <= 365 and 0.001 <= cell_deg <= 0.1):
+            raise ValidationFailed("days 1..365, cell_deg 0.001..0.1")
+        try:
+            box = parse_bbox(bbox) if bbox else None
+        except ValueError as e:
+            raise ValidationFailed(str(e)) from e
+        since = self.clock.now() - timedelta(days=days)
+        cells: dict[tuple[int, int], ActivityCell] = {}
+
+        def bump(place_id: str, kind: str) -> None:
+            place = self.repo.get_place(place_id)
+            if place is None or (box and not in_bbox(place.location, box)):
+                return
+            key = (math.floor(place.location.lat / cell_deg), math.floor(place.location.lon / cell_deg))
+            cell = cells.setdefault(key, ActivityCell(round((key[0] + 0.5) * cell_deg, 6),
+                                                      round((key[1] + 0.5) * cell_deg, 6), 0, 0))
+            setattr(cell, kind, getattr(cell, kind) + 1)
+
+        for p in self.repo.list_places():
+            for o in self.repo.list_observations(p.id):
+                if o.created_at >= since:
+                    bump(p.id, "observations")
+        for r in self.repo.list_reports():
+            if r.status == "submitted" and r.created_at >= since:
+                bump(r.place_id, "reports")
+        return sorted(cells.values(), key=lambda c: (-(c.observations + c.reports), c.lat, c.lon))
+
+    def admin_trends(self, admin: User | None, days: int = 30) -> list[TrendDay]:
+        """Per-day counts, oldest → newest (today included)."""
+        self._require_admin(admin)
+        if not 1 <= days <= 365:
+            raise ValidationFailed("days 1..365")
+        today = self.clock.now().date()
+        result = {today - timedelta(days=i): TrendDay(str(today - timedelta(days=i)), 0, 0, 0, 0)
+                  for i in range(days - 1, -1, -1)}
+
+        def bump(when: datetime | None, kind: str) -> None:
+            if when is not None and when.date() in result:
+                day = result[when.date()]
+                setattr(day, kind, getattr(day, kind) + 1)
+
+        for p in self.repo.list_places():
+            for o in self.repo.list_observations(p.id):
+                bump(o.created_at, "observations")
+        for r in self.repo.list_reports():
+            if r.status == "submitted":
+                bump(r.created_at, "reports")
+        for q in self.repo.list_questions():
+            bump(q.created_at, "questions")
+        for item in self.repo.list_queue_items():
+            bump(item.created_at, "queue_items")
+        return list(result.values())
+
+    def admin_coverage(self, admin: User | None) -> Coverage:
+        """Data coverage per category + core features unknown in most places."""
+        self._require_admin(admin)
+        per: dict[str, CategoryCoverage] = {}
+        known_counts: dict[str, int] = {}
+        missing = {f: 0 for f in self.CORE_FEATURES}
+        for p in self.repo.list_places():
+            states = self.repo.states_for(p.id)
+            known = [f for f, s in states.items() if s.state != StateValue.UNKNOWN]
+            c = per.setdefault(p.category, CategoryCoverage(p.category, 0, 0, 0.0))
+            c.places += 1
+            c.with_data += bool(known)
+            known_counts[p.category] = known_counts.get(p.category, 0) + len(known)
+            for f in self.CORE_FEATURES:
+                if f not in known:
+                    missing[f] += 1
+        for c in per.values():
+            c.avg_known_features = round(known_counts[c.category] / c.places, 1)
+        return Coverage(sorted(per.values(), key=lambda c: (-c.places, c.category)),
+                        sorted(missing.items(), key=lambda t: (-t[1], str(t[0]))))
+
+    # ------------------------------------------------------------------ notifications (F35)
+    def _notify(self, user_id: str, actor: User | None, kind: str, text: str, place_id: str | None = None,
+                ref_id: str | None = None) -> None:
+        if actor is not None and actor.id == user_id:
+            return  # nobody is notified about their own action
+        self.repo.add_notification(Notification(self.ids.new("ntf"), user_id, kind, text[:300], self.clock.now(),
+                                                place_id, ref_id))
+
+    def _place_name(self, place_id: str) -> str:
+        place = self.repo.get_place(place_id)
+        return place.name if place else place_id
+
+    def list_notifications(self, user: User | None, unread_only: bool = False) -> list[Notification]:
+        self._require_user(user)
+        items = [n for n in self.repo.list_notifications(user.id) if not (unread_only and n.read)]
+        return sorted(items, key=lambda n: (n.created_at, _seq(n.id)), reverse=True)
+
+    def mark_notification_read(self, user: User | None, notification_id: str) -> None:
+        self._require_user(user)
+        n = next((n for n in self.repo.list_notifications(user.id) if n.id == notification_id), None)
+        if n is None:
+            raise NotFound(f"notification not found: {notification_id}")
+        n.read = True
+
+    def mark_all_notifications_read(self, user: User | None) -> int:
+        unread = self.list_notifications(user, unread_only=True)
+        for n in unread:
+            n.read = True
+        return len(unread)
+
+    # ------------------------------------------------------------------ needs profile (F31)
+    def get_needs_profile(self, user: User | None) -> tuple[list[NeedsProfile], list[FeatureKey]]:
+        self._require_user(user)
+        return [NeedsProfile(n) for n in user.needs], [FeatureKey(f) for f in user.pref_features]
+
+    def set_needs_profile(self, user: User | None, needs: list[str], features: list[str]
+                          ) -> tuple[list[NeedsProfile], list[FeatureKey]]:
+        """Needs only (wheelchair, stroller …) — never diagnoses; empty lists clear the profile."""
+        self._require_user(user)
+        if len(needs or []) > MAX_NEEDS or len(features or []) > MAX_NEEDS:
+            raise ValidationFailed(f"at most {MAX_NEEDS} needs and {MAX_NEEDS} features")
+        parsed_needs = list(dict.fromkeys(_enum(NeedsProfile, n, "need") for n in needs or []))
+        parsed_features = list(dict.fromkeys(_enum(FeatureKey, f, "feature") for f in features or []))
+        user.needs, user.pref_features = [str(n) for n in parsed_needs], [str(f) for f in parsed_features]
+        return parsed_needs, parsed_features
 
     # ------------------------------------------------------------------ me (F16)
     def list_favorites(self, user: User | None) -> list[Place]:
@@ -539,6 +908,11 @@ class UseCases:
         place = Place(self.ids.new("plc"), name, (category or "").strip() or "other", location,
                       address=address.strip()[:MAX_PLACE_NAME])
         self.repo.add_place(place)
+        if user.role != Role.ADMIN:  # F36: places added by users are verified by a moderator
+            self.repo.add_queue_item(QueueItem(self.ids.new("q"), place.id, None, self.clock.now(), [],
+                                               type="new_place", comments=[{
+                                                   "author_id": user.id, "text": f"Nowe miejsce: {name}",
+                                                   "created_at": self.clock.now().isoformat()}]))
         return place, True
 
     # ------------------------------------------------------------------ OSM import (F8)
@@ -760,6 +1134,9 @@ class UseCases:
         if not 1 <= len(text) <= MAX_DESCRIPTION:
             raise ValidationFailed(f"reply must have 1..{MAX_DESCRIPTION} characters")
         report.replies.append({"author_id": user.id, "text": text, "created_at": self.clock.now().isoformat()})
+        self._notify(report.author_id, user, "report_reply",
+                     f"Właściciel odpowiedział na Twoje zgłoszenie — {self._place_name(report.place_id)}: {text}",
+                     report.place_id, report.id)
         return report
 
     def approve_report(self, user: User | None, report_id: str) -> Observation:
@@ -773,6 +1150,9 @@ class UseCases:
                                     comment=f"Potwierdzone przez właściciela: {report.description}", photo_ids=[])
         report.owner_status = "approved"
         self.recompute(report.place_id, report.element)
+        self._notify(report.author_id, user, "report_approved",
+                     f"Właściciel potwierdził Twoje zgłoszenie — {self._place_name(report.place_id)}",
+                     report.place_id, report.id)
         return obs
 
     def owner_reminders(self, user: User | None) -> list[Reminder]:
@@ -791,6 +1171,10 @@ class UseCases:
                     reminders.append(Reminder(place.id, "conflict",
                                               f"Wyjaśnij sprzeczne zgłoszenia: {LABELS_PL[q.feature]} — {place.name}",
                                               "high", q.feature))
+            for q in self.repo.list_questions():
+                if q.place_id == place.id and q.status == "open":
+                    reminders.append(Reminder(place.id, "unanswered_question",
+                                              f"Odpowiedz na pytanie: {q.text} — {place.name}", "high", q.feature))
             for r in self.repo.list_reports():
                 if r.place_id == place.id and r.status == "submitted" and not r.replies and not r.owner_status:
                     reminders.append(Reminder(place.id, "unanswered_report",
@@ -968,9 +1352,14 @@ class UseCases:
         for q in self.repo.list_queue_items():
             if q.place_id == source_id:
                 q.place_id = target_id
+                if q.type == "new_place" and q.pending:  # F36: the duplicate was merged
+                    q.status, q.decision, q.resolved_at = QueueStatus.RESOLVED, "merged", self.clock.now()
         for req in self.repo.list_ownership_requests():
             if req.place_id == source_id:
                 req.place_id = target_id
+        for q in self.repo.list_questions():
+            if q.place_id == source_id:
+                q.place_id = target_id
         for u in [self.repo.get_user(i) for i in self.all_user_ids()]:
             if u and source_id in u.favorite_place_ids:
                 u.favorite_place_ids = list(dict.fromkeys(
@@ -1020,14 +1409,18 @@ class UseCases:
         if approved:
             self.assign_owner(admin, req.place_id, req.user_id)
         req.status, req.decided_at = ("approved" if approved else "rejected"), self.clock.now()
+        self._notify(req.user_id, admin, "ownership_decided",
+                     f"Wniosek o przejęcie {'zaakceptowany' if approved else 'odrzucony'} — "
+                     f"{self._place_name(req.place_id)}", req.place_id, req.id)
         return req
 
     # ------------------------------------------------------------------ moderation (F4)
     def list_queue(self, admin: User | None, filter: str = "all", status: str = "open") -> list[QueueItem]:
         self._require_admin(admin)
         items = self.repo.list_queue_items()
-        if filter not in ("all", "conflict", "abuse") or status not in ("open", "escalated", "resolved", "all"):
-            raise ValidationFailed("filter must be all|conflict|abuse, status open|escalated|resolved|all")
+        if filter not in ("all", "conflict", "abuse", "new_place") or status not in ("open", "escalated",
+                                                                                    "resolved", "all"):
+            raise ValidationFailed("filter must be all|conflict|abuse|new_place, status open|escalated|resolved|all")
         if filter != "all":
             items = [q for q in items if q.type == filter]
         if status != "all":
@@ -1042,7 +1435,7 @@ class UseCases:
         return item
 
     def decide(self, admin: User | None, item_id: str, action: str,
-               winning_observation_id: str | None = None, comment: str = "") -> FeatureStateRecord:
+               winning_observation_id: str | None = None, comment: str = "") -> FeatureStateRecord | None:
         """confirm: winner kept + admin observation, opposite values REJECTED; reject: all REJECTED;
         escalate: handed to a coordinator, data unchanged, decidable later.
         Abuse items: confirm → observation FLAGGED; reject → report dismissed.
@@ -1057,9 +1450,11 @@ class UseCases:
             item.status, item.decision = QueueStatus.ESCALATED, "escalated"
             if comment.strip():
                 self.add_queue_comment(admin, item_id, comment)
-            return self.recompute(item.place_id, item.feature)
+            return self.recompute(item.place_id, item.feature) if item.feature else None
         if item.type == "abuse":
             return self._decide_abuse(item, action_v)
+        if item.type == "new_place":
+            return self._decide_new_place(item, action_v)
         observations = [self._get_observation(i) for i in item.observation_ids]
 
         if action_v == DecisionAction.CONFIRM:
@@ -1075,7 +1470,23 @@ class UseCases:
             for o in observations:
                 o.validation = ValidationStatus.REJECTED
             item.status, item.decision, item.resolved_at = QueueStatus.RESOLVED, "rejected", self.clock.now()
+        label, place = LABELS_PL[item.feature], self._place_name(item.place_id)
+        for author in dict.fromkeys(o.author_id for o in observations):
+            ok = any(o.validation == ValidationStatus.VALID for o in observations if o.author_id == author)
+            self._notify(author, admin, "observation_confirmed" if ok else "observation_rejected",
+                         f"Moderator {'potwierdził' if ok else 'odrzucił'} Twoją informację: {label} — {place}",
+                         item.place_id, item.id)
         return self.recompute(item.place_id, item.feature)
+
+    def _decide_new_place(self, item: QueueItem, action: DecisionAction) -> None:
+        """confirm → place accepted; reject → deleted only if nobody added data (observations are never deleted)."""
+        if action == DecisionAction.REJECT:
+            if self.repo.list_observations(item.place_id):
+                raise ConflictError("place already has observations — merge it into the right place instead")
+            self.repo.delete_place(item.place_id)
+        item.status, item.resolved_at = QueueStatus.RESOLVED, self.clock.now()
+        item.decision = "approved" if action == DecisionAction.CONFIRM else "rejected"
+        return None
 
     def _decide_abuse(self, item: QueueItem, action: DecisionAction) -> FeatureStateRecord:
         obs = self._get_observation(item.observation_ids[0])
@@ -1084,6 +1495,11 @@ class UseCases:
             obs.validation, obs.flag_reason = ValidationStatus.FLAGGED, f"Zgłoszenia nadużycia: {reasons}"[:200]
         item.status, item.resolved_at = QueueStatus.RESOLVED, self.clock.now()
         item.decision = "approved" if action == DecisionAction.CONFIRM else "rejected"
+        verdict = "oznaczona jako nadużycie" if action == DecisionAction.CONFIRM else "pozostaje bez zmian"
+        for reporter in dict.fromkeys(c["author_id"] for c in item.comments):
+            self._notify(reporter, None, "abuse_decided",
+                         f"Dziękujemy za zgłoszenie — informacja {verdict} ({self._place_name(item.place_id)})",
+                         item.place_id, item.id)
         return self.recompute(item.place_id, item.feature)
 
     def report_abuse(self, user: User | None, observation_id: str, reason: str) -> QueueItem:

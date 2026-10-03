@@ -4,6 +4,9 @@ from datetime import datetime, timezone
 
 from app.domain.enums import FeatureKey
 from app.domain.model import (
+    LoginToken,
+    Notification,
+    Question,
     FeatureStateRecord,
     Observation,
     OwnershipRequest,
@@ -23,6 +26,9 @@ class InMemoryRepo:
     def clear(self) -> None:
         self.users: dict[str, User] = {}
         self.sessions: dict[str, Session] = {}
+        self.login_tokens: dict[str, LoginToken] = {}
+        self.questions: dict[str, Question] = {}
+        self.notifications: dict[str, Notification] = {}
         self.places: dict[str, Place] = {}
         self.states: dict[str, dict[FeatureKey, FeatureStateRecord]] = defaultdict(dict)
         self.observations: dict[str, Observation] = {}  # insertion order = creation order
@@ -42,7 +48,7 @@ class InMemoryRepo:
 
     def all_ids(self) -> list[str]:
         return [*self.users, *self.places, *self.observations, *self.reports, *self.photos, *self.queue,
-                *self.ownership_requests]
+                *self.ownership_requests, *self.questions, *self.notifications]
 
     # users / sessions
     def add_user(self, user: User) -> None:
@@ -56,6 +62,18 @@ class InMemoryRepo:
 
     def find_user_by_google_sub(self, sub: str) -> User | None:
         return next((u for u in self.users.values() if u.google_sub == sub), None)
+
+    def find_user_by_email(self, email: str) -> User | None:
+        return next((u for u in self.users.values() if u.email and u.email.lower() == email.lower()), None)
+
+    def add_login_token(self, token: LoginToken) -> None:
+        self.login_tokens[token.token_hash] = token
+
+    def get_login_token(self, token_hash: str) -> LoginToken | None:
+        return self.login_tokens.get(token_hash)
+
+    def list_login_tokens(self, email: str) -> list[LoginToken]:
+        return [t for t in self.login_tokens.values() if t.email == email]
 
     def add_session(self, session: Session) -> None:
         self.sessions[session.token] = session
@@ -133,6 +151,21 @@ class InMemoryRepo:
 
 
     # ownership requests
+    def add_notification(self, n: Notification) -> None:
+        self.notifications[n.id] = n
+
+    def list_notifications(self, user_id: str) -> list[Notification]:
+        return [n for n in self.notifications.values() if n.user_id == user_id]
+
+    def add_question(self, q: Question) -> None:
+        self.questions[q.id] = q
+
+    def get_question(self, question_id: str) -> Question | None:
+        return self.questions.get(question_id)
+
+    def list_questions(self) -> list[Question]:
+        return list(self.questions.values())
+
     def add_ownership_request(self, req: OwnershipRequest) -> None:
         self.ownership_requests[req.id] = req
 

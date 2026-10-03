@@ -27,7 +27,8 @@ async def list_queue(uc: UC, admin: AdminUser, filter: str = "all", status: str 
     items = uc.list_queue(admin, filter, status)
     open_items = uc.list_queue(admin, "all", "open")
     counts = {"all": len(open_items), "conflict": sum(q.type == "conflict" for q in open_items),
-              "abuse": sum(q.type == "abuse" for q in open_items)}
+              "abuse": sum(q.type == "abuse" for q in open_items),
+              "new_place": sum(q.type == "new_place" for q in open_items)}
     return QueuePage(items=[queue_item_out(uc, q) for q in items], total=len(items), counts=counts)
 
 
@@ -40,7 +41,7 @@ async def get_queue_item(item_id: str, uc: UC, admin: AdminUser):
 async def decide(item_id: str, body: DecisionIn, uc: UC, admin: AdminUser):
     state = uc.decide(admin, item_id, body.action, body.winning_observation_id, body.comment)
     item = uc.get_queue_item(admin, item_id)
-    return DecisionOut(id=item.id, status=item.decision, feature_state=feature_state_out(state))
+    return DecisionOut(id=item.id, status=item.decision, feature_state=feature_state_out(state) if state else None)
 
 
 class StatTileOut(BaseModel):
@@ -173,3 +174,73 @@ async def list_ownership_requests(uc: UC, admin: AdminUser, status: str = "pendi
 async def verify_ownership(request_id: str, body: VerifyIn, uc: UC, admin: AdminUser):
     """approved=true → user becomes owner of the place."""
     return ownership_out(uc, uc.verify_ownership(admin, request_id, body.approved))
+
+
+# ---------------------------------------------------------------- F36 insights
+class ActivityCellOut(BaseModel):
+    lat: float
+    lon: float
+    observations: int
+    reports: int
+
+
+class ActivityOut(BaseModel):
+    cell_deg: float
+    days: int
+    cells: list[ActivityCellOut]
+
+
+class TrendDayOut(BaseModel):
+    day: str
+    observations: int
+    reports: int
+    questions: int
+    queue_items: int
+
+
+class TrendsOut(BaseModel):
+    days: list[TrendDayOut]
+
+
+class CategoryCoverageOut(BaseModel):
+    category: str
+    places: int
+    with_data: int
+    avg_known_features: float
+
+
+class MissingFeatureOut(BaseModel):
+    feature: str
+    label: str
+    places_without_data: int
+
+
+class CoverageOut(BaseModel):
+    categories: list[CategoryCoverageOut]
+    most_missing: list[MissingFeatureOut]
+
+
+@router.get("/admin/activity", response_model=ActivityOut)
+async def activity(uc: UC, admin: AdminUser, days: int = 30, cell_deg: float = 0.005, bbox: str | None = None):
+    """Activity map: observations + reports per grid cell (cell centres, busiest first)."""
+    cells = uc.admin_activity(admin, days, cell_deg, bbox)
+    return ActivityOut(cell_deg=cell_deg, days=days, cells=[ActivityCellOut(**{f: getattr(c, f) for f in
+                                                                              ActivityCellOut.model_fields})
+                                                            for c in cells])
+
+
+@router.get("/admin/trends", response_model=TrendsOut)
+async def trends(uc: UC, admin: AdminUser, days: int = 30):
+    return TrendsOut(days=[TrendDayOut(**{f: getattr(d, f) for f in TrendDayOut.model_fields})
+                           for d in uc.admin_trends(admin, days)])
+
+
+@router.get("/admin/coverage", response_model=CoverageOut)
+async def coverage(uc: UC, admin: AdminUser):
+    """Data coverage per category + core features most often missing."""
+    from app.domain.enums import LABELS_PL
+    c = uc.admin_coverage(admin)
+    return CoverageOut(
+        categories=[CategoryCoverageOut(**{f: getattr(x, f) for f in CategoryCoverageOut.model_fields})
+                    for x in c.categories],
+        most_missing=[MissingFeatureOut(feature=f, label=LABELS_PL[f], places_without_data=n) for f, n in c.most_missing])

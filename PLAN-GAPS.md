@@ -4,18 +4,18 @@ Source: comparison of the Accessly project description with this backend. Backen
 Rules unchanged: TDD (red commit → green), hexagon, `STATUS.md` + local commit per step, e2e in `requests/demo.http`, docs + `docs/openapi.json`, external services opt-in with offline fallback.
 Order = value / cost. Estimates are rough.
 
-| # | Task | Doc area | Est. | Priority |
-|---|---|---|---|---|
-| F30 | AI recommendations endpoint | I | 2 h | MVP |
-| F31 | Needs profile on server + sort `best_match` | C, D | 1.5 h | MVP |
-| F32 | Value `n/a` + missing attributes | A | 1 h | MVP |
-| F33 | Email magic-link login | D | 1.5 h | MVP |
-| F34 | Questions to owner + needs stats | F | 2 h | later |
-| F35 | In-app notifications | D | 1.5 h | later |
-| F36 | Admin: new-place queue, activity map, trends | H | 2 h | later |
-| F37 | City config (no Kraków in code) | K | 1 h | later |
-| F38 | PostGIS radius search + Alembic migrations | decisions | 3 h | later |
-| F39 | City open-data import | A | ? | blocked: dataset choice |
+| # | Task | Doc area | Est. | Priority | Status |
+|---|---|---|---|---|---|
+| F30 | AI recommendations endpoint | I | 2 h | MVP | done |
+| F31 | Needs profile on server + sort `best_match` | C, D | 1.5 h | MVP | done |
+| F32 | Value `n/a` + missing attributes | A | 1 h | MVP | done |
+| F33 | Email magic-link login | D | 1.5 h | MVP | done |
+| F34 | Questions to owner + needs stats | F | 2 h | later | done |
+| F35 | In-app notifications | D | 1.5 h | later | done |
+| F36 | Admin: new-place queue, activity map, trends | H | 2 h | later | done |
+| F37 | City config (no Kraków in code) | K | 1 h | later | done |
+| F38 | PostGIS radius search + Alembic migrations | decisions | 3 h | later | deferred — see note |
+| F39 | City open-data import | A | ? | blocked: dataset choice | blocked |
 
 ## F30 — AI recommendations (`POST /api/v1/ai/recommend`)
 - **In:** `{query: "restauracja w centrum, wózek dziecięcy i pies", profile?: NeedsProfile, lat?, lon?, limit?: 5}`; logged-in user → stored profile (F31) merged.
@@ -52,7 +52,12 @@ Order = value / cost. Estimates are rough.
 ## F37 — City config
 - `CITY_NAME`, `CITY_VIEWBOX`, `CITY_CENTER`, categories + profiles from a JSON file (`CITY_CONFIG`); Kraków = default file.
 
-## F38 — PostGIS + Alembic (infra)
+## F38 — PostGIS + Alembic (infra) — DEFERRED (2026-10-03)
+Why deferred: the repository is a write-behind cache (all data in memory, F9/F29), so radius / bbox search runs in
+memory and PostGIS would not be used until a fully SQL-backed repository exists. Postgres cannot be verified locally
+right now (Docker stopped), and replacing the working auto-migration (`_add_missing_columns`, also used on Render)
+without a Postgres test is a demo risk. Order when picked up: SQL-backed repo → Alembic baseline → PostGIS queries.
+
 - Postgres only: geography column + GIST index, radius/bbox in SQL; SQLite keeps Python fallback. Alembic baseline from current schema; replace `_add_missing_columns`. Needs PostGIS on Render (check plan).
 
 ## F39 — City open data

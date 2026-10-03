@@ -114,6 +114,218 @@ Content-Type: application/json
 
 {"feature": "disabled_parking", "value": "yes"}
 
+### F31a. Anna stores her needs profile (needs only, no diagnoses)
+PUT {{base}}/me/profile
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"needs": ["wheelchair"], "features": ["accessible_toilet"]}
+
+### F31b. Anna: my needs profile
+GET {{base}}/me/profile
+Authorization: Bearer {{anna}}
+
+### F31c. Places sorted by best match for Anna's stored profile (match per item; Urząd last, "no")
+GET {{base}}/places?sort=best_match
+Authorization: Bearer {{anna}}
+
+### F31d. Guest: best match for a blind visitor → MNK first (braille, tactile paths)
+GET {{base}}/places?sort=best_match&profile=blind
+
+### F31e. 400 VALIDATION_ERROR — best_match without any profile
+GET {{base}}/places?sort=best_match
+
+### F31f. 400 VALIDATION_ERROR — diagnosis instead of a need
+PUT {{base}}/me/profile
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"needs": ["diabetes"]}
+
+### F34a. Anna asks the owner of Camelot: can I come with a dog?
+# @name question
+POST {{base}}/places/plc_camelot/questions
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"text": "Czy można wejść z psem?", "feature": "pets_allowed"}
+
+### F34b. Owner Ewa: open questions on her places
+GET {{base}}/owner/questions
+Authorization: Bearer {{ewa}}
+
+### F34c. Ewa answers and sets the attribute → verified_owner observation, pets_allowed = yes
+POST {{base}}/owner/questions/{{question.response.body.$.id}}/answer
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"text": "Tak, psy są mile widziane.", "value": "yes"}
+
+### F34d. Public Q&A on the place
+GET {{base}}/places/plc_camelot/questions
+
+### F34e. Jan asks about door width at MNK; Ewa marks it planned
+# @name question2
+POST {{base}}/places/plc_mnk/questions
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"text": "Jaka jest szerokość drzwi?", "feature": "wide_doors"}
+
+### F34f. … planned (data unchanged)
+POST {{base}}/owner/questions/{{question2.response.body.$.id}}/answer
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"text": "Zmierzymy drzwi w przyszłym tygodniu.", "planned": true}
+
+### F34g. Admin: needs statistics (most asked features city-wide)
+GET {{base}}/admin/needs-stats
+Authorization: Bearer {{admin}}
+
+### F34h. 409 CONFLICT — question already answered
+POST {{base}}/owner/questions/{{question.response.body.$.id}}/answer
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"text": "jeszcze raz"}
+
+### F34i. 403 FORBIDDEN — regular user cannot see needs stats
+GET {{base}}/admin/needs-stats
+Authorization: Bearer {{anna}}
+
+### F35a. Anna's notifications → "question_answered" (Ewa answered in F34c), unread count
+# @name notes
+GET {{base}}/me/notifications
+Authorization: Bearer {{anna}}
+
+### F35b. Mark it read
+POST {{base}}/me/notifications/{{notes.response.body.$.items[0].id}}/read
+Authorization: Bearer {{anna}}
+
+### F35c. Mark all read → {"marked": n}
+POST {{base}}/me/notifications/read-all
+Authorization: Bearer {{anna}}
+
+### F35d. 401 UNAUTHORIZED — guest
+GET {{base}}/me/notifications
+
+### F36a. Jan adds a new place from the map → new_place queue item for the moderator
+POST {{base}}/places/resolve
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"name": "Księgarnia Pod Globusem", "lat": 50.0635, "lon": 19.9365, "category": "shop"}
+
+### F36b. Admin: new places waiting for verification (counts.new_place)
+# @name newPlaces
+GET {{base}}/admin/queue?filter=new_place
+Authorization: Bearer {{admin}}
+
+### F36c. Admin accepts the new place → approved (feature_state null)
+POST {{base}}/admin/queue/{{newPlaces.response.body.$.items[0].id}}/decision
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"action": "confirm"}
+
+### F36d. Activity map (grid cells, busiest first)
+GET {{base}}/admin/activity?days=30&cell_deg=0.005
+Authorization: Bearer {{admin}}
+
+### F36e. Trends: last 7 days
+GET {{base}}/admin/trends?days=7
+Authorization: Bearer {{admin}}
+
+### F36f. Coverage per category + most missing core features
+GET {{base}}/admin/coverage
+Authorization: Bearer {{admin}}
+
+### F36g. 400 VALIDATION_ERROR — days out of range
+GET {{base}}/admin/trends?days=0
+Authorization: Bearer {{admin}}
+
+### F37a. Configured city (front end sets up the map: centre, box, areas, category groups)
+GET {{base}}/city
+
+### F33a. E-mail login: request a code (demo + console mailer → dev_token in the response; mail in the log)
+# @name emailReq
+POST {{base}}/auth/email/request
+Content-Type: application/json
+
+{"email": "ola.nowak@example.com"}
+
+### F33b. Verify the code → session token + new user "ola.nowak"
+# @name emailLogin
+POST {{base}}/auth/email/verify
+Content-Type: application/json
+
+{"token": "{{emailReq.response.body.$.dev_token}}"}
+
+### F33c. Me with the e-mail session
+GET {{base}}/me
+Authorization: Bearer {{emailLogin.response.body.$.token}}
+
+### F33d. 401 UNAUTHORIZED — the code works only once
+POST {{base}}/auth/email/verify
+Content-Type: application/json
+
+{"token": "{{emailReq.response.body.$.dev_token}}"}
+
+### F33e. 400 VALIDATION_ERROR — invalid e-mail
+POST {{base}}/auth/email/request
+Content-Type: application/json
+
+{"email": "not-an-email"}
+
+### F32a. Owner Ewa: Camelot is single-storey → elevator "not_applicable" (wheelchair answer stays yes)
+POST {{base}}/places/plc_camelot/observations
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"feature": "elevator", "value": "not_applicable", "comment": "Lokal parterowy"}
+
+### F32b. New attribute: baby changing table at MNK
+POST {{base}}/places/plc_mnk/observations
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"feature": "baby_changing_table", "value": "yes"}
+
+### F32c. Check Camelot for a wheelchair → yes (n/a elevator ignored)
+GET {{base}}/places/plc_camelot/check?profile=wheelchair
+
+### F32d. 400 VALIDATION_ERROR — unknown value
+POST {{base}}/places/plc_camelot/observations
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"feature": "ramp", "value": "maybe"}
+
+### F30a. AI recommend (guest): stroller + dog in a museum → MNK first, pets_allowed in "missing"
+POST {{base}}/ai/recommend
+Content-Type: application/json
+
+{"query": "muzeum, wejdę z wózkiem dziecięcym i psem", "limit": 3}
+
+### F30b. AI recommend: café in the centre for a wheelchair, from Rynek
+POST {{base}}/ai/recommend
+Content-Type: application/json
+
+{"query": "kawiarnia w centrum, wjadę wózkiem", "lat": 50.0617, "lon": 19.9373}
+
+### F30c. Profile parameter merged into the query → Urząd (no entrance) last with match "no"
+POST {{base}}/ai/recommend
+Content-Type: application/json
+
+{"query": "urząd albo muzeum", "profile": "wheelchair"}
+
+### F30d. 400 VALIDATION_ERROR — empty query
+POST {{base}}/ai/recommend
+Content-Type: application/json
+
+{"query": ""}
+
 ### Feature dictionary (filters)
 GET {{base}}/accessibility/features
 
@@ -808,8 +1020,8 @@ Content-Type: application/json
 
 {"photo_ids": ["ph_missing"]}
 
-### 409 CONFLICT — decide twice on the same item (run after 7a)
-POST {{base}}/admin/queue/{{queue.response.body.$.items[0].id}}/decision
+### 409 CONFLICT — decide twice on the same item (O9 already decided it; ids restart after demo reset)
+POST {{base}}/admin/queue/{{ownQueue.response.body.$.items[0].id}}/decision
 Authorization: Bearer {{admin}}
 Content-Type: application/json
 

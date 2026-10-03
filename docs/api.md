@@ -60,11 +60,11 @@ Every error has the same shape:
 
 | Name | Values |
 |---|---|
-| Feature (35) | entrance: `step_free_entrance`, `ramp`, `elevator_entrance`, `wide_doors`, `automatic_doors`, `call_bell` · inside: `elevator`, `escalator`, `spacious_interior`, `high_contrast_info`, `tactile_info` · toilet: `accessible_toilet`, `adult_changing_table`, `turning_space`, `extra_accessible_toilets` · hearing: `induction_loop`, `sign_language_interpreter`, `video_captions`, `fm_system` · vision: `braille`, `tactile_paths`, `good_lighting`, `high_contrast_markings`, `accessible_digital_materials`, `audio_description` · mobility: `lowered_curb`, `platform_elevator`, `crutches_friendly` · parking: `disabled_parking`, `marked_parking`, `level_surface`, `more_than_n_spots`, `drop_off_zone` · other: `assistance_dog_allowed`, `pets_allowed` |
+| Feature (39) | entrance: `step_free_entrance`, `ramp`, `elevator_entrance`, `wide_doors`, `automatic_doors`, `call_bell` · inside: `elevator`, `escalator`, `spacious_interior`, `high_contrast_info`, `tactile_info`, `stroller_space`, `rest_areas` · toilet: `accessible_toilet`, `adult_changing_table`, `baby_changing_table`, `turning_space`, `extra_accessible_toilets` · hearing: `induction_loop`, `sign_language_interpreter`, `video_captions`, `fm_system` · vision: `braille`, `tactile_paths`, `good_lighting`, `high_contrast_markings`, `accessible_digital_materials`, `audio_description` · mobility: `lowered_curb`, `platform_elevator`, `crutches_friendly` · parking: `disabled_parking`, `marked_parking`, `level_surface`, `more_than_n_spots`, `drop_off_zone` · other: `assistance_dog_allowed`, `pets_allowed`, `luggage_storage` |
 | Feature group | `entrance`, `inside`, `toilet`, `hearing`, `vision`, `mobility`, `parking`, `other` |
 | Needs profile (`check`) | `wheelchair`, `stroller`, `crutches`, `blind`, `low_vision`, `deaf`, `assistance_dog` |
-| State | `yes`, `partial`, `no`, `unknown` |
-| Observation value | `yes`, `partial`, `no` (+ optional `valid_until` for temporary issues) |
+| State | `yes`, `partial`, `no`, `not_applicable` ("nie dotyczy": a fact, never a barrier, helper or missing data; ignored by `check`), `unknown` |
+| Observation value | `yes`, `partial`, `no`, `not_applicable` (+ optional `valid_until` for temporary issues) |
 | Source | `community` (0.5), `open_data` (0.6), `verified_owner` (0.85), `admin` (1.0) |
 | Validation | `VALID`, `CONFLICT`, `REJECTED`, `FLAGGED` |
 | Place type | `venue`, `shop`, `public_transport_stop`, `platform`, `parking`, `office`, `street_segment`, `other` |
@@ -146,6 +146,18 @@ Every error has the same shape:
 | POST | `/api/v1/owner/places/import` | owner | CSV import |
 | GET | `/api/v1/observations` | — | Map layer: observations across places (one request) |
 | POST | `/api/v1/observations/{id}/abuse` | user | Report spam / false data → moderation queue (type abuse) |
+| POST | `/api/v1/ai/recommend` | — | Natural-language query → recommended places with reasons + missing data |
+| GET PUT DELETE | `/api/v1/me/profile` | user | Needs profile (needs + preferred features), used by best_match and recommend |
+| POST | `/api/v1/auth/email/request` | — | Send a one-time login code / link by e-mail |
+| POST | `/api/v1/auth/email/verify` | — | Code → session (new user on first login) |
+| POST GET | `/api/v1/places/{id}/questions` | user / — | Ask the owner; public Q&A |
+| GET | `/api/v1/owner/questions` | owner | Questions on my places |
+| POST | `/api/v1/owner/questions/{id}/answer` | owner | Answer, set the attribute or mark planned |
+| GET | `/api/v1/admin/needs-stats` | admin / owner | Most asked features |
+| GET | `/api/v1/me/notifications` | user | My notifications (`?unread=true`), unread count |
+| POST | `/api/v1/me/notifications/{id}/read`, `/read-all` | user | Mark read |
+| GET | `/api/v1/admin/activity`, `/admin/trends`, `/admin/coverage` | admin | Activity grid, daily trends, data coverage |
+| GET | `/api/v1/city` | — | Configured city: centre, map box, areas, category groups |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -176,6 +188,18 @@ stay one per device and a device cannot confirm its own report. Works in every `
 ```
 
 ### `POST /api/v1/auth/logout` → 204 · `GET /api/v1/me` → `User` (401 without a valid token)
+
+## 3a. E-mail login (passwordless)
+
+1. `POST /api/v1/auth/email/request {"email": "ola@example.com"}` → `202 {"sent": true}`. The answer is the same whether or not the address has an account.
+   - The one-time code is valid 15 min and works once; only its SHA-256 is stored.
+   - At most 3 requests per address per 15 min → `429` with `Retry-After`.
+   - The mail holds the code and, with `EMAIL_LINK_URL` set, a link `…?token=<code>`.
+   - In `AUTH_MODE=demo` with `MAILER=console` the response also carries `dev_token`, for the stage and the e2e file. Never with SMTP.
+2. `POST /api/v1/auth/email/verify {"token": "<code>"}` → `{token, user}`, the same shape as `/auth/google`.
+   - First login creates a user (`display_name` = the part before `@`; role admin if the address is in `ADMIN_EMAILS`).
+   - A later Google login with the same verified e-mail reuses this account.
+   - Invalid, used or expired code → `401`.
 
 ## 4. Places (read, guest allowed)
 
@@ -244,7 +268,7 @@ reverse geocoding) with the coordinates. The same name (case-insensitive) within
 ```
 
 ### `GET /api/v1/places/{id}/accessibility`
-All 35 features in 8 groups; features without data come back as `unknown`.
+All 39 features in 8 groups; features without data come back as `unknown`.
 
 ```json
 { "place_id": "plc_mnk",
@@ -313,6 +337,26 @@ All 35 features in 8 groups; features without data come back as `unknown`.
                  "label": "Obniżony krawężnik", "location": { "lat": 50.065, "lon": 19.945 } } ],
   "note": "heuristic: straight line between the points; …" }
 ```
+
+## 4c. City configuration
+
+Everything city-specific comes from the JSON file set in `CITY_CONFIG` (default `data/cities/krakow.json`). It is validated at start; an invalid file stops the app with an error naming the field.
+
+```json
+{ "name": "Kraków", "viewbox": [19.79, 50.13, 20.22, 49.97], "center": {"lat": 50.0617, "lon": 19.9373},
+  "osm_radius_m": 1500,
+  "areas": { "centrum": {"lat": 50.0617, "lon": 19.9373, "radius_m": 1500, "words": ["centrum", "rynek", "…"]} },
+  "category_groups": { "gastronomy": {"categories": ["cafe", "restaurant", "…"], "words": ["restaurac", "kawiar", "…"]} } }
+```
+
+Consumers:
+- the Nominatim viewbox (F27);
+- the Overpass centre and radius (F27), unless `OSM_CENTER_*` / `OSM_RADIUS_M` are set;
+- the recommendation interpreter (F30): the rules' words and the enums of Claude's tool.
+
+`GET /api/v1/city` returns `{name, center, viewbox, areas: [{key, center, radius_m}], category_groups: [{key, categories}]}`, so the front end can set up its map from it.
+
+Another city = another JSON file. Two things stay in code: the needs profiles (they drive the `check` rules) and the seed demo data.
 
 ## 5. Reporting and observations
 
@@ -433,6 +477,28 @@ Any queue item can be escalated: `POST /admin/queue/{id}/decision {"action": "es
 
 Queue filters: `filter=all|conflict|abuse`, `status=open|escalated|resolved|all`; `counts` has `all`, `conflict`, `abuse`. Dashboard conflicts, owner stats and reminders count only `type: conflict`.
 
+## 5e. AI recommendations
+
+`POST /api/v1/ai/recommend {"query": "restauracja w centrum, wejdę z wózkiem dziecięcym i psem", "profile"?: "wheelchair", "lat"?, "lon"?, "limit"?: 5}`. Guests are allowed.
+
+1. **Interpret** the query into `intent {profiles, features, categories, area}`. `AI_RECOMMENDER=rules` (default) uses offline PL+EN keywords. `claude` uses Claude with a forced tool call `set_filters`: the model sees only the query and returns only filters. If the model fails, the rules take over. A `profile` parameter is merged into the intent.
+2. **Rank** places from the database: `check` for each profile plus the requested features. Order: `yes` > `partial` > `unknown` > `no` (last), ties by distance (from `lat/lon`, or the area centre).
+3. **Explain** each item:
+   - `reasons`: each relevant feature with its `state`, `source` and `last_verified`, taken from the DB;
+   - `missing`: features the user asked for that are unknown or older than 90 days.
+
+The answer never contains facts that are not in the database.
+
+```json
+{ "intent": { "profiles": ["stroller"], "features": ["pets_allowed"], "categories": ["culture"], "area": null },
+  "items": [ { "place": { "id": "plc_mnk", "name": "Muzeum Narodowe w Krakowie", "...": "..." },
+               "match": "partial", "distance_m": null,
+               "reasons": [ { "feature": "step_free_entrance", "label": "Wejście bez schodów", "state": "yes",
+                              "source": "community", "last_verified": "2026-08-04T12:00:00+00:00" } ],
+               "missing": ["pets_allowed"] } ],
+  "model": "rules", "note": "Wyniki tylko z bazy; …" }
+```
+
 ## 6. Owner (role `owner`)
 
 | Endpoint | Body / response |
@@ -462,6 +528,17 @@ Everything requires role `owner`; place-level endpoints also require ownership o
 | `POST /owner/observations/batch [{place_id, feature, value, …}]` | 1–50 items across own places; all validated before writing (one foreign place → 403, nothing written) |
 | `GET /owner/places/import/template` | `text/csv`: `place_id,feature,value,temporary,comment` |
 | `POST /owner/places/import` (multipart `file`) | `{ imported, errors: [{ row, message }] }`: valid rows imported, `row` is the file line number |
+
+## 6b. Questions to the owner
+
+- **Ask:** `POST /api/v1/places/{id}/questions {"text": "Czy można wejść z psem?", "feature"?: "pets_allowed"}`, logged in. `GET` returns the public Q&A of the place, newest first.
+- **Read (owner):** `GET /owner/questions?status=open|answered|all` lists questions on the owner's places; an admin sees all.
+- **Answer:** `POST /owner/questions/{id}/answer {"text": "…", "value"?: "yes", "planned"?: true}`. Allowed for the owner of the place or an admin, once per question (`409` after that).
+  - `value` creates a `verified_owner` observation for the question's feature, so the state changes through the normal trust flow;
+  - `planned` marks the answer as planned and leaves the data unchanged;
+  - with neither, the answer is text only.
+- **Needs statistics:** `GET /admin/needs-stats` returns `by_feature` (most asked features first), `open`, `answered` and `without_feature`. An admin gets the whole city, an owner only their places.
+- **Reminders:** owner reminders include `unanswered_question` (high priority).
 
 ## 7. Admin (role `admin`)
 
@@ -540,6 +617,33 @@ Clears all data (including the SQLite DB) and loads the seed again.
 
 Favourites are stored per user (`users.favorites`, JSON) and survive restarts in SQL mode.
 
+## 7a1. Needs profile and best match
+
+`PUT /api/v1/me/profile {"needs": ["wheelchair", "assistance_dog"], "features": ["accessible_toilet"]}` stores the user's **needs** (`NeedsProfile` values) and the features they care about.
+- At most 10 of each. Unknown values → 400; there are no free-text fields, so no diagnoses are stored.
+- `GET` returns the profile, `DELETE` (or empty lists) clears it. Anonymous device accounts can keep one too.
+
+`GET /api/v1/places?sort=best_match[&profile=wheelchair,blind]`:
+- uses `profile` if given, else the logged-in user's stored needs; neither → 400;
+- order: `check` answer `yes` > `partial` > `unknown` > `no`, ties by distance, then name;
+- every item gets `match` whenever a profile is known.
+
+`POST /ai/recommend` merges the stored needs and features of a logged-in user.
+
+## 7a2. Notifications
+
+In-app notifications are created inside the use cases. The actor is never notified about their own action.
+
+| `kind` | When | To |
+|---|---|---|
+| `question_answered` | owner / admin answered a question | asker |
+| `report_reply`, `report_approved` | owner replied to / approved a report | report author |
+| `observation_confirmed`, `observation_rejected` | moderator decided a conflict | each author in the item |
+| `ownership_decided` | admin accepted / rejected an ownership request | applicant |
+| `abuse_decided` | admin decided an abuse report | each reporter |
+
+`GET /api/v1/me/notifications?unread=true` → `{items (newest first), unread}`. Mark one read with `POST …/{id}/read` (204; someone else's id → 404), or all with `POST …/read-all` → `{marked}`. Push or e-mail delivery can be added later through the `Mailer` port (F33).
+
 ## 7b. Admin extras
 
 | Endpoint | Behaviour |
@@ -552,6 +656,17 @@ Favourites are stored per user (`users.favorites`, JSON) and survive restarts in
 | `POST /owner/ownership-requests {place_id, justification}` | any user, 201 `status: pending` |
 | `GET /admin/ownership-requests?status=pending` | `{ items: [ { id, place_id, user, justification, status, created_at, decided_at } ] }` |
 | `POST /admin/ownership-requests/{id}/verify {approved}` | approved → the user becomes the owner (promoted to `owner`); a second decision → 409 |
+
+## 7c. New places, activity, trends, coverage
+
+- **New places:** a place created by a non-admin through `POST /places/resolve` becomes a queue item `type: new_place` with `feature: null`. The detail summary reads "Nowe miejsce: …" and `feature_state` is `null`.
+  - `confirm` accepts the place.
+  - `reject` deletes it, but only if nobody has added observations (otherwise `409`; observations are never deleted, so merge the place instead).
+  - `POST /admin/places/{id}/merge` resolves the item as `merged`.
+  - Queue `filter=new_place`; `counts.new_place`.
+- `GET /admin/activity?days=30&cell_deg=0.005[&bbox]` → `{cells: [{lat, lon, observations, reports}]}`: grid cell centres, busiest first. Use it as the activity map layer.
+- `GET /admin/trends?days=30` → `{days: [{day, observations, reports, questions, queue_items}]}`, oldest → newest. `days` is 1–365.
+- `GET /admin/coverage` → `{categories: [{category, places, with_data, avg_known_features}], most_missing: [{feature, label, places_without_data}]}`. `most_missing` covers the core features: step-free entrance, ramp, elevator, toilet.
 
 ## 8. Open API (`/public/v1`, header `X-Api-Key`)
 

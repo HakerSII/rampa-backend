@@ -8,6 +8,7 @@ from app.adapters.outbound.memory import FixedClock, InMemoryRepo, SeqIdGenerato
 from app.application.ports import IdentityVerifier, StaleData
 from app.application.use_cases import UseCases
 from app.config import Settings
+from app.domain.city import City, load_city
 
 
 log = logging.getLogger(__name__)
@@ -28,11 +29,31 @@ def build_vision(settings: Settings):
     return mock
 
 
-def build_geocoder(settings: Settings):
+def build_geocoder(settings: Settings, city: City):
     if settings.geocoder != "nominatim":
         return None
     from app.adapters.outbound.osm_live import NominatimGeocoder
-    return NominatimGeocoder(settings.nominatim_url, settings.http_user_agent, timeout_s=settings.external_timeout_s)
+    return NominatimGeocoder(settings.nominatim_url, settings.http_user_agent, timeout_s=settings.external_timeout_s,
+                             viewbox=city.viewbox_param)
+
+
+def build_mailer(settings: Settings):
+    from app.adapters.outbound.mailer import ConsoleMailer, SmtpMailer
+    if settings.mailer == "smtp":
+        return SmtpMailer(settings.smtp_host, settings.smtp_port, settings.smtp_user, settings.smtp_password,
+                          settings.mail_from)
+    return ConsoleMailer()
+
+
+def build_recommender(settings: Settings, city: City):
+    if settings.ai_recommender != "claude":
+        return None
+    if not settings.anthropic_api_key:
+        log.warning("AI_RECOMMENDER=claude but ANTHROPIC_API_KEY is empty → rules")
+        return None
+    from app.adapters.outbound.recommender_claude import ClaudeQueryInterpreter
+    return ClaudeQueryInterpreter(settings.anthropic_api_key, settings.claude_model, timeout_s=settings.ai_timeout_s,
+                                  city=city)
 
 
 def build_router(settings: Settings):
@@ -42,11 +63,13 @@ def build_router(settings: Settings):
     return OsrmRouter(settings.osrm_url, settings.http_user_agent, timeout_s=settings.external_timeout_s)
 
 
-def build_osm_live(settings: Settings):
+def build_osm_live(settings: Settings, city: City):
     """Only used on explicit admin import {"source": "overpass"}; falls back to the snapshot."""
     from app.adapters.outbound.osm_live import FallbackOsmSource, OverpassOsmSource
-    live = OverpassOsmSource(settings.overpass_url, settings.osm_center_lat, settings.osm_center_lon,
-                             settings.osm_radius_m, settings.http_user_agent, timeout_s=max(settings.external_timeout_s, 25))
+    lat = settings.osm_center_lat if settings.osm_center_lat is not None else city.center.lat
+    lon = settings.osm_center_lon if settings.osm_center_lon is not None else city.center.lon
+    live = OverpassOsmSource(settings.overpass_url, lat, lon, settings.osm_radius_m or city.osm_radius_m,
+                             settings.http_user_agent, timeout_s=max(settings.external_timeout_s, 25))
     return FallbackOsmSource(live, FileOsmSource(settings.osm_file))
 
 
@@ -56,6 +79,7 @@ def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None
         from app.adapters.outbound.google_auth import GoogleIdentityVerifier
         verifier = GoogleIdentityVerifier(settings.google_client_id)
     vision = build_vision(settings)
+    city = load_city(settings.city_config or None)  # F37: invalid file → error at start
     ids = SeqIdGenerator()
     repo = InMemoryRepo() if settings.repo_mode == "memory" else _sql_repo(settings.db_url)
     use_cases = UseCases(
@@ -63,8 +87,11 @@ def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None
         auth_mode=settings.auth_mode, admin_emails=settings.admin_email_list,
         session_ttl_hours=settings.session_ttl_hours, anonymous_auth=settings.anonymous_auth,
         anonymous_ttl_days=settings.anonymous_ttl_days, vision=vision,
-        osm=FileOsmSource(settings.osm_file), geocoder=build_geocoder(settings), osm_live=build_osm_live(settings),
-        router=build_router(settings),
+        osm=FileOsmSource(settings.osm_file), geocoder=build_geocoder(settings, city), osm_live=build_osm_live(settings, city),
+        router=build_router(settings), recommender=build_recommender(settings, city), city=city,
+        mailer=build_mailer(settings), email_login=settings.email_login,
+        email_dev_token=settings.auth_mode == "demo" and settings.mailer == "console",
+        email_link_url=settings.email_link_url,
     )
     seed_or_continue(use_cases)
     return use_cases

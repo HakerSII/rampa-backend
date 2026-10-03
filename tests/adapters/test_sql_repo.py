@@ -166,3 +166,45 @@ def test_owner_extras_persist(url):
     place = again.repo.get_place("plc_mnk")
     assert place.opening_hours == [{"days": "Mon", "closed": True}] and place.contact == {"website": "https://mnk.pl"}
     assert again.repo.get_report(r.id).replies[0]["text"] == "Dzięki"
+
+
+def test_needs_profile_persists(url):
+    """F31: needs + preferred features survive a restart."""
+    uc = make(url)
+    uc.set_needs_profile(uc.repo.get_user("usr_anna"), ["stroller"], ["pets_allowed"])
+    uc.repo.commit()
+    assert make(url).get_needs_profile(make(url).repo.get_user("usr_anna")) == (["stroller"], ["pets_allowed"])
+
+
+async def test_login_token_persists_between_workers(url):
+    """F33: the link may be opened on a request served by another worker / after a restart."""
+    from app.adapters.outbound.mailer import ConsoleMailer
+    uc = make(url)
+    uc.mailer = ConsoleMailer()
+    await uc.request_email_login("w@example.com")
+    uc.repo.commit()
+    code = uc.mailer.outbox[-1].text.split("Kod logowania: ")[1].split()[0]
+    other = make(url)
+    _, user = other.verify_email_login(code)
+    assert user.email == "w@example.com"
+
+
+def test_questions_persist(url):
+    """F34"""
+    uc = make(url)
+    q = uc.ask_question(uc.repo.get_user("usr_anna"), "plc_mnk", "Pies?", feature="pets_allowed")
+    uc.answer_question(uc.repo.get_user("usr_ewa"), q.id, "Tak", value="yes")
+    uc.repo.commit()
+    again = make(url).repo.get_question(q.id)
+    assert (again.status, again.outcome, again.answer_text, again.feature) == ("answered", "yes", "Tak", "pets_allowed")
+
+
+def test_notifications_persist(url):
+    """F35"""
+    uc = make(url)
+    q = uc.ask_question(uc.repo.get_user("usr_anna"), "plc_mnk", "Pies?")
+    uc.answer_question(uc.repo.get_user("usr_ewa"), q.id, "Tak")
+    uc.repo.commit()
+    again = make(url)
+    (n,) = again.list_notifications(again.repo.get_user("usr_anna"))
+    assert (n.kind, n.ref_id, n.read) == ("question_answered", q.id, False)

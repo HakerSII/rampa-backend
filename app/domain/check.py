@@ -55,7 +55,7 @@ PROFILE_RULES: dict[P, Rule] = {
 def check_place(place_id: str, states: dict[F, FeatureStateRecord], profile: P,
                 active_issues: list[Observation] | None = None) -> CheckResult:
     rule = PROFILE_RULES[profile]
-    known = {f: s for f, s in states.items() if s.state != StateValue.UNKNOWN}
+    known = {f: s for f, s in states.items() if s.state not in (StateValue.UNKNOWN, StateValue.NOT_APPLICABLE)}
     required = [known[f] for f in rule.required if f in known]
     downgrades = [known[f] for f in rule.downgrades if f in known]
 

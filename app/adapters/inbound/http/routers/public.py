@@ -59,7 +59,8 @@ def public_place(uc, place: Place) -> PublicPlace:
 
 
 def public_feature(s: FeatureStateRecord) -> PublicFeature:
-    value = "partial" if s.state == StateValue.PARTIAL else s.state == StateValue.YES
+    value = (str(s.state) if s.state in (StateValue.PARTIAL, StateValue.NOT_APPLICABLE)
+             else s.state == StateValue.YES)
     return PublicFeature(value=value, temporary=s.temporary, confidence=s.confidence,
                          last_verified=s.last_verified.date().isoformat() if s.last_verified else None)
 

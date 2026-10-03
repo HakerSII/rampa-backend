@@ -39,3 +39,29 @@ async def logout(uc: UC, user: CurrentUser, token: Token):
 @router.get("/me", response_model=UserOut)
 async def me(user: CurrentUser):
     return user_out(user)
+
+
+# ---------------------------------------------------------------- F33 e-mail login
+class EmailRequestIn(BaseModel):
+    email: str
+
+
+class EmailRequestOut(BaseModel):
+    sent: bool
+    dev_token: str | None = None  # AUTH_MODE=demo + MAILER=console only
+
+
+class EmailVerifyIn(BaseModel):
+    token: str
+
+
+@router.post("/auth/email/request", status_code=202, response_model=EmailRequestOut)
+async def email_request(body: EmailRequestIn, uc: UC):
+    """Send a one-time login code / link (15 min, single use). Same answer for known and unknown addresses."""
+    return EmailRequestOut(sent=True, dev_token=await uc.request_email_login(body.email))
+
+
+@router.post("/auth/email/verify", response_model=LoginResult)
+async def email_verify(body: EmailVerifyIn, uc: UC):
+    token, user = uc.verify_email_login(body.token)
+    return LoginResult(token=token, user=user_out(user))

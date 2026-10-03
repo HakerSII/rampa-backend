@@ -37,6 +37,8 @@ class User:
     email: str | None = None
     google_sub: str | None = None
     favorite_place_ids: list[str] = field(default_factory=list)
+    needs: list[str] = field(default_factory=list)          # F31 NeedsProfile values (needs, never diagnoses)
+    pref_features: list[str] = field(default_factory=list)  # F31 FeatureKey values the user cares about
 
 
 @dataclass(slots=True)
@@ -44,6 +46,45 @@ class Session:
     token: str
     user_id: str
     expires_at: datetime
+
+
+@dataclass(slots=True)
+class Question:
+    """F34 user → owner question about a place ("Czy można wejść z psem?")."""
+    id: str
+    place_id: str
+    author_id: str
+    text: str
+    created_at: datetime
+    feature: FeatureKey | None = None
+    status: str = "open"  # open | answered
+    answer_text: str | None = None
+    answered_by: str | None = None
+    answered_at: datetime | None = None
+    outcome: str | None = None  # ObservationValue (attribute set) | planned | None (text only)
+
+
+@dataclass(slots=True)
+class Notification:
+    """F35 in-app notification for one user."""
+    id: str
+    user_id: str
+    kind: str
+    text: str
+    created_at: datetime
+    place_id: str | None = None
+    ref_id: str | None = None  # question / report / queue item / ownership request id
+    read: bool = False
+
+
+@dataclass(slots=True)
+class LoginToken:
+    """F33 one-time e-mail login code; only the SHA-256 of the code is stored."""
+    token_hash: str
+    email: str
+    created_at: datetime
+    expires_at: datetime
+    used: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,7 +181,7 @@ class Report:
 class QueueItem:
     id: str
     place_id: str
-    feature: FeatureKey
+    feature: FeatureKey | None  # None for type new_place (F36)
     created_at: datetime
     observation_ids: list[str] = field(default_factory=list)
     type: str = "conflict"

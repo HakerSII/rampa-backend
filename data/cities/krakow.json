@@ -1,0 +1,25 @@
+{
+  "name": "Kraków",
+  "viewbox": [19.79, 50.13, 20.22, 49.97],
+  "center": {"lat": 50.0617, "lon": 19.9373},
+  "osm_radius_m": 1500,
+  "areas": {
+    "centrum": {"lat": 50.0617, "lon": 19.9373, "radius_m": 1500,
+                "words": ["centrum", "rynek", "stare miasto", "starym mieście", "center", "centre", "old town"]},
+    "kazimierz": {"lat": 50.0513, "lon": 19.9454, "radius_m": 800, "words": ["kazimierz"]}
+  },
+  "category_groups": {
+    "gastronomy": {"categories": ["cafe", "restaurant", "fast_food", "bar", "pub", "food_court", "ice_cream"],
+                   "words": ["restaurac", "kawiar", "knajp", "jedzen", "obiad", "gastronom", "restaurant", "cafe",
+                             "coffee", "kawa", "kawę", "bar "]},
+    "culture": {"categories": ["museum", "culture", "theatre", "cinema", "arts_centre", "gallery", "attraction",
+                               "library"],
+                "words": ["muze", "teatr", "kino", "kina", "kultur", "galeri", "museum", "theatre", "cinema",
+                          "zabyt"]},
+    "services": {"categories": ["office", "townhall", "post_office", "bank", "pharmacy", "hairdresser", "clinic",
+                                "hospital"],
+                 "words": ["urząd", "urzęd", "urzad", "poczt", "bank", "aptek", "fryzjer", "office", "pharmacy"]},
+    "shopping": {"categories": ["shop", "supermarket", "mall", "marketplace", "convenience"],
+                 "words": ["sklep", "zakup", "market", "galeria handlowa", "shop", "store"]}
+  }
+}

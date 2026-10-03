@@ -68,7 +68,7 @@ def plan_route(a: GeoPoint, b: GeoPoint, profile: P,
             continue
         for feature in relevant:
             state = states.get(feature)
-            if state is None or state.state == StateValue.UNKNOWN:
+            if state is None or state.state in (StateValue.UNKNOWN, StateValue.NOT_APPLICABLE):
                 continue
             point = RoutePoint(place.id, place.name, feature, place.location)
             (barriers if state.state == StateValue.NO else helpers).append(point)

@@ -220,6 +220,89 @@
         }
       }
     },
+    "/api/v1/auth/email/request": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Email Request",
+        "description": "Send a one-time login code / link (15 min, single use). Same answer for known and unknown addresses.",
+        "operationId": "email_request_api_v1_auth_email_request_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailRequestIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailRequestOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/email/verify": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Email Verify",
+        "operationId": "email_verify_api_v1_auth_email_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailVerifyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/favorites": {
       "get": {
         "tags": [
@@ -418,6 +501,313 @@
         }
       }
     },
+    "/api/v1/me/profile": {
+      "get": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Get Profile",
+        "operationId": "get_profile_api_v1_me_profile_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NeedsProfileOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Set Profile",
+        "description": "Needs only (wheelchair, stroller, assistance_dog …), never diagnoses. Used by best_match + recommend.",
+        "operationId": "set_profile_api_v1_me_profile_put",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NeedsProfileIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NeedsProfileOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Clear Profile",
+        "operationId": "clear_profile_api_v1_me_profile_delete",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/notifications": {
+      "get": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Notifications",
+        "description": "What happened to my questions, reports and requests (newest first).",
+        "operationId": "notifications_api_v1_me_notifications_get",
+        "parameters": [
+          {
+            "name": "unread",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Unread"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/notifications/read-all": {
+      "post": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Read All",
+        "operationId": "read_all_api_v1_me_notifications_read_all_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkedOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/notifications/{notification_id}/read": {
+      "post": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Read One",
+        "operationId": "read_one_api_v1_me_notifications__notification_id__read_post",
+        "parameters": [
+          {
+            "name": "notification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Notification Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/places": {
       "get": {
         "tags": [
@@ -602,6 +992,38 @@
                 }
               ],
               "title": "Place Type"
+            }
+          },
+          {
+            "name": "profile",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
             }
           }
         ],
@@ -1200,6 +1622,28 @@
                   },
                   "type": "array",
                   "title": "Response List Features Api V1 Accessibility Features Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/city": {
+      "get": {
+        "tags": [
+          "dictionaries"
+        ],
+        "summary": "City",
+        "description": "Configured city (CITY_CONFIG): map centre and box, named areas, category groups.",
+        "operationId": "city_api_v1_city_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CityOut"
                 }
               }
             }
@@ -2093,6 +2537,66 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ImageTagsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/recommend": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Recommend",
+        "description": "Natural-language query → places from the database only, with reasons and missing data (guest allowed).",
+        "operationId": "recommend_api_v1_ai_recommend_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendOut"
                 }
               }
             }
@@ -3300,6 +3804,288 @@
         }
       }
     },
+    "/api/v1/places/{place_id}/questions": {
+      "post": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Ask Question",
+        "description": "Ask the owner about this place (e.g. \"Czy można wejść z psem?\"); optional feature.",
+        "operationId": "ask_question_api_v1_places__place_id__questions_post",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Place Questions",
+        "description": "Public Q&A of a place, newest first.",
+        "operationId": "place_questions_api_v1_places__place_id__questions_get",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/questions": {
+      "get": {
+        "summary": "Owner Questions",
+        "operationId": "owner_questions_api_v1_owner_questions_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "open",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/questions/{question_id}/answer": {
+      "post": {
+        "summary": "Answer Question",
+        "description": "value → verified_owner observation; planned → marked as planned; text only otherwise.",
+        "operationId": "answer_question_api_v1_owner_questions__question_id__answer_post",
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Question Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/needs-stats": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Needs Stats",
+        "description": "Most asked features — what visitors need to know (admin: city-wide, owner: own places).",
+        "operationId": "needs_stats_api_v1_admin_needs_stats_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NeedsStatsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/queue": {
       "get": {
         "tags": [
@@ -4092,6 +4878,201 @@
         }
       }
     },
+    "/api/v1/admin/activity": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Activity",
+        "description": "Activity map: observations + reports per grid cell (cell centres, busiest first).",
+        "operationId": "activity_api_v1_admin_activity_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 30,
+              "title": "Days"
+            }
+          },
+          {
+            "name": "cell_deg",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 0.005,
+              "title": "Cell Deg"
+            }
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bbox"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/trends": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Trends",
+        "operationId": "trends_api_v1_admin_trends_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 30,
+              "title": "Days"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/coverage": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Coverage",
+        "description": "Data coverage per category + core features most often missing.",
+        "operationId": "coverage_api_v1_admin_coverage_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/public/v1/places": {
       "get": {
         "tags": [
@@ -4455,6 +5436,34 @@
         ],
         "title": "ActiveIssueOut"
       },
+      "ActivityCellOut": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "observations": {
+            "type": "integer",
+            "title": "Observations"
+          },
+          "reports": {
+            "type": "integer",
+            "title": "Reports"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lon",
+          "observations",
+          "reports"
+        ],
+        "title": "ActivityCellOut"
+      },
       "ActivityItemOut": {
         "properties": {
           "type": {
@@ -4541,6 +5550,32 @@
         ],
         "title": "ActivityList"
       },
+      "ActivityOut": {
+        "properties": {
+          "cell_deg": {
+            "type": "number",
+            "title": "Cell Deg"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityCellOut"
+            },
+            "type": "array",
+            "title": "Cells"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cell_deg",
+          "days",
+          "cells"
+        ],
+        "title": "ActivityOut"
+      },
       "AdminStatsOut": {
         "properties": {
           "new_reports_today": {
@@ -4594,6 +5629,35 @@
         },
         "type": "object",
         "title": "AnonymousLoginIn"
+      },
+      "AnswerIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "planned": {
+            "type": "boolean",
+            "title": "Planned",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "AnswerIn"
       },
       "AssignOwnerIn": {
         "properties": {
@@ -4741,6 +5805,34 @@
         ],
         "title": "Category"
       },
+      "CategoryCoverageOut": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "places": {
+            "type": "integer",
+            "title": "Places"
+          },
+          "with_data": {
+            "type": "integer",
+            "title": "With Data"
+          },
+          "avg_known_features": {
+            "type": "number",
+            "title": "Avg Known Features"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "places",
+          "with_data",
+          "avg_known_features"
+        ],
+        "title": "CategoryCoverageOut"
+      },
       "CategoryOut": {
         "properties": {
           "key": {
@@ -4837,6 +5929,90 @@
         ],
         "title": "CheckResultOut"
       },
+      "CityAreaOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "center": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "radius_m": {
+            "type": "integer",
+            "title": "Radius M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "center",
+          "radius_m"
+        ],
+        "title": "CityAreaOut"
+      },
+      "CityGroupOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "categories"
+        ],
+        "title": "CityGroupOut"
+      },
+      "CityOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "center": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "viewbox": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Viewbox"
+          },
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/CityAreaOut"
+            },
+            "type": "array",
+            "title": "Areas"
+          },
+          "category_groups": {
+            "items": {
+              "$ref": "#/components/schemas/CityGroupOut"
+            },
+            "type": "array",
+            "title": "Category Groups"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "center",
+          "viewbox",
+          "areas",
+          "category_groups"
+        ],
+        "title": "CityOut"
+      },
       "CommentIn": {
         "properties": {
           "text": {
@@ -4875,6 +6051,30 @@
           "note"
         ],
         "title": "ConfidenceOut"
+      },
+      "CoverageOut": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryCoverageOut"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "most_missing": {
+            "items": {
+              "$ref": "#/components/schemas/MissingFeatureOut"
+            },
+            "type": "array",
+            "title": "Most Missing"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categories",
+          "most_missing"
+        ],
+        "title": "CoverageOut"
       },
       "CsvImportOut": {
         "properties": {
@@ -4947,14 +6147,20 @@
             "title": "Status"
           },
           "feature_state": {
-            "$ref": "#/components/schemas/FeatureStateOut"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeatureStateOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
         "required": [
           "id",
-          "status",
-          "feature_state"
+          "status"
         ],
         "title": "DecisionOut"
       },
@@ -4971,6 +6177,56 @@
         ],
         "title": "DemoLoginIn"
       },
+      "EmailRequestIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "EmailRequestIn"
+      },
+      "EmailRequestOut": {
+        "properties": {
+          "sent": {
+            "type": "boolean",
+            "title": "Sent"
+          },
+          "dev_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dev Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sent"
+        ],
+        "title": "EmailRequestOut"
+      },
+      "EmailVerifyIn": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "EmailVerifyIn"
+      },
       "Favorites": {
         "properties": {
           "items": {
@@ -4986,6 +6242,28 @@
           "items"
         ],
         "title": "Favorites"
+      },
+      "FeatureCountOut": {
+        "properties": {
+          "feature": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "questions": {
+            "type": "integer",
+            "title": "Questions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature",
+          "label",
+          "questions"
+        ],
+        "title": "FeatureCountOut"
       },
       "FeatureDictGroup": {
         "properties": {
@@ -5105,7 +6383,11 @@
           "level_surface",
           "more_than_n_spots",
           "drop_off_zone",
-          "pets_allowed"
+          "pets_allowed",
+          "baby_changing_table",
+          "stroller_space",
+          "rest_areas",
+          "luggage_storage"
         ],
         "title": "FeatureKey"
       },
@@ -5585,6 +6867,50 @@
         ],
         "title": "ImportOut"
       },
+      "IntentOut": {
+        "properties": {
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/NeedsProfile"
+            },
+            "type": "array",
+            "title": "Profiles"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureKey"
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profiles",
+          "features",
+          "categories",
+          "area"
+        ],
+        "title": "IntentOut"
+      },
       "LineString": {
         "properties": {
           "type": {
@@ -5850,6 +7176,19 @@
         ],
         "title": "MapPlaceOut"
       },
+      "MarkedOut": {
+        "properties": {
+          "marked": {
+            "type": "integer",
+            "title": "Marked"
+          }
+        },
+        "type": "object",
+        "required": [
+          "marked"
+        ],
+        "title": "MarkedOut"
+      },
       "MergeIn": {
         "properties": {
           "into_place_id": {
@@ -5881,6 +7220,29 @@
         ],
         "title": "MergeOut"
       },
+      "MissingFeatureOut": {
+        "properties": {
+          "feature": {
+            "type": "string",
+            "title": "Feature"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "places_without_data": {
+            "type": "integer",
+            "title": "Places Without Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature",
+          "label",
+          "places_without_data"
+        ],
+        "title": "MissingFeatureOut"
+      },
       "MyReports": {
         "properties": {
           "items": {
@@ -5909,6 +7271,161 @@
           "assistance_dog"
         ],
         "title": "NeedsProfile"
+      },
+      "NeedsProfileIn": {
+        "properties": {
+          "needs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Needs",
+            "default": []
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Features",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "NeedsProfileIn"
+      },
+      "NeedsProfileOut": {
+        "properties": {
+          "needs": {
+            "items": {
+              "$ref": "#/components/schemas/NeedsProfile"
+            },
+            "type": "array",
+            "title": "Needs"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureKey"
+            },
+            "type": "array",
+            "title": "Features"
+          }
+        },
+        "type": "object",
+        "required": [
+          "needs",
+          "features"
+        ],
+        "title": "NeedsProfileOut"
+      },
+      "NeedsStatsOut": {
+        "properties": {
+          "by_feature": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureCountOut"
+            },
+            "type": "array",
+            "title": "By Feature"
+          },
+          "open": {
+            "type": "integer",
+            "title": "Open"
+          },
+          "answered": {
+            "type": "integer",
+            "title": "Answered"
+          },
+          "without_feature": {
+            "type": "integer",
+            "title": "Without Feature"
+          }
+        },
+        "type": "object",
+        "required": [
+          "by_feature",
+          "open",
+          "answered",
+          "without_feature"
+        ],
+        "title": "NeedsStatsOut"
+      },
+      "NotificationList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "unread": {
+            "type": "integer",
+            "title": "Unread"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "unread"
+        ],
+        "title": "NotificationList"
+      },
+      "NotificationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id"
+          },
+          "ref_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Id"
+          },
+          "read": {
+            "type": "boolean",
+            "title": "Read"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "text",
+          "created_at",
+          "place_id",
+          "ref_id",
+          "read"
+        ],
+        "title": "NotificationOut"
       },
       "ObservationIn": {
         "properties": {
@@ -6081,7 +7598,8 @@
         "enum": [
           "yes",
           "partial",
-          "no"
+          "no",
+          "not_applicable"
         ],
         "title": "ObservationValue"
       },
@@ -6547,6 +8065,17 @@
             "title": "Place Type",
             "default": "venue"
           },
+          "match": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match"
+          },
           "short_description": {
             "type": "string",
             "title": "Short Description"
@@ -6728,6 +8257,17 @@
             "type": "string",
             "title": "Place Type",
             "default": "venue"
+          },
+          "match": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match"
           }
         },
         "type": "object",
@@ -6916,6 +8456,172 @@
         ],
         "title": "PublicPlaceRef"
       },
+      "QuestionAnswerOut": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "by",
+          "at"
+        ],
+        "title": "QuestionAnswerOut"
+      },
+      "QuestionIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "feature": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feature"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "QuestionIn"
+      },
+      "QuestionList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "QuestionList"
+      },
+      "QuestionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "place_name": {
+            "type": "string",
+            "title": "Place Name"
+          },
+          "author": {
+            "type": "string",
+            "title": "Author"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "feature": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeatureKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "feature_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feature Label"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuestionAnswerOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "place_id",
+          "place_name",
+          "author",
+          "text",
+          "feature",
+          "feature_label",
+          "status",
+          "outcome",
+          "created_at",
+          "answer"
+        ],
+        "title": "QuestionOut"
+      },
       "QueueCommentOut": {
         "properties": {
           "author": {
@@ -6960,7 +8666,14 @@
             "$ref": "#/components/schemas/QueuePlace"
           },
           "feature": {
-            "$ref": "#/components/schemas/FeatureKey"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeatureKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "observation_count": {
             "type": "integer",
@@ -6982,7 +8695,14 @@
             "title": "Observations"
           },
           "feature_state": {
-            "$ref": "#/components/schemas/FeatureStateOut"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeatureStateOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "comments": {
             "items": {
@@ -7004,8 +8724,7 @@
           "observation_count",
           "created_at",
           "summary",
-          "observations",
-          "feature_state"
+          "observations"
         ],
         "title": "QueueDetailOut"
       },
@@ -7031,7 +8750,14 @@
             "$ref": "#/components/schemas/QueuePlace"
           },
           "feature": {
-            "$ref": "#/components/schemas/FeatureKey"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeatureKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "observation_count": {
             "type": "integer",
@@ -7101,6 +8827,218 @@
           "name"
         ],
         "title": "QueuePlace"
+      },
+      "RecItemOut": {
+        "properties": {
+          "place": {
+            "$ref": "#/components/schemas/RecPlaceOut"
+          },
+          "match": {
+            "type": "string",
+            "title": "Match"
+          },
+          "distance_m": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance M"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/RecReasonOut"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "missing": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureKey"
+            },
+            "type": "array",
+            "title": "Missing"
+          }
+        },
+        "type": "object",
+        "required": [
+          "place",
+          "match",
+          "distance_m",
+          "reasons",
+          "missing"
+        ],
+        "title": "RecItemOut"
+      },
+      "RecPlaceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "location": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Location"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "category",
+          "address",
+          "location"
+        ],
+        "title": "RecPlaceOut"
+      },
+      "RecReasonOut": {
+        "properties": {
+          "feature": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "last_verified": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature",
+          "label",
+          "state",
+          "source",
+          "last_verified"
+        ],
+        "title": "RecReasonOut"
+      },
+      "RecommendIn": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NeedsProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "RecommendIn"
+      },
+      "RecommendOut": {
+        "properties": {
+          "intent": {
+            "$ref": "#/components/schemas/IntentOut"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecItemOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "intent",
+          "items",
+          "model",
+          "note"
+        ],
+        "title": "RecommendOut"
       },
       "ReminderOut": {
         "properties": {
@@ -7676,6 +9614,7 @@
           "yes",
           "partial",
           "no",
+          "not_applicable",
           "unknown"
         ],
         "title": "StateValue"
@@ -7759,6 +9698,55 @@
           "confidence"
         ],
         "title": "TextSuggestionOut"
+      },
+      "TrendDayOut": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "title": "Day"
+          },
+          "observations": {
+            "type": "integer",
+            "title": "Observations"
+          },
+          "reports": {
+            "type": "integer",
+            "title": "Reports"
+          },
+          "questions": {
+            "type": "integer",
+            "title": "Questions"
+          },
+          "queue_items": {
+            "type": "integer",
+            "title": "Queue Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "observations",
+          "reports",
+          "questions",
+          "queue_items"
+        ],
+        "title": "TrendDayOut"
+      },
+      "TrendsOut": {
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/TrendDayOut"
+            },
+            "type": "array",
+            "title": "Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "days"
+        ],
+        "title": "TrendsOut"
       },
       "UserOut": {
         "properties": {

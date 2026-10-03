@@ -38,6 +38,10 @@ class FeatureKey(StrEnum):
     MORE_THAN_N_SPOTS = "more_than_n_spots"
     DROP_OFF_ZONE = "drop_off_zone"
     PETS_ALLOWED = "pets_allowed"
+    BABY_CHANGING_TABLE = "baby_changing_table"
+    STROLLER_SPACE = "stroller_space"
+    REST_AREAS = "rest_areas"
+    LUGGAGE_STORAGE = "luggage_storage"
 
 
 class FeatureGroupKey(StrEnum):
@@ -55,6 +59,7 @@ class StateValue(StrEnum):
     YES = "yes"
     PARTIAL = "partial"
     NO = "no"
+    NOT_APPLICABLE = "not_applicable"  # F32 "nie dotyczy": a fact, never a barrier / helper / missing data
     UNKNOWN = "unknown"
 
 
@@ -62,6 +67,7 @@ class ObservationValue(StrEnum):
     YES = "yes"
     PARTIAL = "partial"
     NO = "no"
+    NOT_APPLICABLE = "not_applicable"
 
 
 class ObservationSource(StrEnum):
@@ -179,6 +185,10 @@ FEATURE_GROUP: dict[FeatureKey, FeatureGroupKey] = {
     FeatureKey.MORE_THAN_N_SPOTS: FeatureGroupKey.PARKING,
     FeatureKey.DROP_OFF_ZONE: FeatureGroupKey.PARKING,
     FeatureKey.PETS_ALLOWED: FeatureGroupKey.OTHER,
+    FeatureKey.BABY_CHANGING_TABLE: FeatureGroupKey.TOILET,
+    FeatureKey.STROLLER_SPACE: FeatureGroupKey.INSIDE,
+    FeatureKey.REST_AREAS: FeatureGroupKey.INSIDE,
+    FeatureKey.LUGGAGE_STORAGE: FeatureGroupKey.OTHER,
 }
 
 LABELS_PL: dict[str, str] = {
@@ -225,4 +235,8 @@ LABELS_PL: dict[str, str] = {
     FeatureKey.MORE_THAN_N_SPOTS: "Więcej niż 2 miejsca",
     FeatureKey.DROP_OFF_ZONE: "Strefa wysiadania",
     FeatureKey.PETS_ALLOWED: "Wejście ze zwierzętami",
+    FeatureKey.BABY_CHANGING_TABLE: "Przewijak dla dzieci",
+    FeatureKey.STROLLER_SPACE: "Miejsce na wózek dziecięcy",
+    FeatureKey.REST_AREAS: "Miejsca odpoczynku",
+    FeatureKey.LUGGAGE_STORAGE: "Przechowalnia bagażu",
 }
