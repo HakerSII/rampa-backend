@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** — F6 done; next: owner role (README §6.3)
+- **Task:** F7 owner role
 - **Who:** Claude
-- **State:** done
-- **Next step:** F7 plan: owner role + verified_owner observations
-- **Last pytest:** `uv run pytest` → 126 passed
+- **State:** todo
+- **Next step:** 🟢 Role.OWNER, VERIFIED_OWNER, Place.owner_id, seed ewa, owner use cases
+- **Last pytest:** `uv run pytest` → red: F7 tests
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -39,9 +39,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F4.1–F4.4 | Queue, decision; step 7 → full flow green | Claude | done | full demo flow green |
 | F5.1–F5.4 | Open API: key, rate limit, flat format | Claude | done | e2e P1–P5 + 2×401 in demo.http |
 | F6.1–F6.5 | AI image tags: mock + ONNX Phi-3.5 + fallback | Claude | done | real ONNX inference untested here (manual: uv sync --extra ai) |
+| F7.1–F7.4 | Owner role + verified_owner observations | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F7 · red · plan, contract, owner tests
 - 2026-10-03 · F6 · done · AI image tags: mock + Phi-3.5 ONNX adapter + fallback, e2e AI step + 2×400; 126 passed
 - 2026-10-03 · F6 · red · plan, contract, tests (suggestions, onnx parsing, use case, fallback)
 - 2026-10-03 · F5 · done · Open API /public/v1 (X-Api-Key, 60/min, flat format), e2e in demo.http; 106 passed

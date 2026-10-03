@@ -54,3 +54,7 @@ def test_tie_goes_to_newer_then_later_inserted():
 
 def test_open_conflict_marks_state_validation():
     assert state(obs("a", "yes"), conflict_open=True).validation == ValidationStatus.CONFLICT
+
+
+def test_verified_owner_weight_is_between_community_and_admin():
+    assert state(obs("o", "yes", source=Src.VERIFIED_OWNER)).confidence == 0.85
