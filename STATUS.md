@@ -7,7 +7,7 @@
 
 - **State:** todo
 - **Deploy:** **Render**, automatic after every merge to `master` (Docker service `rampa-backend` + `rampa-backend-postgres`); see docs/operations.md; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
-- **Last pytest:** `uv run pytest` → 546 passed, 16 skipped
+- **Last pytest:** `uv run pytest` → red: F37
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
@@ -78,12 +78,13 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F34 | Questions to owner + needs stats — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F34a–i; table questions |
 | F35 | In-app notifications — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F35a–d; table notifications |
 | F36 | Admin: new-place queue, activity, trends — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F36a–g; fixed fragile 409 e2e (used stale id after reset) |
-| F37 | City config — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
+| F37 | City config — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | red |  |
 | F38 | PostGIS + Alembic — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
 | F39 | City open-data import (blocked: dataset) — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F37 red
 - 2026-10-03 · F36 green: new_place queue, activity, trends, coverage
 - 2026-10-03 · F36 red
 - 2026-10-03 · F35 green: in-app notifications
