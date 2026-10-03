@@ -19,6 +19,8 @@ def _mime(data: bytes) -> str:
 
 
 class GeminiVisionAnalyzer:
+    LABEL = "gemini"
+
     def __init__(self, api_key: str, model: str = DEFAULT_MODEL, api_url: str = DEFAULT_API_URL,
                  http: httpx.AsyncClient | None = None, timeout_s: float = 60.0):
         self.api_key = api_key

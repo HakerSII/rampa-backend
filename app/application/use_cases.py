@@ -1253,8 +1253,9 @@ class UseCases:
 
     # ------------------------------------------------------------------ AI suggestions (F6)
     async def analyze_image(self, user: User | None, photo_ids: list[str],
-                            place_id: str | None = None) -> ImageTagsResult:
-        """Suggestions for the report form. Never changes feature state."""
+                            place_id: str | None = None, on_step=None) -> ImageTagsResult:
+        """Suggestions for the report form. Never changes feature state.
+        on_step(event): progress of a vision chain (F44 stream); ignored by a single model."""
         self._require_user(user)
         if not 1 <= len(photo_ids) <= MAX_PHOTOS:
             raise ValidationFailed(f"photo_ids: 1..{MAX_PHOTOS} required")
@@ -1264,7 +1265,10 @@ class UseCases:
         if self.vision is None:
             raise ValidationFailed("AI is not configured")
 
-        analyses = [await self.vision.analyze(p.path, p.original_name) for p in photos]
+        if on_step and getattr(self.vision, "REPORTS_STEPS", False):
+            analyses = [await self.vision.analyze(p.path, p.original_name, on_step=on_step) for p in photos]
+        else:
+            analyses = [await self.vision.analyze(p.path, p.original_name) for p in photos]
         real = [a for a in analyses if a.real_place]
         if not real:
             raise NotARealPlace("no photo shows a real place (screenshot or graphic?)")

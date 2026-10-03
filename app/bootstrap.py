@@ -22,11 +22,24 @@ def build_vision(settings: Settings):
             log.warning("AI_MODE=gemini but GEMINI_API_KEY is empty → every call falls back to mock")
         gemini = GeminiVisionAnalyzer(settings.gemini_api_key, settings.gemini_model, settings.gemini_api_url,
                                       timeout_s=settings.ai_timeout_s)
-        return FallbackVisionAnalyzer(gemini, mock, settings.ai_timeout_s)
+        return FallbackVisionAnalyzer(gemini, _gemini_fallback(settings, mock), settings.ai_timeout_s)
     if settings.ai_mode == "onnx":
         from app.adapters.outbound.vision_onnx import OnnxPhiVisionAnalyzer
         return FallbackVisionAnalyzer(OnnxPhiVisionAnalyzer(settings.ai_model_path), mock, settings.ai_timeout_s)
     return mock
+
+
+def _gemini_fallback(settings: Settings, mock):
+    """F44: Gemini failed → local ONNX model when it can run here, else mock."""
+    if settings.ai_vision_fallback != "onnx":
+        return mock
+    from app.adapters.outbound import vision_onnx
+    if not vision_onnx.onnx_available(settings.ai_model_path):
+        log.warning("AI_VISION_FALLBACK=onnx but onnxruntime-genai or model %s is missing → mock",
+                    settings.ai_model_path)
+        return mock
+    return FallbackVisionAnalyzer(vision_onnx.OnnxPhiVisionAnalyzer(settings.ai_model_path), mock,
+                                  settings.ai_onnx_timeout_s)
 
 
 def build_geocoder(settings: Settings, city: City):

@@ -2554,6 +2554,64 @@
         }
       }
     },
+    "/api/v1/ai/image-tags/stream": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Image Tags Stream",
+        "description": "Same check as /ai/image-tags, as Server-Sent Events: status (received, analyzing, fallback),\nkeepalive comments while a slow model works, then result or error.",
+        "operationId": "image_tags_stream_api_v1_ai_image_tags_stream_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageTagsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ai/recommend": {
       "post": {
         "tags": [
