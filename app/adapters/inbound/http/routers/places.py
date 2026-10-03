@@ -1,16 +1,18 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from app.adapters.inbound.http.deps import UC, CurrentUser
 from app.adapters.inbound.http.schemas import (
+    CATEGORY_LABELS,
     AccessibilityOut,
     ActivityList,
     CheckResultOut,
     FeatureDictGroup,
     GalleryOut,
     GalleryPhotoOut,
+    Location,
     PlaceOut,
     PlacePage,
     accessibility_out,
@@ -22,7 +24,9 @@ from app.adapters.inbound.http.schemas import (
     place_out,
     place_summary,
 )
+from app.application.use_cases import PlaceQuery
 from app.domain.enums import FeatureKey, NeedsProfile
+from app.domain.model import GeoPoint
 from app.domain.errors import ValidationFailed
 
 router = APIRouter()
@@ -38,12 +42,61 @@ def parse_features(raw: str | None) -> list[FeatureKey] | None:
         raise ValidationFailed(f"unknown feature: {e}") from e
 
 
-@router.get("/places", response_model=PlacePage, tags=["places"])
+class MapMarker(BaseModel):
+    id: str
+    name: str
+    location: Location
+    category: str
+    marker: str  # accessible | partial | inaccessible | unknown (wheelchair check)
+
+
+class MapMarkers(BaseModel):
+    total: int
+    items: list[MapMarker]
+
+
+class CategoryOut(BaseModel):
+    key: str
+    label: str
+    count: int
+
+
+class GeocodeOut(BaseModel):
+    label: str
+    place_id: str
+    location: Location
+
+
+@router.get("/places", response_model=PlacePage | MapMarkers, tags=["places"])
 async def search_places(uc: UC, features: Annotated[str | None, Query()] = None,
-                        category: str | None = None, q: str | None = None):
-    places = uc.search_places(parse_features(features), category, q)
-    items = [place_summary(p, uc.yes_features(p.id), uc.verification_for(p.id)) for p in places]
-    return PlacePage(items=items, page_size=max(len(items), 1), total=len(items))
+                        category: str | None = None, q: str | None = None,
+                        lat: float | None = None, lon: float | None = None, radius_m: int | None = None,
+                        bbox: str | None = None, sort: str | None = None,
+                        page: int = 1, page_size: int = 20, view: Literal["list", "map"] = "list"):
+    if (lat is None) != (lon is None):
+        raise ValidationFailed("lat and lon must be given together")
+    query = PlaceQuery(parse_features(features), category, q, GeoPoint(lat, lon) if lat is not None else None,
+                       radius_m, bbox, sort, page, page_size)
+    if view == "map":
+        markers = [MapMarker(id=p.id, name=p.name, location=Location(lat=p.location.lat, lon=p.location.lon),
+                             category=p.category, marker=m) for p, m in uc.map_markers(query)]
+        return MapMarkers(total=len(markers), items=markers)
+    r = uc.find_places(query)
+    items = [place_summary(p, uc.yes_features(p.id), uc.verification_for(p.id), d) for p, d in r.items]
+    return PlacePage(items=items, page=r.page, page_size=r.page_size, total=r.total)
+
+
+@router.get("/categories", response_model=list[CategoryOut], tags=["dictionaries"])
+async def list_categories(uc: UC):
+    return [CategoryOut(key=c.key, label=CATEGORY_LABELS.get(c.key, c.key), count=c.count)
+            for c in uc.list_categories()]
+
+
+@router.get("/geocode", response_model=list[GeocodeOut], tags=["dictionaries"])
+async def geocode(q: str, uc: UC):
+    """Search-box suggestions from the local place index (offline)."""
+    return [GeocodeOut(label=h.label, place_id=h.place_id, location=Location(lat=h.location.lat, lon=h.location.lon))
+            for h in uc.geocode(q)]
 
 
 @router.get("/places/{place_id}", response_model=PlaceOut, tags=["places"])

@@ -14,7 +14,7 @@ from app.application.ports import (
     VisionAnalyzer,
 )
 from app.domain import check as domain_check, osm as domain_osm, suggestions, trust, validation
-from app.domain.geo import haversine_m
+from app.domain.geo import haversine_m, in_bbox, parse_bbox
 from app.domain.history import HistoryEvent, build_history
 from app.domain.stats import AdminStats, compute_stats
 from app.domain.verification import Verification, activity_type, summarize
@@ -62,6 +62,44 @@ MAX_PHOTOS = 5
 MAX_OWNER_BATCH = 10
 MAX_DESCRIPTION = 1000
 IMAGE_SIGNATURES = {b"\x89PNG\r\n\x1a\n": "png", b"\xff\xd8\xff": "jpg"}
+
+
+SORTS = (None, "nearest", "name", "recently_verified")
+DEFAULT_RADIUS_M = 2000
+
+
+@dataclass(slots=True)
+class PlaceQuery:
+    features: list[FeatureKey] | None = None
+    category: str | None = None
+    q: str | None = None
+    near: GeoPoint | None = None
+    radius_m: int | None = None
+    bbox: str | None = None
+    sort: str | None = None
+    page: int = 1
+    page_size: int = 20
+
+
+@dataclass(slots=True)
+class PlaceResults:
+    items: list[tuple[Place, int | None]]  # (place, distance in m or None)
+    total: int
+    page: int
+    page_size: int
+
+
+@dataclass(slots=True)
+class CategoryCount:
+    key: str
+    count: int
+
+
+@dataclass(slots=True)
+class GeocodeHit:
+    label: str
+    place_id: str
+    location: GeoPoint
 
 
 @dataclass(slots=True)
@@ -183,6 +221,65 @@ class UseCases:
                 continue
             result.append(place)
         return result
+
+    def find_places(self, query: PlaceQuery) -> PlaceResults:
+        """Search + distance/radius/bbox + sort + pagination (F17)."""
+        if not (query.page >= 1 and 1 <= query.page_size <= 100):
+            raise ValidationFailed("page >= 1, page_size 1..100")
+        matches = self._filter_and_sort(query)
+        start = (query.page - 1) * query.page_size
+        return PlaceResults(matches[start:start + query.page_size], len(matches), query.page, query.page_size)
+
+    def map_markers(self, query: PlaceQuery) -> list[tuple[Place, str]]:
+        """All matches (no pagination) with a wheelchair marker for the map."""
+        marker = {"yes": "accessible", "partial": "partial", "no": "inaccessible", "unknown": "unknown"}
+        return [(p, marker[str(self.check_place(p.id, NeedsProfile.WHEELCHAIR).answer)])
+                for p, _ in self._filter_and_sort(query)]
+
+    def _filter_and_sort(self, query: PlaceQuery) -> list[tuple[Place, int | None]]:
+        if query.sort not in SORTS:
+            raise ValidationFailed(f"sort must be one of: nearest, name, recently_verified (got {query.sort})")
+        if query.sort == "nearest" and query.near is None:
+            raise ValidationFailed("sort=nearest needs lat and lon")
+        try:
+            bbox = parse_bbox(query.bbox) if query.bbox else None
+        except ValueError as e:
+            raise ValidationFailed(str(e)) from e
+
+        items = []
+        for p in self.search_places(query.features, query.category, query.q):
+            distance = round(haversine_m(query.near, p.location)) if query.near else None
+            if query.near and distance > (query.radius_m or DEFAULT_RADIUS_M):
+                continue
+            if bbox and not in_bbox(p.location, bbox):
+                continue
+            items.append((p, distance))
+
+        sort = query.sort or ("nearest" if query.near else None)
+        if sort == "nearest":
+            items.sort(key=lambda t: t[1])
+        elif sort == "name":
+            items.sort(key=lambda t: t[0].name.casefold())
+        elif sort == "recently_verified":
+            last = {p.id: self.verification_for(p.id).last_verified for p, _ in items}
+            items.sort(key=lambda t: (last[t[0].id] is not None, last[t[0].id] or 0), reverse=True)
+        return items
+
+    def list_categories(self) -> list[CategoryCount]:
+        counts: dict[str, int] = {}
+        for p in self.repo.list_places():
+            counts[p.category] = counts.get(p.category, 0) + 1
+        return [CategoryCount(k, v) for k, v in counts.items()]
+
+    def geocode(self, q: str) -> list[GeocodeHit]:
+        """Search-box suggestions from the local place index (offline; no Nominatim)."""
+        needle = (q or "").strip().casefold()
+        if len(needle) < 2:
+            raise ValidationFailed("q: at least 2 characters")
+        hits = [GeocodeHit(f"{p.name}, {p.address}" if p.address else p.name, p.id, p.location)
+                for p in self.repo.list_places()
+                if needle in p.name.casefold() or needle in (p.address or "").casefold()]
+        return hits[:10]
 
     def get_place(self, place_id: str) -> Place:
         place = self.repo.get_place(place_id)

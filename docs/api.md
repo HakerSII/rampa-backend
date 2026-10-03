@@ -113,6 +113,8 @@ Every error has the same shape:
 | PUT | `/api/v1/me/favorites/{id}` | user | Add favourite (idempotent) |
 | DELETE | `/api/v1/me/favorites/{id}` | user | Remove favourite (idempotent) |
 | GET | `/api/v1/me/reports` | user | My reports, newest first |
+| GET | `/api/v1/categories` | — | Categories with counts |
+| GET | `/api/v1/geocode?q=` | — | Search-box suggestions (local index) |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -205,6 +207,28 @@ All 13 features in 7 groups; features without data come back as `unknown`.
 
 ### `GET /api/v1/accessibility/features`
 `[ { key, label, features: [ { key, label } ] } ]` with Polish labels, for building filters.
+
+## 4a. Location search, map, categories, geocode
+
+`GET /api/v1/places` also accepts these parameters (all optional; old calls behave the same):
+
+| Param | Meaning |
+|---|---|
+| `lat`, `lon` | together; adds `distance_m` to items; default sort `nearest`; filters by `radius_m` (default 2000) |
+| `bbox` | `minLon,minLat,maxLon,maxLat`, the map viewport |
+| `sort` | `nearest` (needs lat/lon) · `name` · `recently_verified` |
+| `page`, `page_size` | 1-based, size 1–100 (default 20); `total` counts all matches |
+| `view=map` | returns `{ total, items: [ { id, name, location, category, marker } ] }`, all matches without paging; `marker` = wheelchair answer → `accessible` · `partial` · `inaccessible` · `unknown` |
+
+```json
+// GET /api/v1/places?lat=50.0617&lon=19.9373&page_size=2   (from Rynek Główny)
+{ "items": [ { "id": "plc_camelot", "distance_m": 142, "...": "..." },
+             { "id": "plc_urzad", "distance_m": 661, "...": "..." } ],
+  "page": 1, "page_size": 2, "total": 4 }
+```
+
+- `GET /categories` → `[ { "key": "museum", "label": "Muzeum", "count": 1 }, … ]`.
+- `GET /geocode?q=muz` → `[ { "label": "Muzeum Narodowe w Krakowie, al. 3 Maja 1, 30-062 Kraków", "place_id": "plc_mnk", "location": {…} } ]`. It matches place names and addresses (at least 2 characters, max 10 results), works offline and doesn't use Nominatim.
 
 ## 5. Reporting and observations
 

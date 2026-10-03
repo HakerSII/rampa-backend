@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** F17 geo search
+- **Task:** F18 report drafts
 - **Who:** Claude
 - **State:** todo
-- **Next step:** 🟢 PlaceQuery/find_places, markers, categories, geocode
-- **Last pytest:** `uv run pytest` → red: F17
+- **Next step:** 🔴 tests draft → PATCH → submit
+- **Last pytest:** `uv run pytest` → 290 passed, 9 skipped
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -49,10 +49,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F14.1–F14.2 | +8 features, +6 needs profiles (generic check rules) | Claude | done | e2e 3b–3f + 400 |
 | F15 | Pitch + stage demo script | Claude | done | docs/PITCH.md, docs/DEMO.md |
 | F16 | Me: favourites + my reports | Claude | done | e2e 4b-ME/FAV + 404/401 |
-| F17 | Geo search (near/radius/bbox/sort/pages/map), categories, geocode | Claude | red | |
+| F17 | Geo search (near/radius/bbox/sort/pages/map), categories, geocode | Claude | done | e2e 1b–1e + 400 |
 
 ## Log (newest first)
 
+- 2026-10-03 · F17 · done · near/radius/bbox/sort/pages/map markers, /categories, /geocode (local)
 - 2026-10-03 · F17 · red · geo search tests
 - 2026-10-03 · F16 · done · favourites (JSON column, auto-migrated), my reports
 - 2026-10-03 · F16 · red · me/favorites/reports tests

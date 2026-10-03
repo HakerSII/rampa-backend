@@ -40,6 +40,21 @@ Authorization: Bearer {{anna}}
 ### 1. Search step-free places → plc_mnk, plc_ice
 GET {{base}}/places?features=step_free_entrance
 
+### 1b. Near me (Rynek Główny), nearest first with distance_m, 2 per page
+GET {{base}}/places?lat=50.0617&lon=19.9373&page_size=2
+
+### 1c. Map view: markers (accessible / partial / inaccessible) for the viewport
+GET {{base}}/places?view=map&bbox=19.90,50.04,19.96,50.08
+
+### 1d. Categories with counts (chips)
+GET {{base}}/categories
+
+### 1e. Search-box suggestions ("muz" → Muzeum Narodowe)
+GET {{base}}/geocode?q=muz
+
+### 400 VALIDATION_ERROR — sort=nearest without location
+GET {{base}}/places?sort=nearest
+
 ### Feature dictionary (filters)
 GET {{base}}/accessibility/features
 
