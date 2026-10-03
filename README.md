@@ -13,7 +13,7 @@ Full contract: [../openapi.yaml](../openapi.yaml) · full plan: [../plan_fastapi
 ```
 uv sync                                                        # once, online
 uv run pytest                                                  # 92 tests, ~2 s, offline
-uv run uvicorn app.adapters.inbound.http.main:app --port 8000  # http://localhost:8000/docs
+uv run python main.py                                          # http://localhost:8000/docs
 ```
 
 - Demo login: `POST /api/v1/auth/demo {"username": "anna"}` → use `Authorization: Bearer demo-anna`.

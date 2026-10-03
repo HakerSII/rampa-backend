@@ -17,7 +17,7 @@
 ```
 uv sync
 uv run pytest
-uv run uvicorn app.adapters.inbound.http.main:app --port 8000   # /docs
+uv run python main.py   # http://localhost:8000/docs
 ```
 
 ## Blockers / decisions
