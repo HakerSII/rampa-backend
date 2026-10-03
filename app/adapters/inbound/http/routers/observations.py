@@ -2,6 +2,10 @@ from fastapi import APIRouter, Response, UploadFile
 
 from app.adapters.inbound.http.deps import UC, CurrentUser, OptionalUser
 from app.adapters.inbound.http.schemas import (
+    Location,
+    MapObservationOut,
+    MapObservations,
+    MapPlaceOut,
     ObservationIn,
     ObservationList,
     ObservationOut,
@@ -54,6 +58,20 @@ async def submit_report(report_id: str, uc: UC, user: CurrentUser):
 @router.get("/reports/{report_id}", response_model=ReportOut, tags=["reports"])
 async def get_report(report_id: str, uc: UC, user: CurrentUser):
     return report_out(uc, uc.get_report(user, report_id))
+
+
+@router.get("/observations", response_model=MapObservations, tags=["observations"])
+async def map_observations(uc: UC, me: OptionalUser, bbox: str | None = None, active: bool = True,
+                           feature: str | None = None, value: str | None = None, current: bool = False,
+                           since: str | None = None, limit: int = 200):
+    """F24 map layer: observations across places (one request), newest first, with place + report severity."""
+    rows = uc.map_observations(bbox=bbox, active=active, feature=feature, value=value, current=current,
+                               since=since, limit=limit)
+    items = [MapObservationOut(**observation_out(uc, o, me).model_dump(),
+                               place=MapPlaceOut(id=p.id, name=p.name,
+                                                 location=Location(lat=p.location.lat, lon=p.location.lon)),
+                               severity=sev) for o, p, sev in rows]
+    return MapObservations(items=items, total=len(items))
 
 
 @router.get("/places/{place_id}/observations", response_model=ObservationList, tags=["observations"])

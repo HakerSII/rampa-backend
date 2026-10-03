@@ -144,6 +144,7 @@ Every error has the same shape:
 | POST | `/api/v1/owner/observations/batch` | owner | Batch update (all-or-nothing) |
 | GET | `/api/v1/owner/places/import/template` | owner | CSV template |
 | POST | `/api/v1/owner/places/import` | owner | CSV import |
+| GET | `/api/v1/observations` | — | Map layer: observations across places (one request) |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -401,6 +402,22 @@ Body `{ "value": 1 }` or `{ "value": -1 }`. Voting again replaces the previous v
 - "Bez schodów" → step-free entrance `yes`; stairs mentioned → `no` (confidence 0.6).
 - "od …", "remont", "dziś" → `temporary`.
 - It's a **suggestion only** and pre-fills the report form. Text must be 1–1000 characters.
+
+## 5c. Map layer of observations
+
+`GET /api/v1/observations?active=true&bbox=19.93,50.055,19.95,50.07&value=no&current=true&since=…&limit=200`: observations across all places, **newest first**. Each item is a full `Observation` plus:
+
+```json
+{ "place": { "id": "plc_camelot", "name": "Cafe Camelot", "location": { "lat": 50.0628, "lon": 19.9383 } },
+  "severity": "obstacle" }
+```
+- `active` (default `true`) leaves out REJECTED, FLAGGED and expired observations.
+- `bbox` filters on the place location.
+- `current=true` returns only observations that currently decide their feature's state.
+- `severity` comes from the report the observation came from (`null` for quick observations, imports and seed data).
+- `limit` is 1–500.
+
+One request replaces per-place `GET /places/{id}/observations` loops in the map front end.
 
 ## 6. Owner (role `owner`)
 

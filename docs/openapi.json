@@ -1509,6 +1509,150 @@
         }
       }
     },
+    "/api/v1/observations": {
+      "get": {
+        "tags": [
+          "observations"
+        ],
+        "summary": "Map Observations",
+        "description": "F24 map layer: observations across places (one request), newest first, with place + report severity.",
+        "operationId": "map_observations_api_v1_observations_get",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bbox"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Active"
+            }
+          },
+          {
+            "name": "feature",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Feature"
+            }
+          },
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Value"
+            }
+          },
+          {
+            "name": "current",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Current"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapObservations"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/places/{place_id}/observations": {
       "get": {
         "tags": [
@@ -5441,6 +5585,158 @@
           "items"
         ],
         "title": "MapMarkers"
+      },
+      "MapObservationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "feature": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ObservationValue"
+          },
+          "temporary": {
+            "type": "boolean",
+            "title": "Temporary"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ObservationSource"
+          },
+          "author": {
+            "$ref": "#/components/schemas/AuthorOut"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "comment": {
+            "type": "string",
+            "title": "Comment"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoOut"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "votes": {
+            "$ref": "#/components/schemas/VotesOut"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/ValidationOut"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "place": {
+            "$ref": "#/components/schemas/MapPlaceOut"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "place_id",
+          "feature",
+          "value",
+          "temporary",
+          "source",
+          "author",
+          "report_id",
+          "comment",
+          "evidence",
+          "votes",
+          "validation",
+          "confidence",
+          "created_at",
+          "place",
+          "severity"
+        ],
+        "title": "MapObservationOut"
+      },
+      "MapObservations": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MapObservationOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "MapObservations"
+      },
+      "MapPlaceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "location"
+        ],
+        "title": "MapPlaceOut"
       },
       "MergeIn": {
         "properties": {

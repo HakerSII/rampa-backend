@@ -1185,6 +1185,51 @@ class UseCases:
             if obs and obs.valid_until and obs.valid_until <= now:
                 self.recompute(place_id, feature)
 
+    def map_observations(self, *, bbox: str | None = None, active: bool = True, feature: str | None = None,
+                         value: str | None = None, current: bool = False, since: str | None = None,
+                         limit: int = 200) -> list[tuple[Observation, Place, str | None]]:
+        """F24: observations across places for the map, newest first, with place + report severity."""
+        if not 1 <= limit <= 500:
+            raise ValidationFailed("limit: 1..500")
+        try:
+            box = parse_bbox(bbox) if bbox else None
+        except ValueError as e:
+            raise ValidationFailed(str(e)) from e
+        feature_v = _enum(FeatureKey, feature, "feature") if feature else None
+        value_v = _enum(ObservationValue, value, "value") if value else None
+        since_dt = None
+        if since:
+            try:
+                since_dt = datetime.fromisoformat(since)
+            except ValueError as e:
+                raise ValidationFailed("since must be an ISO date-time") from e
+            if since_dt.tzinfo is None:
+                since_dt = since_dt.replace(tzinfo=self.clock.now().tzinfo)
+        now = self.clock.now()
+
+        rows = []
+        for place in self.repo.list_places():
+            if box and not in_bbox(place.location, box):
+                continue
+            if current:
+                self._refresh_expired(place.id)
+            states = self.repo.states_for(place.id) if current else {}
+            for o in self.repo.list_observations(place.id, feature_v):
+                if active and (not validation.is_active(o) or trust.is_expired(o, now)):
+                    continue
+                if value_v and o.value != value_v:
+                    continue
+                if since_dt and o.created_at < since_dt:
+                    continue
+                if current and (o.feature not in states or states[o.feature].active_observation_id != o.id):
+                    continue
+                report = self.repo.get_report(o.report_id) if o.report_id else None
+                severity = str(report.severity) if report and report.severity else None
+                rows.append((o, place, severity))
+        seq = lambda o: int(o.id.rsplit("_", 1)[-1]) if o.id.rsplit("_", 1)[-1].isdigit() else 0  # noqa: E731
+        rows.sort(key=lambda r: (r[0].created_at, seq(r[0])), reverse=True)
+        return rows[:limit]
+
     def list_observations(self, place_id: str, feature: FeatureKey | None = None,
                           active: bool = True) -> list[Observation]:
         self.get_place(place_id)

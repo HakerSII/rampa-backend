@@ -300,6 +300,22 @@ class ObservationOut(BaseModel):
     valid_until: str | None = None
 
 
+class MapPlaceOut(BaseModel):
+    id: str
+    name: str
+    location: Location
+
+
+class MapObservationOut(ObservationOut):
+    place: MapPlaceOut
+    severity: str | None
+
+
+class MapObservations(BaseModel):
+    items: list[MapObservationOut]
+    total: int
+
+
 class ObservationList(BaseModel):
     items: list[ObservationOut]
 

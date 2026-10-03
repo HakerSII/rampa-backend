@@ -207,6 +207,15 @@ Authorization: Bearer {{jan}}
 POST {{base}}/reports/{{janDraft.response.body.$.id}}/submit
 Authorization: Bearer {{jan}}
 
+### 4b-MAP. Map layer: current problems in the city (one request) — Anna's elevator with severity critical
+GET {{base}}/observations?value=no&current=true&since=2026-01-01T00:00:00+00:00
+
+### 4b-MAP2. Map layer for a viewport (old town)
+GET {{base}}/observations?bbox=19.93,50.055,19.95,50.07&limit=50
+
+### 400 VALIDATION_ERROR — map layer with bad bbox
+GET {{base}}/observations?bbox=1,2,3
+
 ### 4c. Elevator now: no, temporary, confidence 0.6
 GET {{base}}/places/plc_mnk/accessibility
 

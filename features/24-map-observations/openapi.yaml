@@ -1,0 +1,57 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F24 Map observations
+  version: 0.1.0-mvp
+  description: >
+    Observations across places in one request for the map front end, newest first,
+    each with the place (id, name, location) and the severity of the report it came from.
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: observations
+paths:
+  /observations:
+    get:
+      tags: [observations]
+      summary: Map layer of observations (filters active, bbox, feature, value, current, since, limit)
+      operationId: mapObservations
+      parameters:
+        - { name: active, in: query, schema: { type: boolean, default: true }, description: "exclude REJECTED, FLAGGED, expired" }
+        - { name: bbox, in: query, schema: { type: string }, description: "minLon,minLat,maxLon,maxLat (place location)" }
+        - { name: feature, in: query, schema: { type: string } }
+        - { name: value, in: query, schema: { type: string, enum: ["yes", partial, "no"] } }
+        - { name: current, in: query, schema: { type: boolean, default: false }, description: "only observations deciding the feature state" }
+        - { name: since, in: query, schema: { type: string, format: date-time } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 200 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      description: Observation + place + severity
+                      properties:
+                        id: { type: string }
+                        feature: { type: string }
+                        value: { type: string, enum: ["yes", partial, "no"] }
+                        temporary: { type: boolean }
+                        valid_until: { type: [string, "null"], format: date-time }
+                        severity: { type: [string, "null"], enum: [critical, obstacle, minor, null] }
+                        place:
+                          type: object
+                          properties:
+                            id: { type: string }
+                            name: { type: string }
+                            location:
+                              type: object
+                              properties:
+                                lat: { type: number }
+                                lon: { type: number }
+        "400": { description: "VALIDATION_ERROR (bbox, limit, feature, value, since)" }

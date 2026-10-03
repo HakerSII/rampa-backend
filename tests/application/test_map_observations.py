@@ -18,7 +18,8 @@ def ids(rows):
 async def test_bbox_filters_by_place_location_and_carries_place_and_severity(uc):
     r = report(uc, place_id="plc_camelot", element="ramp", severity="obstacle")
     report(uc)  # MNK, outside bbox
-    rows = uc.map_observations(bbox=OLD_TOWN, value="no")
+    fresh = (NOW - timedelta(days=1)).isoformat()  # skip 60-day-old seed (Urząd has seed "no"s in the bbox)
+    rows = uc.map_observations(bbox=OLD_TOWN, value="no", since=fresh)
     assert ids(rows) == r.observation_ids
     obs, place, severity = rows[0]
     assert (place.id, severity) == ("plc_camelot", "obstacle")
@@ -37,9 +38,10 @@ async def test_active_excludes_rejected_flagged_and_expired():
 
 async def test_current_only_returns_observations_deciding_the_state(uc):
     weak = uc.add_observation(user(uc, "anna"), "plc_ice", feature="ramp", value="no")  # 0.5, newest → wins
-    rows = uc.map_observations(current=True, feature="ramp")
+    ice_only = "19.92,50.04,19.935,50.05"  # other places have seeded ramp observations
+    rows = uc.map_observations(current=True, feature="ramp", bbox=ice_only)
     assert ids(rows) == [weak.id]
-    assert uc.map_observations(current=True, feature="ramp", value="yes") == []
+    assert uc.map_observations(current=True, feature="ramp", value="yes", bbox=ice_only) == []
 
 
 async def test_seed_observations_visible_newest_first_with_limit(uc):
