@@ -62,3 +62,22 @@ def test_optional_bearer_token(mcp_client):
             "protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "t", "version": "1"}}))
         assert ok.status_code == 200
         assert c.get("/health").status_code == 200          # health stays open for Render
+
+
+def test_mcpenv_file_is_loaded_without_overriding_real_env(tmp_path, monkeypatch):
+    """F41: the MCP service has its own env file (.mcpenv); real env vars (Render dashboard) win."""
+    from clients import mcp_server
+    env = tmp_path / ".mcpenv"
+    env.write_text("RAMPA_API_URL=https://backend.example\nRAMPA_API_KEY=from-file\nMCP_AUTH_TOKEN=tok\n",
+                   encoding="utf-8")
+    monkeypatch.delenv("RAMPA_API_URL", raising=False)
+    monkeypatch.setenv("RAMPA_API_KEY", "from-env")
+    monkeypatch.delenv("MCP_AUTH_TOKEN", raising=False)
+    assert mcp_server.load_env_file(str(env)) is True
+    import os
+    assert os.environ["RAMPA_API_URL"] == "https://backend.example"
+    assert os.environ["RAMPA_API_KEY"] == "from-env"                  # not overridden
+    assert os.environ["MCP_AUTH_TOKEN"] == "tok"
+    monkeypatch.delenv("RAMPA_API_URL")
+    monkeypatch.delenv("MCP_AUTH_TOKEN")
+    assert mcp_server.load_env_file(str(tmp_path / "missing")) is False   # optional file

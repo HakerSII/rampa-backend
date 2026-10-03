@@ -7,7 +7,7 @@
 
 - **State:** done
 - **Deploy:** **Render**, automatic after every merge to `master` (Docker service `rampa-backend` + `rampa-backend-postgres`); see docs/operations.md; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
-- **Last pytest:** `uv run pytest` → 565 passed, 16 skipped
+- **Last pytest:** `uv run pytest` → 566 passed, 16 skipped
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
@@ -82,10 +82,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F38 | PostGIS + Alembic — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | deferred | write-behind cache → PostGIS unused until SQL-backed repo; no local Postgres check |
 | F39 | City open-data import (blocked: dataset) — [PLAN-GAPS.md](PLAN-GAPS.md) | — | blocked | needs dataset + licence choice |
 | F40 | One LLM filter-tool schema (Claude + Gemini), AI_RECOMMENDER=gemini — option A | Claude | done | schema in domain; guard test; e2e unchanged (needs a key, rules path covered by F30a–d) |
-| F41 | Public remote MCP (Streamable HTTP /mcp) as a separate Render service | Claude | done | tests/api/test_mcp_http.py; requests/mcp.http verified live (uvicorn + MCP_TRANSPORT=http + real FastMCP client); compose service mcp (image builds); docs/mcp.md |
+| F41 | Public remote MCP (Streamable HTTP /mcp) as a separate Render service | Claude | done | own env file .mcpenv (gitignored, template .mcpenv.example); verified live: local MCP (HTTP) + .mcpenv → https://rampa-backend.onrender.com → real data; compose env_file |
 
 ## Log (newest first)
 
+- 2026-10-03 · F41: .mcpenv for the MCP service, verified against Render backend
 - 2026-10-03 · F41 green: remote MCP over HTTP + compose + Render guide (docs/mcp.md)
 - 2026-10-03 · F40 A green: one LLM tool schema for Claude + Gemini, AI_RECOMMENDER=gemini
 - 2026-10-03 · F30b red: Gemini recommender tests

@@ -82,12 +82,15 @@ services:
         condition: service_healthy
     ports:
       - "${MCP_PORT:-8080}:8080"
+    # own env file of the MCP service (RAMPA_API_KEY, MCP_AUTH_TOKEN …); optional — defaults work without it
+    env_file:
+      - path: .mcpenv
+        required: false
     environment:
+      # wiring inside compose wins over .mcpenv
       RAMPA_API_URL: http://api:8000
-      RAMPA_API_KEY: ${RAMPA_API_KEY:-demo-key}   # must be one of PUBLIC_API_KEYS
       MCP_TRANSPORT: http
       PORT: 8080
-      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}         # empty = open; set → Authorization: Bearer <token>
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 5s

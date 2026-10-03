@@ -22,7 +22,7 @@ uv run python main.py                                          # http://localhos
 - AI: `POST /api/v1/ai/image-tags {"photo_ids": [...]}` — `AI_MODE=mock` (default) | `onnx` (`uv sync --extra ai`, model in `models/`) | `gemini` (`GEMINI_API_KEY` in `.env`, `GEMINI_MODEL`); any failure → mock.
 - OSM import: `POST /api/v1/admin/imports {"source": "osm_file"}` (admin) → Tauron Arena stops etc.
 - MCP (Claude): backend running → `.mcp.json` server `rampa` (`uv run --extra mcp python -m clients.mcp_server`); tools `check_accessibility`, `search_accessible_places`.
-- **Remote MCP** (F41): `MCP_TRANSPORT=http` → `http://…/mcp`; separate Render service from `Dockerfile.mcp`, for Claude / Gemini CLI / Grok. Guide: [docs/mcp.md](docs/mcp.md).
+- **Remote MCP** (F41): `MCP_TRANSPORT=http` → `http://…/mcp`; separate Render service from `Dockerfile.mcp`, own env file `.mcpenv` (template `.mcpenv.example`), for Claude / Gemini CLI / Grok. Guide: [docs/mcp.md](docs/mcp.md).
 - Open API: `GET /public/v1/places` with header `X-Api-Key: demo-key`.
 - Storage: `REPO_MODE=sql|memory`, `DB_ENGINE=sqlite|postgres` (+ `POSTGRES_*`); config in `.env` (see `.env.example`).
 - Docker: `docker compose up -d --build` → Postgres + API on :8000 (`API_PORT=8001` if taken) + remote MCP on :8080/mcp (`MCP_PORT`).

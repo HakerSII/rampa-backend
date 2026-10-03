@@ -34,6 +34,16 @@ The tools never raise. Backend errors come back as `{"error": "…"}`, so the as
 
 ### Configuration (MCP process)
 
+The MCP service has **its own env file `.mcpenv`**, separate from the backend's `.env`. It is gitignored and dockerignored; the template is [`.mcpenv.example`](../.mcpenv.example). `clients/mcp_server.py` loads it at start (`MCP_ENV_FILE` sets another path), and variables already set in the environment win: the Render dashboard, compose wiring, `.mcp.json`.
+
+Working values (verified 2026-10-03 against Render: `/health` ok, `/public/v1` accepts `demo-key`):
+
+```bash
+RAMPA_API_URL=https://rampa-backend.onrender.com
+RAMPA_API_KEY=demo-key      # backend has no PUBLIC_API_KEYS set → default key; use a dedicated one in production
+MCP_AUTH_TOKEN=             # empty = public (claude.ai connectors); set → Bearer required
+```
+
 | Variable | Default | Meaning |
 |---|---|---|
 | `RAMPA_API_URL` | `http://localhost:8000` | backend base URL (Render: the backend service URL) |
@@ -63,7 +73,7 @@ The MCP server is its **own web service**, next to `rampa-backend` and `rampa-ba
 
 1. Render dashboard → **New → Web Service** → the same GitHub repo (`rampa-backend`), branch `master`.
 2. **Runtime:** Docker. **Dockerfile path:** `Dockerfile.mcp`. Name it e.g. `rampa-mcp`.
-3. **Environment:**
+3. **Environment:** Environment → *Add from .env* → paste your `.mcpenv`, or set the variables by hand:
    - `RAMPA_API_URL` = the backend URL (Render dashboard → `rampa-backend` → URL, e.g. `https://rampa-backend.onrender.com`).
    - `RAMPA_API_KEY` = a dedicated key. Add the same value to the backend's `PUBLIC_API_KEYS` (comma list), and drop `demo-key` in production.
    - `MCP_AUTH_TOKEN` (optional) = a long random string, if only your own clients should connect.

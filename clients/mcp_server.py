@@ -4,8 +4,10 @@ Local (stdio, default):      uv run --extra mcp python -m clients.mcp_server    
 Remote (F41, Streamable HTTP): MCP_TRANSPORT=http uv run --extra mcp python -m clients.mcp_server
                               → http://0.0.0.0:$PORT/mcp  (+ GET /health); Docker: Dockerfile.mcp (Render service)
 
-Env: RAMPA_API_URL (default http://localhost:8000), RAMPA_API_KEY (default demo-key),
-     MCP_TRANSPORT (stdio | http), PORT (default 8080), MCP_AUTH_TOKEN (optional: require "Authorization: Bearer …").
+Env (own file for this service: .mcpenv, template .mcpenv.example; real env vars win, e.g. Render dashboard):
+     RAMPA_API_URL (default http://localhost:8000), RAMPA_API_KEY (default demo-key),
+     MCP_TRANSPORT (stdio | http), PORT (default 8080), MCP_AUTH_TOKEN (optional: require "Authorization: Bearer …"),
+     MCP_ENV_FILE (default .mcpenv).
 """
 import hmac
 import os
@@ -17,6 +19,20 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from clients.rampa_tools import RampaTools
+
+MCP_ENV_FILE = ".mcpenv"
+
+
+def load_env_file(path: str) -> bool:
+    """Load the MCP service's own env file (.mcpenv) if it exists; never overrides variables already set."""
+    from pathlib import Path
+
+    from dotenv import load_dotenv
+    if not Path(path).is_file():
+        return False
+    load_dotenv(path, override=False)
+    return True
+
 
 MCP_PATH = "/mcp"
 mcp = FastMCP("Kraków bez barier")
@@ -79,6 +95,7 @@ def build_http_app():
 
 
 if __name__ == "__main__":
+    load_env_file(os.getenv("MCP_ENV_FILE", MCP_ENV_FILE))
     if os.getenv("MCP_TRANSPORT", "stdio") == "http":
         import uvicorn
         uvicorn.run(build_http_app(), host="0.0.0.0", port=int(os.getenv("PORT", "8080")))

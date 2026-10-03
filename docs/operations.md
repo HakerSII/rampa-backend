@@ -38,7 +38,7 @@ The backend is **deployed on Render** and **deploys automatically after every me
 |---|---|
 | `rampa-backend` | Web service, runtime **Docker** (this `Dockerfile`), region Ohio |
 | `rampa-backend-postgres` | Render Postgres, connected through `DATABASE_URL` |
-| `rampa-mcp` (F41, to be created) | Web service, runtime **Docker** (`Dockerfile.mcp`): public remote MCP at `/mcp`, health `/health`. Setup: [mcp.md §4](mcp.md#4-deploy-on-render-separate-service) |
+| `rampa-mcp` (F41, to be created) | Web service, runtime **Docker** (`Dockerfile.mcp`): public remote MCP at `/mcp`, health `/health`. Env: its own `.mcpenv` (template `.mcpenv.example`). Setup: [mcp.md §4](mcp.md#4-deploy-on-render-separate-service) |
 
 - **Release flow:** feature branch → PR → merge into `master` → Render builds the image and deploys it, no manual step. Do not push unfinished work to `master`.
 - **Configuration:** environment variables in the Render dashboard (service → Environment), same names as `.env.example`. Secrets (`GEMINI_API_KEY`, `DATABASE_URL`, `GOOGLE_CLIENT_ID`) live there only, never in git.

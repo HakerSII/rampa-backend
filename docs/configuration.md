@@ -53,7 +53,7 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `GEMINI_MODEL` | `gemini-3.8-flash` | Gemini model name (Google retired `gemini-2.5-flash` for new users) |
 | `GEMINI_API_URL` | `https://generativelanguage.googleapis.com/v1beta` | API base URL |
 
-**MCP server** (`clients/mcp_server.py`, separate process; env from `.mcp.json` locally, or the Render service `rampa-mcp`; see [mcp.md](mcp.md)):
+**MCP server** (`clients/mcp_server.py`, separate process with **its own env file `.mcpenv`** (template `.mcpenv.example`, gitignored); real env vars win: `.mcp.json`, compose, the Render service `rampa-mcp`; see [mcp.md](mcp.md)):
 
 | Variable | Default | Meaning |
 |---|---|---|
