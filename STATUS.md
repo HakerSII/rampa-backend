@@ -82,6 +82,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F38 | PostGIS + Alembic — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | deferred | write-behind cache → PostGIS unused until SQL-backed repo; no local Postgres check |
 | F39 | City open-data import (blocked: dataset) — [PLAN-GAPS.md](PLAN-GAPS.md) | — | blocked | needs dataset + licence choice |
 | F40 | One LLM filter-tool schema (Claude + Gemini), AI_RECOMMENDER=gemini — option A | Claude | done | schema in domain; guard test; e2e unchanged (needs a key, rules path covered by F30a–d) |
+| F41 | Public remote MCP (Streamable HTTP /mcp) as a separate Render service | Claude | red | |
 
 ## Log (newest first)
 
