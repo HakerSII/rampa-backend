@@ -7,7 +7,7 @@
 
 - **State:** todo
 - **Deploy:** `master` is deployed on **Render**; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
-- **Last pytest:** `uv run pytest` → see commit
+- **Last pytest:** `uv run pytest` → red: F26
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
@@ -64,10 +64,12 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F23 | Domain gaps: partial state, trust ageing, valid_until, place_type | Claude | done | e2e 1i–1k + 2×400; OSM import now 11 places |
 | F12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` (Adrian, on `master`) | Claude | done | `85a358e`; contract + demo.http B1–B7 |
 | F24 | Map observations: `GET /observations?active&bbox` (front-end request) | Claude | done | e2e 4b-MAP/MAP2 + 400; '+' in since fixed |
-| F25 | Full feature model (35 + escalator), group parking | Claude | done | e2e 1l–1m; front-end mapping tactile→tactile_paths, sign→sign_language_interpreter (to confirm) |
+| F25 | Full feature model (35 + escalator), group parking | Claude | done | e2e 1l–1m |
+| F26 | Escalate + abuse reports from users (typed moderation queue) | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F26 red: escalate + abuse report tests
 - 2026-10-03 · F25 · done · 35 features / 8 groups (+ escalator, parking), text parse escalator, specs + docs
 - 2026-10-03 · F25 red: full feature model tests
 - 2026-10-03 · F24 · done · GET /observations map layer (active, bbox, feature, value, current, since, limit) + place + severity
