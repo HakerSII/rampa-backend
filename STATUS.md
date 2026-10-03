@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** — F7 done; next: README §6.4 (OSM import / MCP) or §6.5 (SQLAlchemy)
+- **Task:** F8 OSM import + MCP
 - **Who:** Claude
-- **State:** done
-- **Next step:** pick: OSM import (offline file adapter) or MCP check_accessibility via use cases
-- **Last pytest:** `uv run pytest` → 150 passed
+- **State:** todo
+- **Next step:** 🟢 domain/osm.py, geo, FileOsmSource, import_osm, clients/rampa_tools.py
+- **Last pytest:** `uv run pytest` → red: F8 tests
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -40,9 +40,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F5.1–F5.4 | Open API: key, rate limit, flat format | Claude | done | e2e P1–P5 + 2×401 in demo.http |
 | F6.1–F6.5 | AI image tags: mock + ONNX Phi-3.5 + fallback | Claude | done | real ONNX inference untested here (manual: uv sync --extra ai) |
 | F7.1–F7.4 | Owner role + verified_owner observations | Claude | done | e2e owner scenario O0–O11 + 3×403 + 400 |
+| F8.1–F8.5 | OSM import (file) + MCP client of Open API | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F8 · red · plan, contract, OSM mapping/import/MCP tool tests
 - 2026-10-03 · F7 · done · owner role, verified_owner 0.85, owner panel endpoints, admin assigns owner; fixed seed shared-state bug; 150 passed
 - 2026-10-03 · F7 · red · plan, contract, owner tests
 - 2026-10-03 · F6 · done · AI image tags: mock + Phi-3.5 ONNX adapter + fallback, e2e AI step + 2×400; 126 passed
