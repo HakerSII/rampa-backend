@@ -25,6 +25,7 @@ uv run python main.py                                          # http://localhos
 - Open API: `GET /public/v1/places` with header `X-Api-Key: demo-key`.
 - Storage: `REPO_MODE=sql|memory`, `DB_ENGINE=sqlite|postgres` (+ `POSTGRES_*`); config in `.env` (see `.env.example`).
 - Docker: `docker compose up -d --build` → Postgres + API on :8000 (`API_PORT=8001` if taken).
+- **Deploy: Render**, automatic after every merge to `master` (Docker service `rampa-backend` + Render Postgres); see [docs/operations.md](docs/operations.md#render-production-deploy).
 - Demo login: `POST /api/v1/auth/demo {"username": "anna"}` → use `Authorization: Bearer demo-anna`.
 - Reset: `POST /api/v1/admin/demo/reset` with `Bearer demo-admin`.
 - Google mode: `.env` → `AUTH_MODE=google`, `GOOGLE_CLIENT_ID=…`, `ADMIN_EMAILS=…` (see `.env.example`).
