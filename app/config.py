@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     osm_center_lon: float = 19.9450
     osm_radius_m: int = 1500
     external_timeout_s: float = 10.0
+    router: Literal["straight", "osrm"] = "straight"  # F28: GET /route geometry
+    osrm_url: str = "https://routing.openstreetmap.de/routed-foot"  # FOSSGIS OSRM, foot profile
     http_user_agent: str = "RampaKrakowBezBarier/0.1 (HackYeah 2026)"  # OSM usage policy: identify the app
     public_api_keys: str = "demo-key"  # comma-separated X-Api-Key values for /public/v1
     public_rate_limit_per_min: int = 60

@@ -35,6 +35,13 @@ def build_geocoder(settings: Settings):
     return NominatimGeocoder(settings.nominatim_url, settings.http_user_agent, timeout_s=settings.external_timeout_s)
 
 
+def build_router(settings: Settings):
+    if settings.router != "osrm":
+        return None
+    from app.adapters.outbound.osrm import OsrmRouter
+    return OsrmRouter(settings.osrm_url, settings.http_user_agent, timeout_s=settings.external_timeout_s)
+
+
 def build_osm_live(settings: Settings):
     """Only used on explicit admin import {"source": "overpass"}; falls back to the snapshot."""
     from app.adapters.outbound.osm_live import FallbackOsmSource, OverpassOsmSource
@@ -57,6 +64,7 @@ def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None
         session_ttl_hours=settings.session_ttl_hours, anonymous_auth=settings.anonymous_auth,
         anonymous_ttl_days=settings.anonymous_ttl_days, vision=vision,
         osm=FileOsmSource(settings.osm_file), geocoder=build_geocoder(settings), osm_live=build_osm_live(settings),
+        router=build_router(settings),
     )
     if repo.is_empty():
         use_cases.load_seed()

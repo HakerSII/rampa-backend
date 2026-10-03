@@ -6,7 +6,9 @@ from typing import Protocol
 
 from app.domain.enums import FeatureKey
 from app.domain.osm import OsmPoint
+from app.domain.route import RoutePath
 from app.domain.model import (
+    GeoPoint,
     GeocodeHit,
     FeatureStateRecord,
     GoogleIdentity,
@@ -96,6 +98,12 @@ class VisionAnalyzer(Protocol):
 
 class OsmSource(Protocol):
     async def fetch(self) -> list[OsmPoint]: ...
+
+
+class WalkingRouter(Protocol):
+    async def walk(self, a: GeoPoint, b: GeoPoint) -> RoutePath | None:
+        """Walking path; None = no route; raise on failure (use case falls back to the straight line)."""
+        ...
 
 
 class Geocoder(Protocol):

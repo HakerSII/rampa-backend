@@ -15,6 +15,7 @@ from app.application.ports import (
     IdGenerator,
     Geocoder,
     OsmSource,
+    WalkingRouter,
     Repo,
     VisionAnalyzer,
 )
@@ -210,7 +211,8 @@ class UseCases:
                  admin_emails: list[str] | None = None, session_ttl_hours: int = 24,
                  anonymous_auth: bool = True, anonymous_ttl_days: int = 365,
                  vision: VisionAnalyzer | None = None, osm: OsmSource | None = None,
-                 geocoder: Geocoder | None = None, osm_live: OsmSource | None = None):
+                 geocoder: Geocoder | None = None, osm_live: OsmSource | None = None,
+                 router: WalkingRouter | None = None):
         self.repo = repo
         self.clock = clock
         self.ids = ids
@@ -225,6 +227,7 @@ class UseCases:
         self.osm = osm
         self.geocoder = geocoder
         self.osm_live = osm_live
+        self.router = router
 
     # ------------------------------------------------------------------ demo data
     def load_seed(self) -> None:
@@ -433,6 +436,18 @@ class UseCases:
         a, b = self._resolve_point(origin), self._resolve_point(destination)
         places = [(p, self.repo.states_for(p.id)) for p in self.repo.list_places()]
         return plan_route(a, b, profile, places)
+
+    async def accessible_route_live(self, origin: str, destination: str, profile: NeedsProfile) -> RouteResult:
+        """F28: walking path from the routing engine; failure / no route → straight-line heuristic."""
+        a, b = self._resolve_point(origin), self._resolve_point(destination)
+        path = None
+        if self.router is not None:
+            try:
+                path = await self.router.walk(a, b)
+            except Exception as e:  # noqa: BLE001 — network / timeout / parse → straight line
+                log.warning("router failed (%s) → straight line", e)
+        places = [(p, self.repo.states_for(p.id)) for p in self.repo.list_places()]
+        return plan_route(a, b, profile, places, path)
 
     def _resolve_point(self, raw: str) -> GeoPoint:
         """Place id or 'lat,lon'."""

@@ -67,6 +67,9 @@ GET {{base}}/routes/accessible?from=plc_mnk&to=plc_urzad&profile=blind
 ### 404 NOT_FOUND — route from unknown place
 GET {{base}}/routes/accessible?from=nowhere&to=plc_urzad
 
+### F28. Route between coordinates → engine osrm when ROUTER=osrm, else straight_line (same shape)
+GET {{base}}/routes/accessible?from=50.0617,19.9373&to=plc_urzad&profile=stroller
+
 ### 1i. Filter by place type (venue / shop / public_transport_stop / platform / parking / office / …)
 GET {{base}}/places?place_type=office
 

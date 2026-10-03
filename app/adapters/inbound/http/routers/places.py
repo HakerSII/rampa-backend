@@ -204,6 +204,7 @@ class LineString(BaseModel):
 
 
 class RouteOut(BaseModel):
+    engine: str = "straight_line"  # osrm | straight_line (F28)
     feasible: str
     profile: NeedsProfile
     distance_m: int
@@ -222,11 +223,11 @@ def _route_point(p) -> RoutePointOut:
 @router.get("/routes/accessible", response_model=RouteOut, tags=["routes"])
 async def accessible_route(uc: UC, to: str, origin: Annotated[str, Query(alias="from")],
                            profile: NeedsProfile = NeedsProfile.WHEELCHAIR):
-    """A→B for a needs profile. Heuristic (straight line + street-level barriers within 100 m) — see `note`."""
-    r = uc.accessible_route(origin, to, profile)
+    """A→B for a needs profile. Path from OSRM (ROUTER=osrm) or straight line; barriers within 100 m — see `note`."""
+    r = await uc.accessible_route_live(origin, to, profile)
     return RouteOut(feasible=r.feasible, profile=profile, distance_m=r.distance_m, duration_min=r.duration_min,
                     geometry=LineString(coordinates=r.geometry), barriers=[_route_point(p) for p in r.barriers],
-                    helpers=[_route_point(p) for p in r.helpers], note=r.note)
+                    helpers=[_route_point(p) for p in r.helpers], note=r.note, engine=r.engine)
 
 
 @router.get("/accessibility/features", response_model=list[FeatureDictGroup], tags=["dictionaries"])

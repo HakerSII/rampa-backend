@@ -1127,7 +1127,7 @@
           "routes"
         ],
         "summary": "Accessible Route",
-        "description": "A→B for a needs profile. Heuristic (straight line + street-level barriers within 100 m) — see `note`.",
+        "description": "A→B for a needs profile. Path from OSRM (ROUTER=osrm) or straight line; barriers within 100 m — see `note`.",
         "operationId": "accessible_route_api_v1_routes_accessible_get",
         "parameters": [
           {
@@ -7534,6 +7534,11 @@
       },
       "RouteOut": {
         "properties": {
+          "engine": {
+            "type": "string",
+            "title": "Engine",
+            "default": "straight_line"
+          },
           "feasible": {
             "type": "string",
             "title": "Feasible"

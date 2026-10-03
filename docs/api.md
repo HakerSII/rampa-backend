@@ -298,14 +298,15 @@ All 35 features in 8 groups; features without data come back as `unknown`.
 `{ items: [PlaceSummary + distance_m] }`: other places within 3 km, same category first, then nearest. `limit` is 1–20.
 
 ### `GET /api/v1/routes/accessible?from=plc_mnk&to=plc_urzad&profile=wheelchair`
-`from` and `to` are a place id or `lat,lon`. **This is a heuristic, not a routing engine** (`note` says so):
-- the route is a straight line, with `distance_m` and `duration_min` at 50 m/min;
-- it collects the street-level features relevant to the profile from places within 100 m of the line: wheelchair/stroller/crutches → `lowered_curb`, `platform_elevator`; blind → `tactile_paths`, `lowered_curb`; low vision → `good_lighting`;
+`from` and `to` are a place id or `lat,lon`. The path depends on `ROUTER` (F28); `engine` and `note` say which one answered:
+- `ROUTER=osrm`: real walking path from OSRM (foot profile, OpenStreetMap), with its `distance_m` and `duration_min`. Example MNK → Urząd: 2033 m, 28 min, 192 points. OSRM failure, timeout or no route → straight line;
+- `ROUTER=straight` (default, offline): straight line, `distance_m` and `duration_min` at 50 m/min;
+- it collects the street-level features relevant to the profile from places within 100 m of **the path**: wheelchair/stroller/crutches → `lowered_curb`, `platform_elevator`; blind → `tactile_paths`, `lowered_curb`; low vision → `good_lighting`;
 - `no` → `barriers`, `yes` → `helpers`;
 - `feasible`: barriers → `partial`, data without barriers → `yes`, no data → `unknown`.
 
 ```json
-{ "feasible": "yes", "profile": "wheelchair", "distance_m": 1601, "duration_min": 33,
+{ "engine": "straight_line", "feasible": "yes", "profile": "wheelchair", "distance_m": 1601, "duration_min": 33,
   "geometry": { "type": "LineString", "coordinates": [[19.9238, 50.0603], [19.945, 50.065]] },
   "barriers": [],
   "helpers": [ { "place_id": "plc_urzad", "name": "Urząd Dzielnicy I", "feature": "lowered_curb",
