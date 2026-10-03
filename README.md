@@ -69,6 +69,7 @@ uv run python main.py                                          # http://localhos
 | 26 | Escalate + user abuse reports (typed moderation queue) | [plan](features/26-escalate-abuse/plan.md) | [openapi](features/26-escalate-abuse/openapi.yaml) | 45 min |
 | 27 | Live OSM: Nominatim geocoder (`GEOCODER=nominatim`), Overpass import `{"source":"overpass"}`; fallback to local / snapshot | [plan](features/27-live-geo/plan.md) | endpoints unchanged | 45 min |
 | 28 | Walking route from OSRM (`ROUTER=osrm`), barriers along the real path; fallback straight line | [plan](features/28-osrm-route/plan.md) | `engine` field added | 45 min |
+| 29 | Multi-worker consistency: `meta.data_version`, reload when stale, 409 on concurrent write | [plan](features/29-multi-worker/plan.md) | 409 on any write | 45 min |
 | 12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | [plan](features/12-frontend-bridge/plan.md) | [openapi](features/12-frontend-bridge/openapi.yaml) | 45 min |
 
 - F0 blocks all.
@@ -106,7 +107,7 @@ Everything from the full contract is implemented except the items below, which a
 | Routing engine | `/routes/accessible` is a **straight-line heuristic** with barriers ≤ 100 m (F20); says so in `note` |
 | Abuse reports by users | moderators flag (F21); users report problems through normal reports |
 | `action=escalate` | `confirm` / `reject` only |
-| Persistence | write-behind cache over SQLite/Postgres, single process (F9/F11); a fully SQL-backed repository is needed for multiple workers |
+| Persistence | write-behind cache over SQLite/Postgres (F9/F11); several workers via data version + reload + 409 on a write race (F29). Not for high write throughput |
 | DDD aggregate + domain events + UoW | light hexagon: logic in pure domain functions + use cases; conflicts create queue items directly |
 | Features | 35 (full model + `escalator`); `partially_inaccessible_exhibition` left out (inverted meaning) |
 | Media storage | local `media/` folder (S3 later) |
@@ -157,6 +158,6 @@ See **[docs/architecture.md §4](docs/architecture.md#4-domain-model)**. Key rul
 
 1. Frontend from the mockups (map, place card, report form, owner and admin panels) against this API.
 2. Google OAuth client (F1.0) → real logins; fresh Gemini quota or a paid key before the demo.
-3. Fully SQL-backed repository → several workers, PostGIS for geo search.
+3. Fully SQL-backed repository (per-row writes instead of whole-cache reload) for high write load; PostGIS for geo search.
 4. Live data: Overpass/OSM adapter, city open data, Nominatim.
 5. More features from the full model (35), user abuse reports, escalation.

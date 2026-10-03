@@ -50,7 +50,8 @@ def test_concurrent_commit_is_rejected_and_cache_reloaded(url):
     with pytest.raises(StaleData):
         b.repo.commit()
     assert b.repo.get_observation(first.id) is not None    # b now holds a's data …
-    assert lost.id not in {o.id for o in b.repo.list_observations("plc_ice")}  # … and its own write is dropped
+    # … and its own write is dropped (both workers even drew the same id — exactly what the lock prevents)
+    assert not [o for o in b.repo.list_observations("plc_ice", lost.feature) if o.author_id == lost.author_id]
     fresh = worker(url)
     assert fresh.repo.get_observation(first.id) is not None
 
@@ -97,3 +98,16 @@ def test_stale_commit_over_http_returns_409(url, tmp_path, monkeypatch):
     retry = w2.post("/api/v1/places/plc_ice/observations", headers={"Authorization": "Bearer demo-jan"},
                     json={"feature": "ramp", "value": "yes"})
     assert retry.status_code == 201
+
+
+def test_two_workers_seeding_an_empty_database_at_once(url):
+    """Both see an empty DB at boot; the second seed commit is stale → it takes the first one's data."""
+    from app.adapters.outbound.sql import SqlRepo
+    from app.bootstrap import seed_or_continue
+    r1, r2 = SqlRepo(url), SqlRepo(url)                      # both loaded the empty database
+    uc1 = UseCases(r1, FixedClock(NOW), SeqIdGenerator(), FakeStorage(), None)
+    uc2 = UseCases(r2, FixedClock(NOW), SeqIdGenerator(), FakeStorage(), None)
+    seed_or_continue(uc1)
+    seed_or_continue(uc2)                                    # must not crash the worker
+    assert len(r2.list_places()) == len(r1.list_places()) > 0
+    assert uc2.add_observation(user(uc2, "anna"), "plc_ice", feature="ramp", value="no").id not in r1.observations

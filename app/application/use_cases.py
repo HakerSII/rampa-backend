@@ -229,6 +229,15 @@ class UseCases:
         self.osm_live = osm_live
         self.router = router
 
+    # ------------------------------------------------------------------ multi-worker (F29)
+    def sync(self, force: bool = False) -> bool:
+        """Before each request: pick up other workers' commits; continue id sequences after a reload."""
+        reloaded = self.repo.reload_if_stale()
+        if reloaded or force:
+            for existing_id in self.repo.all_ids():
+                self.ids.observe(existing_id)
+        return reloaded
+
     # ------------------------------------------------------------------ demo data
     def load_seed(self) -> None:
         load_seed(self.repo, self.clock, self.ids, self.recompute)

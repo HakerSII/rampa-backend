@@ -34,6 +34,9 @@ class InMemoryRepo:
     def commit(self) -> None:
         """Nothing to persist."""
 
+    def reload_if_stale(self) -> bool:
+        return False  # single process, memory is the only copy
+
     def is_empty(self) -> bool:
         return not self.users
 

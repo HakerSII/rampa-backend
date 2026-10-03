@@ -132,5 +132,6 @@ A test fails if `docs/openapi.json` is stale, so re-export after changing endpoi
 | API container exits on start | `docker compose logs api` — wrong `POSTGRES_*`, or a bad value in `.env` |
 | `port is already allocated` / wrong server answers on 8000 | another process uses 8000 → `API_PORT=8001 docker compose up -d` |
 | Gemini 429 "exceeded your current quota" | the key's free quota is used up; fallback serves mock; wait or use another key/plan |
-| Data differs between two servers | SQLite mode is single-process (write-behind cache); run one uvicorn worker |
+| Data differs between two servers | Both must use the same database (`DATABASE_URL`); since F29 each request reloads when another worker committed. Separate SQLite files per container never sync |
+| `409 CONFLICT` "concurrent update by another worker" | Two workers wrote at the same moment; the later write was dropped. Retry the request |
 | `VIRTUAL_ENV … does not match` warning | another venv is active (e.g. the outer project's); `deactivate` or ignore |

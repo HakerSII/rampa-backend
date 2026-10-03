@@ -24,10 +24,17 @@ from app.domain.model import (
 )
 
 
+class StaleData(Exception):
+    """F29: another worker committed since this cache was loaded; the write was dropped — retry."""
+
+
 class Repo(Protocol):
     def clear(self) -> None: ...
+    def reload_if_stale(self) -> bool:
+        """F29: reload when another worker committed; True = reloaded (memory: always False)."""
+        ...
     def commit(self) -> None:
-        """Persist changes (no-op in memory). Called after each write request."""
+        """Persist changes (no-op in memory). Called after each write request. Raises StaleData on a race."""
         ...
     def is_empty(self) -> bool: ...
     def all_ids(self) -> list[str]: ...

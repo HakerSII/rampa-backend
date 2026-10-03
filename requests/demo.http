@@ -4,6 +4,9 @@
 ### 1. Start server:  uv run python main.py
 ### 2. Click "Send Request" above each block, top → bottom (requests pass ids along via @name).
 ### 3. Start again any time with step 0 (reset).
+### F29 multi-worker: the whole file also passes against 2 workers on one database, e.g.
+###    REPO_MODE=sql DATABASE_URL=sqlite:///data/mw.db uv run uvicorn main:app --port 8000 --workers 2
+### F27/F28 live OSM: GEOCODER=nominatim ROUTER=osrm (fallback to local / straight line when offline)
 ### =====================================================================
 
 @base = http://localhost:8000/api/v1

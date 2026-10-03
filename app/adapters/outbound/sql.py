@@ -8,9 +8,10 @@ from pathlib import Path
 
 from sqlalchemy import JSON, Boolean, Column, Float, Integer, MetaData, String, Table, create_engine, delete, insert, \
     inspect, select, text, update
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from app.adapters.outbound.memory import InMemoryRepo
+from app.application.ports import StaleData  # noqa: F401 — re-exported
 from app.domain.enums import (
     CurrentState,
     FeatureKey,
@@ -39,6 +40,8 @@ from app.domain.model import (
 log = logging.getLogger(__name__)
 md = MetaData()
 
+meta = Table("meta", md, Column("key", String, primary_key=True), Column("value", Integer))  # F29 data_version
+VERSION_KEY = "data_version"
 users = Table("users", md, Column("id", String, primary_key=True), Column("seq", Integer),
               Column("display_name", String), Column("role", String), Column("username", String),
               Column("email", String), Column("google_sub", String), Column("favorites", JSON))
@@ -109,8 +112,33 @@ class SqlRepo(InMemoryRepo):
                     raise
                 log.warning("database not ready (attempt %s/%s), retrying…", attempt, connect_retries)
                 time.sleep(retry_pause_s)
+        self._ensure_version_row()
         super().__init__()
         self._snapshot: dict[tuple[str, tuple], dict] = {}
+        self.version = 0
+        self._load()
+
+    def _ensure_version_row(self) -> None:
+        try:
+            with self.engine.begin() as conn:
+                if conn.execute(select(meta.c.value).where(meta.c.key == VERSION_KEY)).first() is None:
+                    conn.execute(insert(meta).values(key=VERSION_KEY, value=0))
+        except IntegrityError:
+            pass  # another worker created it at the same moment
+
+    def _read_version(self, conn) -> int:
+        return conn.execute(select(meta.c.value).where(meta.c.key == VERSION_KEY)).scalar() or 0
+
+    def reload_if_stale(self) -> bool:
+        """F29: one single-row read per request; reload the whole cache when another worker committed."""
+        with self.engine.connect() as conn:
+            if self._read_version(conn) == self.version:
+                return False
+        self._reload()
+        return True
+
+    def _reload(self) -> None:
+        self.clear()
         self._load()
 
     def _add_missing_columns(self) -> None:
@@ -128,8 +156,24 @@ class SqlRepo(InMemoryRepo):
 
     # ------------------------------------------------------------------ port extras
     def commit(self) -> None:
+        """Write the diff since the last load/commit. Optimistic lock: data_version must still be ours."""
         current = {(t.name, tuple(row[k] for k in PK[t.name])): (t, row) for t, row in self._rows()}
+        if current.keys() == self._snapshot.keys() and all(self._snapshot[k] == row for k, (_, row) in current.items()):
+            return  # nothing changed → no version bump, never stale
+        try:
+            self._write(current)
+        except StaleData:
+            self._reload()  # drop this worker's unsaved changes, take the other worker's data
+            raise
+        self.version += 1
+        self._snapshot = {k: row for k, (_, row) in current.items()}
+
+    def _write(self, current) -> None:
         with self.engine.begin() as conn:
+            bumped = conn.execute(update(meta).where(meta.c.key == VERSION_KEY, meta.c.value == self.version)
+                                  .values(value=self.version + 1))
+            if bumped.rowcount != 1:
+                raise StaleData("concurrent update by another worker — retry")
             for name, key in self._snapshot.keys() - current.keys():
                 table = md.tables[name]
                 conn.execute(delete(table).where(*[table.c[k] == v for k, v in zip(PK[name], key)]))
@@ -139,7 +183,6 @@ class SqlRepo(InMemoryRepo):
                     conn.execute(insert(table).values(row))
                 elif old != row:
                     conn.execute(update(table).where(*[table.c[k] == v for k, v in zip(PK[name], key)]).values(row))
-        self._snapshot = {k: row for k, (_, row) in current.items()}
 
     # ------------------------------------------------------------------ domain → rows
     def _rows(self):
@@ -186,6 +229,7 @@ class SqlRepo(InMemoryRepo):
     # ------------------------------------------------------------------ rows → domain
     def _load(self) -> None:
         with self.engine.connect() as conn:
+            self.version = self._read_version(conn)
             def rows(table):
                 stmt = select(table).order_by(table.c.seq) if "seq" in table.c else select(table)
                 return [r._mapping for r in conn.execute(stmt)]

@@ -1,13 +1,13 @@
 """FastAPI app. Run (from sourcedoc/mvp): uv run uvicorn app.adapters.inbound.http.main:app"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.adapters.inbound.http.errors import install_error_handlers
+from app.adapters.inbound.http.errors import error_body, install_error_handlers
 from app.adapters.inbound.http.rate_limit import FixedWindowRateLimiter
 from app.adapters.inbound.http.routers import admin, ai, auth, me, observations, owner, places, public
-from app.application.ports import IdentityVerifier
+from app.application.ports import IdentityVerifier, StaleData
 from app.bootstrap import build_use_cases
 from app.config import Settings
 
@@ -31,10 +31,16 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
 
     @app.middleware("http")
     async def commit_writes(request, call_next):
-        """Unit of work per request: memory is source of truth, persist after every write."""
+        """Unit of work per request: sync with other workers (F29), run, persist after every write.
+        Another worker committed in between → this write is dropped, 409 CONFLICT (client retries)."""
+        uc = app.state.use_cases
+        uc.sync()
         response = await call_next(request)
         if request.method not in ("GET", "HEAD", "OPTIONS"):
-            app.state.use_cases.repo.commit()
+            try:
+                uc.repo.commit()
+            except StaleData as e:
+                return JSONResponse(error_body("CONFLICT", str(e)), 409)
         return response
 
     @app.get("/", include_in_schema=False)

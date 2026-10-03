@@ -251,7 +251,8 @@ Public display names are shortened to "Anna K." (privacy rule from the mock-ups)
   - Tables: `users`, `sessions`, `places`, `feature_states`, `observations`, `reports`, `photos`, `queue_items`, `ownership_requests`.
 - **Why write-behind:** the `Repo` port is synchronous and the use cases mutate domain objects in place. This adds persistence without touching the domain or use cases.
 - **Schema evolution:** on start, `SqlRepo` adds any **missing nullable columns** to existing tables (`ALTER TABLE … ADD COLUMN`), so databases created by older versions keep working (e.g. `queue_items.resolved_at`, F13). It never drops or renames anything.
-- **Limit:** a single process only (one uvicorn worker), on both SQLite and Postgres. Multiple workers or replicas would need a fully SQL-backed repository; the port stays the same.
+- **Several workers (F29):** table `meta` holds `data_version`. Each request starts with `UseCases.sync()`, one single-row read; if another worker committed, the cache is reloaded and id sequences continue. Commit is an optimistic lock: `UPDATE meta SET value = value + 1 WHERE value = <loaded>` in the same transaction as the writes. 0 rows → rollback, reload, **409 CONFLICT** (the client retries). Commits without changes skip the check.
+- **Limit:** a whole-cache reload after every foreign commit, so this fits demo or city-pilot load, not high write throughput. Next step: a fully SQL-backed repository behind the same port.
 - **Deployment:** `docker-compose.yml` = `postgres:17-alpine` (healthcheck, volume `pgdata`) + the API image (`Dockerfile`, uv, Python 3.13, extra `postgres`). Verified: the full `demo.http` and the SqlRepo test suite pass on Postgres.
 
 ## 7. Auth
