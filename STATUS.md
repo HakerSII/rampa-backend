@@ -5,13 +5,14 @@
 
 ## Current
 
-- **State:** todo
+- **State:** done
 - **Deploy:** `master` is deployed on **Render**; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
 - **Last pytest:** `uv run pytest` → 455 passed, 12 skipped
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
-- **Next for the map front end (from F12b):** `GET /observations?active=true&bbox=` with place location + report severity (one request instead of per-place reads); `FeatureKey`s for `escalator`, `tactile`, `sign` — or drop them from the front end
+- **Front-end needs (from F12b):** done — `GET /observations` map layer (F24), `escalator` + full feature model (F25). Front end to map `tactile` → `tactile_paths`, `sign` → `sign_language_interpreter`.
+- **Plan:** complete (F0–F29 + F12b). Remaining items need a human (see Blockers).
 
 ## Run
 
@@ -28,7 +29,8 @@ docker compose up -d --build          # Postgres + API (API_PORT=8001 if 8000 is
 - F1.5: frontend (mockups) — not in this repo.
 - Gemini key: free tier exhausted during tests on 2026-10-03 (fixed: tests no longer read `.env`); check quota before the demo or keep `AI_MODE=mock`.
 - Postgres: migrations of F13–F23 (new columns/table) verified on SQLite and on a copy of the real DB; re-run `docker compose up -d --build` + `TEST_POSTGRES_URL=… uv run --extra postgres pytest tests/adapters` to verify on Postgres.
-- Push `feat/mvp-backend` + PR to `master` (on request).
+- Merge PR `feat/mvp-backend` → `master` (Render redeploys; check log for `schema: added column` — new table `meta` for F29).
+- Live Overpass: blocked on the corporate network (connect fails) → verify `{"source":"overpass"}` from Render; Nominatim + OSRM verified live.
 
 ## Tasks
 
@@ -68,10 +70,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F26 | Escalate + abuse reports from users (typed moderation queue) | Claude | done | e2e 7m1–7m9 |
 | F27 | Live geocoding (Nominatim) + OSM (Overpass), fallback to local | Claude | done | e2e I7; Nominatim verified live; Overpass unreachable from dev network → fallback path |
 | F28 | OSRM walking route geometry, barriers along it (fallback straight line) | Claude | done | e2e F28 (straight + ROUTER=osrm); OSRM verified live: 2033 m / 192 pts |
-| F29 | Multi-worker consistency: data version, reload when stale, 409 on concurrent write | Claude | done | whole demo.http passes against uvicorn --workers 2 on one SQLite DB (147 requests, same statuses as in-process); boot seeding race handled |
+| F29 | Multi-worker consistency: data version, reload when stale, 409 on concurrent write | Claude | done | whole demo.http passes against uvicorn --workers 2 (147 requests); boot seeding race handled |
 
 ## Log (newest first)
 
+- 2026-10-03 · Final docs + STATUS: plan complete
 - 2026-10-03 · F29 green: multi-worker data version, reload when stale, 409 on write race
 - 2026-10-03 · F29 red: multi-worker tests
 - 2026-10-03 · F28 green: OSRM walking route, barriers along real path, fallback straight line
