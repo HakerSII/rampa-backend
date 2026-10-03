@@ -119,7 +119,16 @@ sequenceDiagram
 | `User` / `Session` | role `user/owner/admin`; demo username or Google `sub` | Guest = no user |
 | `Photo` | path, url, original_name | Stored in `media/` |
 
-**Accessibility features (MVP):** `step_free_entrance`, `ramp` (group *entrance*), `elevator` (*inside*), `accessible_toilet` (*toilet*), `induction_loop` (*hearing*). They are a subset of the 35 features in the full contract (`../openapi.yaml` in the docs repo).
+**Accessibility features (13):**
+- *entrance*: `step_free_entrance`, `ramp`
+- *inside*: `elevator`
+- *toilet*: `accessible_toilet`
+- *hearing*: `induction_loop`, `sign_language_interpreter`
+- *vision*: `braille`, `tactile_paths`, `good_lighting`
+- *mobility*: `lowered_curb`, `platform_elevator`, `crutches_friendly`
+- *other*: `assistance_dog_allowed`
+
+They are a subset of the 35 features in the full contract (`../openapi.yaml` in the docs repo).
 
 ## 5. Rules
 
@@ -156,16 +165,25 @@ Feature state:
   - the item is resolved.
 - **Admin `reject`:** all observations in the item become `REJECTED`, and the state falls back to older data.
 
-### 5.3 "Can I get in?" (`domain/check.py`, profile `wheelchair`)
+### 5.3 "Can I get in?" (`domain/check.py`)
 
-| Entrance = `step_free_entrance` OR `ramp` | Elevator | Answer |
+A generic rule table per needs profile:
+
+| Profile | Required (at least one `yes`) | Downgrade to `partial` if `no` |
 |---|---|---|
-| any `yes` | not `no` | `yes` |
-| any `yes` | `no` (incl. temporary) | `partial` (you get in, upper floors may be unreachable) |
-| known and none `yes` | — | `no` |
-| no data | — | `unknown` |
+| `wheelchair`, `stroller` | `step_free_entrance` · `ramp` | `elevator` |
+| `crutches` | `step_free_entrance` · `ramp` · `crutches_friendly` | `elevator` |
+| `blind` | `tactile_paths` · `braille` | — |
+| `low_vision` | `good_lighting` | — |
+| `deaf` | `induction_loop` · `sign_language_interpreter` | — |
+| `assistance_dog` | `assistance_dog_allowed` | — |
 
-Confidence is the minimum of the states used. `active_issues` lists temporary `no` observations that currently win.
+How the answer is chosen:
+- a required feature is `yes` → `yes`, or `partial` if a downgrade feature is `no` (e.g. "you get in, but the lift is broken");
+- required features are known but none is `yes` → `no`;
+- no data → `unknown`.
+
+Each profile has its own advice text. Confidence is the minimum of the states used, and `reasons` and `active_issues` only contain features relevant to the profile. These rules answer the brief's questions: assistance dog, kerb, platform lift, lighting, crutches.
 
 ### 5.4 AI suggestions (`domain/suggestions.py` + vision adapters)
 

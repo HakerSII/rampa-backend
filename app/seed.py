@@ -40,6 +40,14 @@ PLACES = [
 ]
 
 
+# F14 features — appended after the original seed (keeps earlier observation ids stable)
+EXTRA_FEATURES = {
+    "plc_mnk": {F.BRAILLE: "yes", F.TACTILE_PATHS: "yes", F.GOOD_LIGHTING: "yes", F.ASSISTANCE_DOG_ALLOWED: "yes"},
+    "plc_urzad": {F.LOWERED_CURB: "yes", F.SIGN_LANGUAGE_INTERPRETER: "yes", F.ASSISTANCE_DOG_ALLOWED: "yes",
+                  F.GOOD_LIGHTING: "no"},
+}
+
+
 def load_seed(repo: Repo, clock: Clock, ids: IdGenerator, recompute) -> None:
     """recompute(place_id, feature) — use case hook, so states are always computed."""
     repo.add_user(User(SEED_AUTHOR_ID, "Dane startowe", Role.USER))
@@ -58,3 +66,10 @@ def load_seed(repo: Repo, clock: Clock, ids: IdGenerator, recompute) -> None:
                 author_id=SEED_AUTHOR_ID, created_at=created,
             ))
             recompute(place.id, feature)
+    for place_id, features in EXTRA_FEATURES.items():
+        for feature, value in features.items():
+            repo.add_observation(Observation(
+                id=ids.new("obs"), place_id=place_id, feature=feature, value=ObservationValue(value),
+                source=ObservationSource.COMMUNITY, author_id=SEED_AUTHOR_ID, created_at=created,
+            ))
+            recompute(place_id, feature)

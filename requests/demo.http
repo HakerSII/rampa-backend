@@ -54,6 +54,24 @@ GET {{base}}/places/plc_mnk/accessibility
 ### 3. Can I get in by wheelchair? → answer: yes
 GET {{base}}/places/plc_mnk/check?profile=wheelchair
 
+### 3b. Other needs (F14): blind → yes (Braille / tactile paths)
+GET {{base}}/places/plc_mnk/check?profile=blind
+
+### 3c. "Czy mogę wejść z psem?" → yes
+GET {{base}}/places/plc_mnk/check?profile=assistance_dog
+
+### 3d. Urząd: deaf → yes (PJM interpreter); low vision → no (poor lighting)
+GET {{base}}/places/plc_urzad/check?profile=deaf
+
+### 3e. Urząd: low vision → no
+GET {{base}}/places/plc_urzad/check?profile=low_vision
+
+### 3f. Search: assistance dog + PJM interpreter → plc_urzad
+GET {{base}}/places?features=assistance_dog_allowed,sign_language_interpreter
+
+### 400 VALIDATION_ERROR — unknown profile
+GET {{base}}/places/plc_mnk/check?profile=teleport
+
 ### ---------------------------------------------------------------------
 ### 4a. Anna uploads a photo → 201 {id: ph_…, url}
 # @name upload

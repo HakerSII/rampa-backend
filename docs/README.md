@@ -53,7 +53,7 @@ flowchart LR
 | Capability | Endpoint(s) | Feature |
 |---|---|---|
 | Search places by required accessibility features | `GET /api/v1/places?features=…` | F2 |
-| "Can I get in?" (wheelchair) | `GET /api/v1/places/{id}/check` | F2 |
+| "Can I get in?" for 7 needs profiles (wheelchair, crutches, stroller, blind, low vision, deaf, assistance dog) | `GET /api/v1/places/{id}/check?profile=` | F2/F14 |
 | Place screen: activity feed, gallery, "Potwierdzone dzisiaj" badge | `/places/{id}/activity`, `/photos`, `verification` | F12 |
 | Report a change with a photo | `POST /uploads`, `POST /reports` | F3 |
 | Community confirmations 👍/👎 | `POST /observations/{id}/votes` | F3 |

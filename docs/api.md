@@ -60,8 +60,9 @@ Every error has the same shape:
 
 | Name | Values |
 |---|---|
-| Feature | `step_free_entrance`, `ramp`, `elevator`, `accessible_toilet`, `induction_loop` |
-| Feature group | `entrance`, `inside`, `toilet`, `hearing` |
+| Feature | `step_free_entrance`, `ramp` · `elevator` · `accessible_toilet` · `induction_loop`, `sign_language_interpreter` · `braille`, `tactile_paths`, `good_lighting` · `lowered_curb`, `platform_elevator`, `crutches_friendly` · `assistance_dog_allowed` (13) |
+| Feature group | `entrance`, `inside`, `toilet`, `hearing`, `vision`, `mobility`, `other` |
+| Needs profile (`check`) | `wheelchair`, `stroller`, `crutches`, `blind`, `low_vision`, `deaf`, `assistance_dog` |
 | State | `yes`, `no`, `unknown` |
 | Observation value | `yes`, `no` |
 | Source | `community` (0.5), `open_data` (0.6), `verified_owner` (0.85), `admin` (1.0) |
@@ -139,7 +140,9 @@ Query: `features` (CSV, AND, state must be `yes`), `category`, `q` (substring of
     "id": "plc_mnk", "name": "Muzeum Narodowe w Krakowie",
     "category": { "key": "museum", "label": "Muzeum" },
     "location": { "lat": 50.0603, "lon": 19.9238 },
-    "accessibility_summary": ["step_free_entrance", "ramp", "elevator", "accessible_toilet", "induction_loop"] } ],
+    "accessibility_summary": ["step_free_entrance", "ramp", "elevator", "accessible_toilet", "induction_loop",
+                              "braille", "tactile_paths", "good_lighting", "assistance_dog_allowed"],
+    "verification": { "...": "see below" } } ],
   "page": 1, "page_size": 2, "total": 2 }
 ```
 Unknown feature → 400.
@@ -162,7 +165,7 @@ Every `PlaceSummary` (list, details, owner places) carries a **`verification`** 
 The "Ostatnie zgłoszenia i potwierdzenia" feed, newest first, with the full history (rejected items included). There is one item per observation:
 
 ```json
-{ "items": [ { "type": "admin_decision", "label": "Decyzja moderatora", "observation_id": "obs_14",
+{ "items": [ { "type": "admin_decision", "label": "Decyzja moderatora", "observation_id": "obs_22",
                "feature": "elevator", "value": "yes", "source": "admin",
                "author": { "id": "usr_admin", "display_name": "Administrator" },
                "comment": "Potwierdzone przez moderatora", "photo_url": null, "votes_up": 0,
@@ -174,7 +177,7 @@ The "Ostatnie zgłoszenia i potwierdzenia" feed, newest first, with the full his
 `{ "items": [ { id, url, author, feature, observation_id, created_at } ], "total": n }`: evidence photos, newest first.
 
 ### `GET /api/v1/places/{id}/accessibility`
-All 5 features grouped; features without data come back as `unknown`.
+All 13 features in 7 groups; features without data come back as `unknown`.
 
 ```json
 { "place_id": "plc_mnk",
@@ -185,7 +188,7 @@ All 5 features grouped; features without data come back as `unknown`.
 ```
 
 ### `GET /api/v1/places/{id}/check?profile=wheelchair`
-Rules: [architecture.md §5.3](architecture.md#53-can-i-get-in-domaincheckpy-profile-wheelchair).
+`profile`: `wheelchair` · `stroller` · `crutches` · `blind` · `low_vision` · `deaf` · `assistance_dog` (unknown → 400). Rules: [architecture.md §5.3](architecture.md#53-can-i-get-in-domaincheckpy). Example answers on seed data: `plc_mnk` + `blind` → `yes` ("Są ścieżki prowadzące lub oznaczenia w alfabecie Braille'a."), `plc_urzad` + `low_vision` → `no` ("Słabe oświetlenie — zapytaj obsługę o pomoc."), `plc_mnk` + `assistance_dog` → `yes`.
 
 ```json
 { "place_id": "plc_mnk", "profile": "wheelchair", "answer": "yes", "confidence": 0.5,
@@ -239,7 +242,7 @@ Creates the report **and** one observation (`works` → `yes`, `not_working` →
 // 201
 { ...request fields..., "id": "rep_1", "status": "submitted",
   "author": { "id": "usr_anna", "display_name": "Anna K." },
-  "created_at": "2026-10-03T12:00:00+00:00", "observation_ids": ["obs_12"] }
+  "created_at": "2026-10-03T12:00:00+00:00", "observation_ids": ["obs_20"] }
 ```
 Validation: description 1–1000 characters, ≤ 5 known photos, valid enums, existing place.
 
@@ -255,13 +258,13 @@ Quick observation without the report form: `{ "feature": "elevator", "value": "y
 Body `{ "value": 1 }` or `{ "value": -1 }`. Voting again replaces the previous vote; voting on your own observation → 400. The response includes the recomputed state:
 
 ```json
-{ "observation": { "id": "obs_12", "feature": "elevator", "value": "no", "temporary": true,
+{ "observation": { "id": "obs_20", "feature": "elevator", "value": "no", "temporary": true,
                    "source": "community", "author": { "id": "usr_anna", "display_name": "Anna K." },
                    "evidence": [ { "id": "ph_1", "url": "/media/ph_1.png" } ],
                    "votes": { "up": 1, "down": 0, "my_vote": 1 },
                    "validation": { "status": "VALID", "reason": "" }, "confidence": 0.7, "...": "..." },
   "feature_state": { "key": "elevator", "state": "no", "temporary": true, "confidence": 0.7,
-                     "sources_count": 2, "validation": "VALID", "active_observation_id": "obs_12", "...": "..." } }
+                     "sources_count": 2, "validation": "VALID", "active_observation_id": "obs_20", "...": "..." } }
 ```
 
 ### `DELETE /api/v1/observations/{id}/votes/me` → 204
@@ -292,12 +295,12 @@ Owners **never overwrite** data. A contradiction with users goes to moderation.
 `QueueItem` + `summary`, `observations` (full, with votes, evidence and source) and the current `feature_state`.
 
 ### `POST /api/v1/admin/queue/{id}/decision`
-`{ "action": "confirm", "winning_observation_id": "obs_13", "comment": "…" }` or `{ "action": "reject" }`. Semantics: [architecture.md §5.2](architecture.md#52-conflicts-domainvalidationpy).
+`{ "action": "confirm", "winning_observation_id": "obs_21", "comment": "…" }` or `{ "action": "reject" }`. Semantics: [architecture.md §5.2](architecture.md#52-conflicts-domainvalidationpy).
 
 ```json
 { "id": "q_1", "status": "approved",
   "feature_state": { "key": "elevator", "state": "yes", "confidence": 1.0, "validation": "VALID",
-                     "sources_count": 3, "active_observation_id": "obs_14", "...": "..." } }
+                     "sources_count": 3, "active_observation_id": "obs_22", "...": "..." } }
 ```
 Already resolved → 409. `confirm` without a winner from this item → 400.
 
@@ -325,7 +328,7 @@ The audit trail ("Historia i audyt"), newest first, for **admins and the owner o
              { "event": "observation_added",
                "description": "community: elevator = no (tymczasowo) · REJECTED · 👍3 👎0",
                "created_at": "2026-10-03T12:00:00+00:00",
-               "actor": { "id": "usr_anna", "display_name": "Anna K." }, "observation_id": "obs_12", "queue_id": null } ] }
+               "actor": { "id": "usr_anna", "display_name": "Anna K." }, "observation_id": "obs_20", "queue_id": null } ] }
 ```
 
 ### `POST /api/v1/admin/places/{id}/owner`
