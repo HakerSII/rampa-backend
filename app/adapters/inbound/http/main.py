@@ -1,6 +1,7 @@
 """FastAPI app. Run (from sourcedoc/mvp): uv run uvicorn app.adapters.inbound.http.main:app"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.adapters.inbound.http.errors import install_error_handlers
@@ -24,6 +25,10 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
     for module in (auth, places, observations, admin):
         app.include_router(module.router, prefix=API_PREFIX)
     app.mount("/media", StaticFiles(directory=settings.media_dir, check_dir=False), name="media")
+
+    @app.get("/", include_in_schema=False)
+    async def root():
+        return RedirectResponse("/docs")
 
     @app.get("/health", tags=["health"])
     async def health():
