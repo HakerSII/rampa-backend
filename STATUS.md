@@ -7,7 +7,7 @@
 
 - **State:** todo
 - **Deploy:** `master` is deployed on **Render**; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
-- **Last pytest:** `uv run pytest` → 448 passed, 12 skipped
+- **Last pytest:** `uv run pytest` → red: F29
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
@@ -68,10 +68,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F26 | Escalate + abuse reports from users (typed moderation queue) | Claude | done | e2e 7m1–7m9 |
 | F27 | Live geocoding (Nominatim) + OSM (Overpass), fallback to local | Claude | done | e2e I7; Nominatim verified live; Overpass unreachable from dev network → fallback path |
 | F28 | OSRM walking route geometry, barriers along it (fallback straight line) | Claude | done | e2e F28 (straight + ROUTER=osrm); OSRM verified live: 2033 m / 192 pts |
-| F29 | Multi-worker consistency: data version, reload when stale, 409 on concurrent write | Claude | todo | |
+| F29 | Multi-worker consistency: data version, reload when stale, 409 on concurrent write | Claude | red |  |
 
 ## Log (newest first)
 
+- 2026-10-03 · F29 red: multi-worker tests
 - 2026-10-03 · F28 green: OSRM walking route, barriers along real path, fallback straight line
 - 2026-10-03 · F28 red: OSRM route tests
 - 2026-10-03 · F27 green: Nominatim geocoder + Overpass import with fallback
