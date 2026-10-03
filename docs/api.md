@@ -115,6 +115,8 @@ Every error has the same shape:
 | GET | `/api/v1/me/reports` | user | My reports, newest first |
 | GET | `/api/v1/categories` | — | Categories with counts |
 | GET | `/api/v1/geocode?q=` | — | Search-box suggestions (local index) |
+| PATCH | `/api/v1/reports/{id}` | author | Edit a draft |
+| POST | `/api/v1/reports/{id}/submit` | author | Submit a draft → observation |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -296,6 +298,14 @@ Body `{ "value": 1 }` or `{ "value": -1 }`. Voting again replaces the previous v
 ```
 
 ### `DELETE /api/v1/observations/{id}/votes/me` → 204
+
+## 5a. Report drafts (Zapisz szkic)
+
+- `POST /reports` with `"draft": true` creates a draft. Only `place_id` is required; the other fields are optional but validated if given. **No observation is created and the state doesn't change.**
+- `PATCH /reports/{id}` is a partial update by the author: 403 for anyone else, 409 if the report isn't a draft.
+- `POST /reports/{id}/submit` runs full validation (a 400 message lists missing fields), creates the observation and recomputes the state. Submitting again → 409.
+- Without `draft` (the default) the report is submitted immediately, as in §5.
+- Drafts appear in `GET /me/reports` and are hidden from owner reports and admin stats.
 
 ## 6. Owner (role `owner`)
 

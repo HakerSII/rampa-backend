@@ -138,6 +138,29 @@ Authorization: Bearer {{anna}}
 GET {{base}}/me/favorites
 Authorization: Bearer {{anna}}
 
+### D1. Jan starts a draft ("Zapisz szkic") → 201 status draft, no observation
+# @name janDraft
+POST {{base}}/reports
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"place_id": "plc_ice", "draft": true, "description": "Coś nie tak z podjazdem"}
+
+### D2. Jan completes the draft → 200
+PATCH {{base}}/reports/{{janDraft.response.body.$.id}}
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"element": "ramp", "current_state": "not_working", "severity": "obstacle", "nature": "temporary", "description": "Podjazd zastawiony rowerami"}
+
+### D3. Jan submits → 200 status submitted + observation
+POST {{base}}/reports/{{janDraft.response.body.$.id}}/submit
+Authorization: Bearer {{jan}}
+
+### 409 CONFLICT — submit twice
+POST {{base}}/reports/{{janDraft.response.body.$.id}}/submit
+Authorization: Bearer {{jan}}
+
 ### 4c. Elevator now: no, temporary, confidence 0.6
 GET {{base}}/places/plc_mnk/accessibility
 

@@ -110,11 +110,11 @@ class Report:
     id: str
     place_id: str
     author_id: str
-    element: FeatureKey
-    current_state: CurrentState
-    severity: Severity
-    nature: Nature
-    description: str
+    element: FeatureKey | None  # None allowed only while status == "draft"
+    current_state: CurrentState | None
+    severity: Severity | None
+    nature: Nature | None
+    description: str | None
     created_at: datetime
     photo_ids: list[str] = field(default_factory=list)
     status: str = "submitted"

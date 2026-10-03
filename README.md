@@ -59,6 +59,7 @@ uv run python main.py                                          # http://localhos
 | 14 | +8 features, +6 needs profiles (generic check rules) | [plan](features/14-profiles/plan.md) | F2 specs updated | 60 min |
 | 16 | Me: favourites + my reports | [plan](features/16-me/plan.md) | [openapi](features/16-me/openapi.yaml) | 30 min |
 | 17 | Geo search (near/radius/bbox/sort/pages/map), categories, geocode | [plan](features/17-geo-search/plan.md) | [openapi](features/17-geo-search/openapi.yaml) | 60 min |
+| 18 | Report drafts (draft → PATCH → submit) | [plan](features/18-report-drafts/plan.md) | [openapi](features/18-report-drafts/openapi.yaml) | 45 min |
 
 - F0 blocks all.
 - After F0: **F1, F2, F3 in parallel** (demo auth stub ships in F0, Google added in F1).

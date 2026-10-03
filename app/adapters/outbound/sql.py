@@ -80,6 +80,14 @@ def _dt(s: str | None) -> datetime | None:
     return datetime.fromisoformat(s) if s else None
 
 
+def _s(v) -> str | None:
+    return None if v is None else str(v)
+
+
+def _e(enum_cls, v):
+    return None if v is None else enum_cls(v)
+
+
 class SqlRepo(InMemoryRepo):
     def __init__(self, url: str, connect_retries: int = 15, retry_pause_s: float = 2.0):
         if url.startswith("sqlite:///"):
@@ -151,8 +159,8 @@ class SqlRepo(InMemoryRepo):
                                      votes=dict(o.votes), validation=str(o.validation), confidence=o.confidence,
                                      report_id=o.report_id)
         for i, r in enumerate(self.reports.values()):
-            yield reports, dict(id=r.id, seq=i, place_id=r.place_id, author_id=r.author_id, element=str(r.element),
-                                current_state=str(r.current_state), severity=str(r.severity), nature=str(r.nature),
+            yield reports, dict(id=r.id, seq=i, place_id=r.place_id, author_id=r.author_id, element=_s(r.element),
+                                current_state=_s(r.current_state), severity=_s(r.severity), nature=_s(r.nature),
                                 description=r.description, created_at=_iso(r.created_at), photo_ids=list(r.photo_ids),
                                 status=r.status, observation_ids=list(r.observation_ids))
         for i, p in enumerate(self.photos.values()):
@@ -190,8 +198,9 @@ class SqlRepo(InMemoryRepo):
                     r["confidence"], r["report_id"])
             for r in rows(reports):
                 self.reports[r["id"]] = Report(
-                    r["id"], r["place_id"], r["author_id"], FeatureKey(r["element"]), CurrentState(r["current_state"]),
-                    Severity(r["severity"]), Nature(r["nature"]), r["description"], _dt(r["created_at"]),
+                    r["id"], r["place_id"], r["author_id"], _e(FeatureKey, r["element"]),
+                    _e(CurrentState, r["current_state"]), _e(Severity, r["severity"]), _e(Nature, r["nature"]),
+                    r["description"], _dt(r["created_at"]),
                     list(r["photo_ids"]), r["status"], list(r["observation_ids"]))
             for r in rows(photos):
                 self.photos[r["id"]] = Photo(r["id"], r["path"], r["url"], r["original_name"])

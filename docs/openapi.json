@@ -1084,12 +1084,138 @@
       }
     },
     "/api/v1/reports/{report_id}": {
+      "patch": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Update Report",
+        "description": "Edit a draft (author only).",
+        "operationId": "update_report_api_v1_reports__report_id__patch",
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Report Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportPatchIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "get": {
         "tags": [
           "reports"
         ],
         "summary": "Get Report",
         "operationId": "get_report_api_v1_reports__report_id__get",
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Report Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/{report_id}/submit": {
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Submit Report",
+        "description": "Draft → submitted: full validation, creates the observation.",
+        "operationId": "submit_report_api_v1_reports__report_id__submit_post",
         "parameters": [
           {
             "name": "report_id",
@@ -4120,28 +4246,59 @@
       },
       "ReportIn": {
         "properties": {
-          "place_id": {
-            "type": "string",
-            "title": "Place Id"
-          },
           "element": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Element"
           },
           "current_state": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Current State"
           },
           "severity": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Severity"
           },
           "nature": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Nature"
           },
           "description": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Description"
           },
           "photo_ids": {
@@ -4151,43 +4308,78 @@
             "type": "array",
             "title": "Photo Ids",
             "default": []
+          },
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "draft": {
+            "type": "boolean",
+            "title": "Draft",
+            "default": false
           }
         },
         "type": "object",
         "required": [
-          "place_id",
-          "element",
-          "current_state",
-          "severity",
-          "nature",
-          "description"
+          "place_id"
         ],
         "title": "ReportIn"
       },
       "ReportOut": {
         "properties": {
-          "place_id": {
-            "type": "string",
-            "title": "Place Id"
-          },
           "element": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Element"
           },
           "current_state": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Current State"
           },
           "severity": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Severity"
           },
           "nature": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Nature"
           },
           "description": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Description"
           },
           "photo_ids": {
@@ -4197,6 +4389,10 @@
             "type": "array",
             "title": "Photo Ids",
             "default": []
+          },
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
           },
           "id": {
             "type": "string",
@@ -4224,11 +4420,6 @@
         "type": "object",
         "required": [
           "place_id",
-          "element",
-          "current_state",
-          "severity",
-          "nature",
-          "description",
           "id",
           "status",
           "author",
@@ -4236,6 +4427,81 @@
           "observation_ids"
         ],
         "title": "ReportOut"
+      },
+      "ReportPatchIn": {
+        "properties": {
+          "element": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Element"
+          },
+          "current_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current State"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          },
+          "nature": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nature"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "photo_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Ids"
+          }
+        },
+        "type": "object",
+        "title": "ReportPatchIn"
       },
       "Role": {
         "type": "string",

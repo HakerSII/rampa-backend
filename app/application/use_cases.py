@@ -431,7 +431,8 @@ class UseCases:
     def list_owner_reports(self, user: User | None) -> list[Report]:
         self._require_owner(user)
         owned = {p.id for p in self.list_owner_places(user)}
-        reports = [(i, r) for i, r in enumerate(self.repo.list_reports()) if r.place_id in owned]
+        reports = [(i, r) for i, r in enumerate(self.repo.list_reports())
+                   if r.place_id in owned and r.status != "draft"]
         return [r for _, r in sorted(reports, key=lambda t: (t[1].created_at, t[0]), reverse=True)]
 
     def assign_owner(self, admin: User | None, place_id: str, user_id: str) -> Place:
@@ -490,7 +491,8 @@ class UseCases:
         places = self.repo.list_places()
         observations = [o for p in places for o in self.repo.list_observations(p.id)]
         states = [s for p in places for s in self.repo.states_for(p.id).values()]
-        return compute_stats(reports=self.repo.list_reports(), observations=observations,
+        submitted = [r for r in self.repo.list_reports() if r.status != "draft"]
+        return compute_stats(reports=submitted, observations=observations,
                              queue=self.repo.list_queue_items(), states=states, places=len(places),
                              now=self.clock.now())
 
@@ -588,29 +590,79 @@ class UseCases:
         self.repo.add_photo(photo)
         return photo
 
-    def create_report(self, user: User | None, *, place_id: str, element: str, current_state: str,
-                      severity: str, nature: str, description: str,
-                      photo_ids: list[str] | tuple = ()) -> Report:
-        """MVP: report is submitted immediately and creates one observation."""
+    REPORT_FIELDS = ("element", "current_state", "severity", "nature", "description")
+
+    def _parse_report_fields(self, *, complete: bool, **raw) -> dict:
+        """Validate given fields; with complete=True all REPORT_FIELDS must be present (submit)."""
+        out = {}
+        for name, enum_cls in (("element", FeatureKey), ("current_state", CurrentState),
+                               ("severity", Severity), ("nature", Nature)):
+            if raw.get(name) is not None:
+                out[name] = _enum(enum_cls, raw[name], name)
+        if raw.get("description") is not None:
+            text = raw["description"].strip()
+            if len(text) > MAX_DESCRIPTION or (complete and not text):
+                raise ValidationFailed(f"description must have 1..{MAX_DESCRIPTION} characters")
+            out["description"] = text
+        if raw.get("photo_ids") is not None:
+            out["photo_ids"] = self._check_photos(raw["photo_ids"])
+        return out
+
+    def create_report(self, user: User | None, *, place_id: str, element: str | None = None,
+                      current_state: str | None = None, severity: str | None = None, nature: str | None = None,
+                      description: str | None = None, photo_ids: list[str] | tuple = (),
+                      draft: bool = False) -> Report:
+        """draft=True: only place required, no observation. Else submitted immediately (F3 behaviour)."""
         self._require_user(user)
         self.get_place(place_id)
-        feature = _enum(FeatureKey, element, "element")
-        state = _enum(CurrentState, current_state, "current_state")
-        severity_v = _enum(Severity, severity, "severity")
-        nature_v = _enum(Nature, nature, "nature")
-        if not 1 <= len(description.strip()) <= MAX_DESCRIPTION:
-            raise ValidationFailed(f"description must have 1..{MAX_DESCRIPTION} characters")
-        photo_ids = self._check_photos(photo_ids)
-
-        report = Report(self.ids.new("rep"), place_id, user.id, feature, state, severity_v, nature_v,
-                        description.strip(), self.clock.now(), photo_ids=photo_ids)
-        value = ObservationValue.YES if state == CurrentState.WORKS else ObservationValue.NO
-        obs = self._new_observation(user, place_id, feature, value, temporary=nature_v == Nature.TEMPORARY,
-                                    comment=report.description, photo_ids=photo_ids, report_id=report.id)
-        report.observation_ids = [obs.id]
+        fields = self._parse_report_fields(complete=not draft, element=element, current_state=current_state,
+                                           severity=severity, nature=nature, description=description,
+                                           photo_ids=photo_ids)
+        report = Report(self.ids.new("rep"), place_id, user.id, fields.get("element"), fields.get("current_state"),
+                        fields.get("severity"), fields.get("nature"), fields.get("description"), self.clock.now(),
+                        photo_ids=fields.get("photo_ids", []), status="draft")
+        if not draft:
+            self._require_complete(report)
+            self._submit(user, report)
         self.repo.add_report(report)
-        self.recompute(place_id, feature)
         return report
+
+    def update_report(self, user: User | None, report_id: str, **raw) -> Report:
+        report = self._own_draft(user, report_id)
+        for name, value in self._parse_report_fields(complete=False, **raw).items():
+            setattr(report, name, value)
+        return report
+
+    def submit_report(self, user: User | None, report_id: str) -> Report:
+        report = self._own_draft(user, report_id)
+        self._require_complete(report)
+        self._submit(user, report)
+        return report
+
+    def _own_draft(self, user: User | None, report_id: str) -> Report:
+        self._require_user(user)
+        report = self.repo.get_report(report_id)
+        if report is None:
+            raise NotFound(f"report not found: {report_id}")
+        if report.author_id != user.id:
+            raise Forbidden("only the author can edit or submit a report")
+        if report.status != "draft":
+            raise ConflictError(f"report already {report.status}")
+        return report
+
+    def _require_complete(self, report: Report) -> None:
+        missing = [f for f in self.REPORT_FIELDS if not getattr(report, f)]
+        if missing:
+            raise ValidationFailed(f"missing fields: {', '.join(missing)}")
+
+    def _submit(self, user: User, report: Report) -> None:
+        value = ObservationValue.YES if report.current_state == CurrentState.WORKS else ObservationValue.NO
+        obs = self._new_observation(user, report.place_id, report.element, value,
+                                    temporary=report.nature == Nature.TEMPORARY, comment=report.description,
+                                    photo_ids=report.photo_ids, report_id=report.id)
+        report.observation_ids = [obs.id]
+        report.status = "submitted"
+        self.recompute(report.place_id, report.element)
 
     def get_report(self, user: User | None, report_id: str) -> Report:
         self._require_user(user)

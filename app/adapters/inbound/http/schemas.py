@@ -204,17 +204,26 @@ class AuthorOut(BaseModel):
     display_name: str
 
 
-class ReportIn(BaseModel):
-    place_id: str
-    element: str
-    current_state: str
-    severity: str
-    nature: str
-    description: str
+class ReportFields(BaseModel):
+    element: str | None = None
+    current_state: str | None = None
+    severity: str | None = None
+    nature: str | None = None
+    description: str | None = None
     photo_ids: list[str] = []
 
 
-class ReportOut(ReportIn):
+class ReportIn(ReportFields):
+    place_id: str
+    draft: bool = False  # true → "Zapisz szkic": no observation until submit
+
+
+class ReportPatchIn(ReportFields):
+    photo_ids: list[str] | None = None
+
+
+class ReportOut(ReportFields):
+    place_id: str
     id: str
     status: str
     author: AuthorOut
