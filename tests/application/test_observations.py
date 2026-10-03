@@ -107,7 +107,8 @@ async def test_contradicting_observation_opens_single_queue_item(uc):
     items = [q for q in uc.repo.list_queue_items() if q.status == QueueStatus.OPEN]
     assert len(items) == 1 and len(items[0].observation_ids) == 3
     s = uc.repo.states_for("plc_mnk")[F.ELEVATOR]
-    assert (s.state, s.validation) == ("no", ValidationStatus.CONFLICT)
+    # all three score 0.5 (no photo, no votes) → tie → newest ("yes") wins, flagged as conflict
+    assert (s.state, s.validation) == ("yes", ValidationStatus.CONFLICT)
 
 
 async def test_list_observations_hides_rejected_when_active(uc):

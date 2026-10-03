@@ -51,7 +51,7 @@ def test_step3_check_wheelchair_yes(client):
     assert r.json()["answer"] == "yes"
 
 
-@pytest.mark.xfail(strict=True, reason="F3")
+
 def test_step4_anna_reports_broken_elevator(client, ctx):
     photo = client.post("/api/v1/uploads", headers=auth("anna"),
                         files={"file": ("winda.png", PNG, "image/png")})
@@ -68,7 +68,7 @@ def test_step4_anna_reports_broken_elevator(client, ctx):
     assert (state["state"], state["temporary"], state["confidence"]) == ("no", True, 0.6)
 
 
-@pytest.mark.xfail(strict=True, reason="F3")
+
 def test_step5_three_confirmations(client, ctx):
     for voter in ("jan", "ola", "piotr"):
         r = client.post(f"/api/v1/observations/{ctx['anna_obs']}/votes", headers=auth(voter), json={"value": 1})

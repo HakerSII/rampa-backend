@@ -10,11 +10,13 @@ from app.domain.enums import (
     FeatureGroupKey,
     FeatureKey,
     NeedsProfile,
+    ObservationSource,
+    ObservationValue,
     Role,
     StateValue,
     ValidationStatus,
 )
-from app.domain.model import CheckResult, FeatureStateRecord, Place, User
+from app.domain.model import CheckResult, FeatureStateRecord, Observation, Photo, Place, Report, User
 
 
 class UserOut(BaseModel):
@@ -169,6 +171,115 @@ def check_out(r: CheckResult) -> CheckResultOut:
         active_issues=[ActiveIssueOut(observation_id=o.id, feature=o.feature, temporary=o.temporary,
                                       comment=o.comment) for o in r.active_issues],
         advice=r.advice,
+    )
+
+
+# ---------------------------------------------------------------- observations (F3)
+class PhotoOut(BaseModel):
+    id: str
+    url: str
+
+
+class AuthorOut(BaseModel):
+    id: str
+    display_name: str
+
+
+class ReportIn(BaseModel):
+    place_id: str
+    element: str
+    current_state: str
+    severity: str
+    nature: str
+    description: str
+    photo_ids: list[str] = []
+
+
+class ReportOut(ReportIn):
+    id: str
+    status: str
+    author: AuthorOut
+    created_at: str
+    observation_ids: list[str]
+
+
+class ObservationIn(BaseModel):
+    feature: str
+    value: str
+    temporary: bool = False
+    comment: str = ""
+    photo_ids: list[str] = []
+
+
+class VotesOut(BaseModel):
+    up: int
+    down: int
+    my_vote: int | None
+
+
+class ValidationOut(BaseModel):
+    status: ValidationStatus
+    reason: str = ""
+
+
+class ObservationOut(BaseModel):
+    id: str
+    place_id: str
+    feature: FeatureKey
+    value: ObservationValue
+    temporary: bool
+    source: ObservationSource
+    author: AuthorOut
+    report_id: str | None
+    comment: str
+    evidence: list[PhotoOut]
+    votes: VotesOut
+    validation: ValidationOut
+    confidence: float
+    created_at: str
+
+
+class ObservationList(BaseModel):
+    items: list[ObservationOut]
+
+
+class VoteIn(BaseModel):
+    value: int
+
+
+class VoteResultOut(BaseModel):
+    observation: ObservationOut
+    feature_state: FeatureStateOut
+
+
+def author_out(uc, user_id: str) -> AuthorOut:
+    user = uc.repo.get_user(user_id)
+    return AuthorOut(id=user_id, display_name=public_name(user.display_name) if user else user_id)
+
+
+def photo_out(photo: Photo) -> PhotoOut:
+    return PhotoOut(id=photo.id, url=photo.url)
+
+
+def observation_out(uc, o: Observation, me: User | None = None) -> ObservationOut:
+    photos = [p for p in (uc.repo.get_photo(i) for i in o.evidence_ids) if p]
+    reason = "contradicting observations within 30 days" if o.validation == ValidationStatus.CONFLICT else ""
+    return ObservationOut(
+        id=o.id, place_id=o.place_id, feature=o.feature, value=o.value, temporary=o.temporary,
+        source=o.source, author=author_out(uc, o.author_id), report_id=o.report_id, comment=o.comment,
+        evidence=[photo_out(p) for p in photos],
+        votes=VotesOut(up=o.up_votes, down=o.down_votes, my_vote=o.votes.get(me.id) if me else None),
+        validation=ValidationOut(status=o.validation, reason=reason),
+        confidence=o.confidence, created_at=iso(o.created_at),
+    )
+
+
+def report_out(uc, r: Report) -> ReportOut:
+    return ReportOut(
+        id=r.id, place_id=r.place_id, element=r.element, current_state=r.current_state,
+        severity=r.severity, nature=r.nature, description=r.description, photo_ids=r.photo_ids,
+        status=r.status, author=author_out(uc, r.author_id), created_at=iso(r.created_at),
+        observation_ids=r.observation_ids,
     )
 
 
