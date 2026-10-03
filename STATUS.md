@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** — F5 done; next: AI image tags mock (README §6.2)
+- **Task:** F6 AI image tags
 - **Who:** Claude
-- **State:** done
-- **Next step:** F6 plan: POST /ai/image-tags with mock vision adapter
-- **Last pytest:** `uv run pytest` → 106 passed
+- **State:** todo
+- **Next step:** 🟢 domain/suggestions.py, vision adapters, analyze_image
+- **Last pytest:** `uv run pytest` → red: F6 tests
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -38,9 +38,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F3.1–F3.8 | Trust, validation, reports, uploads, votes; steps 4–6 | Claude | done | steps 4–5 green; step 6 needs F4 endpoint |
 | F4.1–F4.4 | Queue, decision; step 7 → full flow green | Claude | done | full demo flow green |
 | F5.1–F5.4 | Open API: key, rate limit, flat format | Claude | done | e2e P1–P5 + 2×401 in demo.http |
+| F6.1–F6.5 | AI image tags: mock + ONNX Phi-3.5 + fallback | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F6 · red · plan, contract, tests (suggestions, onnx parsing, use case, fallback)
 - 2026-10-03 · F5 · done · Open API /public/v1 (X-Api-Key, 60/min, flat format), e2e in demo.http; 106 passed
 - 2026-10-03 · F5 · red · plan, contract, tests for Open API
 - 2026-10-03 · MVP · done · contract test (20 ops × 4 specs), live uvicorn smoke OK; 92 passed

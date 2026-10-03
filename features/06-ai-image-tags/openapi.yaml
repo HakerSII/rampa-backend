@@ -1,0 +1,96 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F6 AI image tags
+  version: 0.1.0-mvp
+  description: >
+    Subset of ../../../openapi.yaml (tag ai). AI output is a suggestion for the
+    report form only; it never changes feature state. AI_MODE=mock|onnx.
+servers:
+  - url: http://localhost:8000/api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: ai
+paths:
+  /ai/image-tags:
+    post:
+      tags: [ai]
+      summary: Suggestions from uploaded photos (Phi-3.5 Vision ONNX or mock)
+      operationId: imageTags
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [photo_ids]
+              properties:
+                photo_ids: { type: array, items: { type: string }, minItems: 1, maxItems: 5 }
+                place_id: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImageTagsResult" }
+        "400":
+          description: VALIDATION_ERROR or NOT_A_REAL_PLACE
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: UNAUTHORIZED
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, enum: [VALIDATION_ERROR, UNAUTHORIZED, NOT_A_REAL_PLACE] }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+    FeatureKey:
+      type: string
+      enum: [step_free_entrance, ramp, elevator, accessible_toilet, induction_loop]
+    ImageAnalysis:
+      type: object
+      description: Same schema as analyze_image() in get_model.py
+      properties:
+        real_place: { type: boolean }
+        barrier_detected: { type: boolean }
+        barrier_type: { type: string }
+        affected_disabilities: { type: array, items: { type: string } }
+        description: { type: string }
+        confidence: { type: number }
+    ImageTagsResult:
+      type: object
+      required: [analysis, tags, model]
+      properties:
+        analysis: { $ref: "#/components/schemas/ImageAnalysis" }
+        tags:
+          type: array
+          items:
+            type: object
+            properties:
+              label: { type: string, examples: [winda] }
+              feature: { oneOf: [{ $ref: "#/components/schemas/FeatureKey" }, { type: "null" }] }
+              confidence: { type: number }
+        detected: { type: string }
+        suggested:
+          oneOf:
+            - type: "null"
+            - type: object
+              properties:
+                element: { $ref: "#/components/schemas/FeatureKey" }
+                current_state: { type: string, enum: [works, not_working] }
+                severity: { type: string, enum: [critical, obstacle, minor] }
+        model: { type: string, enum: [phi-3.5-vision-onnx, mock] }
