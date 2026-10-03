@@ -5,14 +5,14 @@
 
 ## Current
 
-- **State:** done
+- **State:** todo
 - **Deploy:** **Render**, automatic after every merge to `master` (Docker service `rampa-backend` + `rampa-backend-postgres`); see docs/operations.md; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
 - **Last pytest:** `uv run pytest` → 455 passed, 12 skipped
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
 - **Front-end needs (from F12b):** done — `GET /observations` map layer (F24), `escalator` + full feature model (F25). Front end to map `tactile` → `tactile_paths`, `sign` → `sign_language_interpreter`.
-- **Plan:** complete (F0–F29 + F12b). Remaining items need a human (see Blockers).
+- **Plan:** F0–F29 + F12b done. **Next plan: [PLAN-GAPS.md](PLAN-GAPS.md)** (gaps vs Accessly description, F30–F39), start with F30.
 
 ## Run
 
@@ -71,9 +71,20 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F27 | Live geocoding (Nominatim) + OSM (Overpass), fallback to local | Claude | done | e2e I7; Nominatim verified live; Overpass unreachable from dev network → fallback path |
 | F28 | OSRM walking route geometry, barriers along it (fallback straight line) | Claude | done | e2e F28 (straight + ROUTER=osrm); OSRM verified live: 2033 m / 192 pts |
 | F29 | Multi-worker consistency: data version, reload when stale, 409 on concurrent write | Claude | done | whole demo.http passes against uvicorn --workers 2 (147 requests); boot seeding race handled |
+| F30 | AI recommendations endpoint `POST /ai/recommend` — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
+| F31 | Needs profile on server + sort best_match — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
+| F32 | Value n/a + missing attributes — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
+| F33 | Email magic-link login — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
+| F34 | Questions to owner + needs stats — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
+| F35 | In-app notifications — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
+| F36 | Admin: new-place queue, activity, trends — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
+| F37 | City config — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
+| F38 | PostGIS + Alembic — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
+| F39 | City open-data import (blocked: dataset) — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
 
 ## Log (newest first)
 
+- 2026-10-03 · PLAN-GAPS.md: backend gaps vs Accessly description → F30–F39 todo
 - 2026-10-03 · Final docs + STATUS: plan complete
 - 2026-10-03 · F29 green: multi-worker data version, reload when stale, 409 on write race
 - 2026-10-03 · F29 red: multi-worker tests
