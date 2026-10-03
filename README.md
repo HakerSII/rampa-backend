@@ -1,10 +1,10 @@
-# Mini MVP — trimmed plan, split by feature
+# rampa-backend — Kraków bez barier (backend)
 
 > **Documentation:** [docs/](docs/README.md) — [architecture](docs/architecture.md) · [API reference](docs/api.md) · [configuration](docs/configuration.md) · [operations](docs/operations.md) · [pitch](docs/PITCH.md) · [demo script](docs/DEMO.md) · [openapi.json](docs/openapi.json)
 
 Full contract: [../openapi.yaml](../openapi.yaml) · full plan: [../plan_fastapi.md](../plan_fastapi.md) · API notes: [../api.md](../api.md) · status: [STATUS.md](STATUS.md)
 
-- Effort: ~5.5–7 h solo, ~3–3.5 h for 2–3 devs in parallel after F0.
+- Status: **full plan implemented** (F0–F23): 63/64 operations of the full contract (`/auth/login` replaced by `/auth/demo` + `/auth/google`), 69 HTTP operations, 389 tests.
 - Per feature: `plan.md` (scope, model, tasks, DoD) + `openapi.yaml`.
 - Each `openapi.yaml` = valid **subset** of full contract: same paths (`/api/v1/...`), schema names, enum values. Merge back = copy, no renames.
 - Rules from full plan apply: **TDD** for domain + use cases ([§1a](../plan_fastapi.md)), **save status between steps + local commit** ([§1b](../plan_fastapi.md)).
@@ -89,82 +89,51 @@ Place `plc_mnk` (National Museum), feature `elevator`, seeded `yes` (observation
 
 ---
 
-## 2. Cut vs full plan (deliberate)
+## 2. Differences from the full plan (still deliberate)
 
-| Cut | Why / replacement |
+Everything from the full contract is implemented except the items below, which are deliberately simplified:
+
+| Item | Status / replacement |
 |---|---|
-| Owner panel extras (stats, reminders, CSV), ownership requests, role `api_client` | F7 adds `owner` (admin assigns); main demo still uses 2nd `user`, owner variant in demo.http |
-| AI `/ai/parse-text` | not needed for demo; image tags done in F6 |
-| Live Overpass import, `/geocode` | F8 imports offline OSM snapshot; live adapter later |
-| Open API (`/public/v1/*`) | later, same use cases |
-| In-process MCP | MCP is a client of the Open API (`clients/`), see F8 |
-| Route A→B | not in mockups |
-| Report drafts (`PATCH /reports/{id}`, `/submit`) | `POST /reports` → `status=submitted` immediately |
+| `POST /auth/login` (username + password) | replaced by `POST /auth/demo` (demo mode) + `POST /auth/google` (Google Sign-In) |
+| Live Overpass import, Nominatim geocoding | OSM from an offline snapshot (F8), `/geocode` from the local index (F17); ports ready for live adapters |
+| Routing engine | `/routes/accessible` is a **straight-line heuristic** with barriers ≤ 100 m (F20); says so in `note` |
+| Abuse reports by users | moderators flag (F21); users report problems through normal reports |
 | `action=escalate` | `confirm` / `reject` only |
-| Feature state `partial`, `current_state=partially_works` | states `yes/no/unknown`. **`check` answer may still be `partial`** (full-enum value) |
-| Favorites, history/audit, admin stats, merge, flagging, gallery, activity | not on demo path |
-| Postgres, multi-worker | F9: SQLite (single process); seed only into empty DB; reset endpoint wipes |
-| Trust age decay | simplified formula (F3); 30-day conflict window kept |
-| Domain events + dispatcher | use case creates `QueueItem` directly on conflict |
-
-If time left: Open API → AI mock → owner → OSM import (see §6).
+| Persistence | write-behind cache over SQLite/Postgres, single process (F9/F11); a fully SQL-backed repository is needed for multiple workers |
+| DDD aggregate + domain events + UoW | light hexagon: logic in pure domain functions + use cases; conflicts create queue items directly |
+| Features | 13 of 35 from the full model (all user questions from the brief covered) |
+| Media storage | local `media/` folder (S3 later) |
+| Frontend | not in this repo (mockups in the hackathon PDF) |
 
 ---
 
-## 3. Architecture (light hexagon, shared)
+## 3. Architecture
+
+Full description: **[docs/architecture.md](docs/architecture.md)**. In short:
 
 ```
 app/
-  domain/
-    model.py         # dataclasses from §4
-    enums.py         # FeatureKey (5), StateValue, ObservationSource, ValidationStatus, NeedsProfile, Role, …
-    trust.py         # F3
-    validation.py    # F3
-    check.py         # F2
-    errors.py        # DomainError: NotFound, Forbidden, ValidationFailed, ConflictError, Unauthorized
-  application/
-    ports.py         # Protocols: Repo, Clock, IdGenerator, FileStorage, IdentityVerifier
-    use_cases.py     # all use cases, one file
+  domain/          pure rules: model, enums, trust, validation, check, suggestions, text_parse, osm, geo,
+                   verification, history, stats, route, errors
+  application/     ports.py (Repo, Clock, IdGenerator, FileStorage, IdentityVerifier, VisionAnalyzer, OsmSource)
+                   use_cases.py (all use cases)
   adapters/
-    inbound/http/    # main.py (create_app + lifespan), deps.py, errors.py, schemas.py, routers.py
-    outbound/
-      memory.py      # InMemoryRepo, SystemClock/FixedClock, SeqIdGenerator
-      files.py       # LocalFileStorage (./media, offline)
-      google_auth.py # GoogleIdentityVerifier (F1) + FakeIdentityVerifier (tests)
-  bootstrap.py       # Settings → adapters → Container
-  config.py          # AUTH_MODE, GOOGLE_CLIENT_ID, ADMIN_EMAILS, MEDIA_DIR, DEMO_NOW
-  seed.py            # load_seed(repo, clock): places, observations, demo accounts
-tests/
-  unit/        test_trust.py, test_validation.py, test_check.py
-  application/ test_use_cases.py   # InMemoryRepo + FixedClock
-  api/         test_demo_flow.py   # scenario §1 via httpx (AUTH_MODE=demo)
+    inbound/http/  FastAPI app, middleware (commit), auth deps, errors, schemas, rate limit,
+                   routers: auth, me, places, observations, ai, owner, admin, public
+    outbound/      memory, sql (SQLite/Postgres), files, google_auth, vision_mock/onnx/gemini, osm_file
+  bootstrap.py     composition root (config → adapters)
+clients/           MCP server (client of the Open API)
+tests/             unit · application · adapters · api (contract, demo flow, docs)
 ```
 
-- Dependency rule kept: `domain` imports no fastapi/pydantic/google. No `test_architecture.py`; enforced in review (small codebase).
-- **One repo** (`InMemoryRepo`), no UoW.
-- Each write = one sync block, no `await` inside → atomic on asyncio loop.
+Dependency rule: `domain` imports only the standard library; frameworks live only in adapters and `bootstrap.py`.
 
 ---
 
-## 4. Data model (shared, minimal)
+## 4. Data model
 
-```python
-User(id, display_name, role: Literal["user", "admin"], email=None, google_sub=None)  # guest = no user
-Session(token, user_id, expires_at)
-Place(id, name, category, location: GeoPoint(lat, lon), short_description, address="")
-Observation(id, place_id, feature, value: Literal["yes", "no"], source, author_id, created_at,
-            temporary=False, comment="", evidence_ids: list[str], votes: dict[user_id, 1 | -1],
-            validation="VALID", confidence=0.0, report_id=None)
-FeatureStateRecord(place_id, feature, state: Literal["yes", "no", "unknown"], confidence,
-                   temporary, last_verified, sources_count, validation, active_observation_id)
-Report(id, place_id, author_id, element: FeatureKey, current_state: Literal["works", "not_working"],
-       severity, nature, description, photo_ids, status="submitted", created_at, observation_ids)
-QueueItem(id, place_id, feature, observation_ids, type="conflict", status: open | resolved, created_at)
-Photo(id, path, url)
-```
-
-- `FeatureStateRecord` **always computed** from observations (`trust.compute_feature_state`). Never written by hand, seed included.
-- MVP `FeatureKey`: `step_free_entrance`, `ramp`, `elevator`, `accessible_toilet`, `induction_loop`. All in full enum (35) → no renames on merge.
+See **[docs/architecture.md §4](docs/architecture.md#4-domain-model)**. Key rule: everything is an **observation** (source, author, time, evidence, votes, validation, optional `valid_until`); the feature state (`yes/partial/no/unknown` + confidence) is **always computed**, never written by hand.
 
 ---
 
@@ -178,10 +147,10 @@ Photo(id, path, url)
 - **Every feature adds e2e calls to `requests/demo.http`** (happy path + error statuses in titles), verified by running the file top → bottom.
 - [STATUS.md](STATUS.md) current; local commit per task.
 
-## 6. Next (beyond MVP, by value)
+## 6. Next
 
-1. ~~Open API (`/public/v1/*`)~~ → done as F5.
-2. ~~`POST /ai/image-tags` with mock~~ → done as F6 (real Phi-3.5: `uv sync --extra ai`, `AI_MODE=onnx`).
-3. ~~`owner` role + `verified_owner` observations~~ → done as F7 (demo.http section "F7 Owner scenario").
-4. ~~OSM import / MCP integration~~ → done as F8 (live Overpass adapter still open).
-5. ~~SQLAlchemy instead of in-memory~~ → done as F9 (SQLite write-behind; Postgres / multi-worker = fully SQL-backed repo later).
+1. Frontend from the mockups (map, place card, report form, owner and admin panels) against this API.
+2. Google OAuth client (F1.0) → real logins; fresh Gemini quota or a paid key before the demo.
+3. Fully SQL-backed repository → several workers, PostGIS for geo search.
+4. Live data: Overpass/OSM adapter, city open data, Nominatim.
+5. More features from the full model (35), user abuse reports, escalation.

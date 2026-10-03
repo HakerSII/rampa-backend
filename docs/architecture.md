@@ -66,11 +66,16 @@ Benefits in practice:
 | `app/domain/trust.py` | Confidence per observation, winner → feature state |
 | `app/domain/validation.py` | Conflict detection (30-day window) |
 | `app/domain/check.py` | "Can I get in?" rules per needs profile |
-| `app/domain/suggestions.py` | AI analysis → tags and report-form suggestion |
-| `app/domain/osm.py`, `geo.py` | OSM tag mapping, haversine distance |
+| `app/domain/suggestions.py` | AI photo analysis → tags and report-form suggestion |
+| `app/domain/text_parse.py` | Free text → suggested observations (rules, PL + EN) |
+| `app/domain/verification.py` | Place badge ("Potwierdzone dzisiaj") + activity-feed classification |
+| `app/domain/history.py`, `stats.py` | Audit trail of a place; admin dashboard tiles |
+| `app/domain/route.py` | A→B route heuristic (barriers/helpers near a straight line) |
+| `app/domain/osm.py`, `geo.py` | OSM tag mapping; haversine, bbox, distance to a segment |
 | `app/application/ports.py` | Port protocols |
 | `app/application/use_cases.py` | All use cases (`UseCases` class) |
 | `app/adapters/inbound/http/` | `main.py` (app factory, middleware), `deps.py` (auth deps), `errors.py`, `schemas.py`, `rate_limit.py`, `routers/*` |
+| `app/adapters/inbound/http/routers/` | `auth`, `me`, `places` (search, map, card, check, similar, routes, history), `observations` (reports, drafts, votes, uploads), `ai`, `owner`, `admin`, `public` |
 | `app/adapters/outbound/` | `memory.py`, `sql.py`, `files.py`, `google_auth.py`, `vision_*.py`, `osm_file.py` |
 | `clients/` | MCP server + tool logic (Open API client) |
 | `data/` | OSM snapshot; SQLite DB file (`rampa.db`, gitignored) |
@@ -111,13 +116,16 @@ sequenceDiagram
 
 | Entity | Key fields | Notes |
 |---|---|---|
-| `Place` | id, name, category, location (`GeoPoint`), address, `owner_id`, `external_id` | Descriptive data only; accessibility lives in states |
-| `Observation` | place, feature, value `yes/no`, source, author, created_at, temporary, comment, evidence (photo ids), votes `{user: ±1}`, validation, confidence | Never deleted, only `validation` changes |
-| `FeatureStateRecord` | place, feature, state `yes/no/unknown`, confidence, temporary, last_verified, sources_count, validation, active_observation_id | **Computed**, never written by hand |
-| `Report` | element, current_state `works/not_working`, severity, nature, description, photos, observation_ids | The UI form; on submit it creates one observation |
-| `QueueItem` | place, feature, observation_ids, status `open/resolved`, decision | One open item per place + feature |
-| `User` / `Session` | role `user/owner/admin`; demo username or Google `sub` | Guest = no user |
+| `Place` | id, name, category, `place_type`, location (`GeoPoint`), address, `owner_id`, `external_id`, `opening_hours`, `contact`, `photo_ids` (owner photos) | Descriptive data only; accessibility lives in states |
+| `Observation` | place, feature, value `yes/partial/no`, source, author, created_at, temporary, `valid_until`, comment, evidence (photo ids), votes `{user: ±1}`, validation (`VALID/CONFLICT/REJECTED/FLAGGED`), `flag_reason`, confidence | Never deleted, only `validation` changes |
+| `FeatureStateRecord` | place, feature, state `yes/partial/no/unknown`, confidence, temporary, last_verified, sources_count, validation, active_observation_id | **Computed**, never written by hand |
+| `Report` | element, current_state `works/partially_works/not_working`, severity, nature, description, photos, status `draft/submitted`, observation_ids, owner `replies`, `owner_status` | The UI form; a draft may be incomplete; on submit it creates one observation |
+| `QueueItem` | place, feature, observation_ids, status `open/resolved`, decision, `resolved_at`, moderator `comments` | One open item per place + feature |
+| `OwnershipRequest` | place, user, justification, status `pending/approved/rejected`, decided_at | "I'm the owner" → admin verifies |
+| `User` / `Session` | role `user/owner/admin`; demo username or Google `sub`; `favorite_place_ids` | Guest = no user |
 | `Photo` | path, url, original_name | Stored in `media/` |
+
+**Place types:** `venue`, `shop`, `public_transport_stop`, `platform`, `parking`, `office`, `street_segment`, `other`.
 
 **Accessibility features (13):**
 - *entrance*: `step_free_entrance`, `ramp`
@@ -142,10 +150,12 @@ Confidence of a single observation:
 | Photo evidence | +0.1 |
 | Each 👍 | +0.1, capped at +0.3 |
 | Each 👎 | −0.1 |
-| Clamp, round | [0, 1], 2 decimals |
+| Clamp | [0, 1] |
+| Age | older than **180 days** → ×0.5 |
+| Round | 2 decimals |
 
 Feature state:
-1. Ignore `REJECTED` observations.
+1. Ignore `REJECTED` and `FLAGGED` observations, and temporary issues whose `valid_until` has passed. Expired issues are refreshed lazily on read (`get_accessibility`, `check`, search).
 2. The winner is the observation with the highest confidence. Ties go to the newer one, then to the later-inserted one.
 3. `state` is the winner's value. `confidence`, `temporary` and `last_verified` also come from the winner.
 4. With no observations, the state is `unknown` and confidence is 0.
@@ -154,7 +164,7 @@ Feature state:
 
 ### 5.2 Conflicts (`domain/validation.py`)
 
-- **Window:** non-rejected observations from the last **30 days**.
+- **Window:** active observations (not `REJECTED`/`FLAGGED`, not expired) from the last **30 days**.
 - **Conflict:** the window has **≥ 2 distinct values** and **≥ 2 distinct authors**.
 - **When it happens:** the observations are marked `CONFLICT`, a `QueueItem` is opened (or extended), and the state's `validation` is `CONFLICT`.
 - Seed data is 60 days old, so the first fresh report never conflicts with it.
@@ -164,6 +174,7 @@ Feature state:
   - a new `admin` observation (weight 1.0) is added;
   - the item is resolved.
 - **Admin `reject`:** all observations in the item become `REJECTED`, and the state falls back to older data.
+- **Abuse:** an admin can flag any observation (`FLAGGED` + reason). It is excluded like `REJECTED`, and the history keeps it.
 
 ### 5.3 "Can I get in?" (`domain/check.py`)
 
@@ -180,7 +191,8 @@ A generic rule table per needs profile:
 
 How the answer is chosen:
 - a required feature is `yes` → `yes`, or `partial` if a downgrade feature is `no` (e.g. "you get in, but the lift is broken");
-- required features are known but none is `yes` → `no`;
+- no required feature is `yes`, but one is `partial` → `partial`;
+- required features are known but none is `yes` or `partial` → `no`;
 - no data → `unknown`.
 
 Each profile has its own advice text. Confidence is the minimum of the states used, and `reasons` and `active_issues` only contain features relevant to the profile. These rules answer the brief's questions: assistance dog, kerb, platform lift, lighting, crutches.
@@ -198,8 +210,9 @@ Each profile has its own advice text. Confidence is the minimum of the states us
 
 - **Input:** `data/osm_krakow_tauron.json`, a snapshot made by `get_from_api.py` from Overpass.
 - **Tag mapping:**
-  - `wheelchair` `yes`/`no` → `step_free_entrance`; `limited` is skipped, because the MVP has no `partial` state;
-  - `toilets:wheelchair` `yes`/`no` → `accessible_toilet`.
+  - `wheelchair` `yes`/`limited`/`no` → `step_free_entrance` `yes`/`partial`/`no`;
+  - `toilets:wheelchair` `yes`/`limited`/`no` → `accessible_toilet`.
+- OSM-created places get `place_type: other`.
 - **Places:** matched by `external_id` (`osm:<lat>,<lon>`) or by the same name within **50 m**; otherwise a new `plc_osm_N` is created. Unnamed points are skipped.
 - **Observations:** source `open_data` (0.6), author `usr_osm` "OpenStreetMap". **Idempotent:** an identical observation is not added twice.
 
@@ -208,11 +221,23 @@ Each profile has its own advice text. Confidence is the minimum of the states us
 | Role | Can | Observation source |
 |---|---|---|
 | guest | read places, check, Open API (with key) | — |
-| user | report, observe, vote, upload, AI | `community` |
-| owner | + owner panel, batch updates of **own** places | `verified_owner` on own places, `community` elsewhere |
-| admin | + moderation, imports, owner assignment, demo reset | `admin` |
+| user | report (incl. drafts), observe, vote, upload, AI, favourites, apply for ownership | `community` |
+| owner | + owner panel for **own** places: edit, opening hours, photos, reply/approve reports, reminders, suggestions, batch, CSV | `verified_owner` on own places, `community` elsewhere |
+| admin | + moderation (decide, comment, flag, merge, revalidate), imports, ownership verification, stats, audit, demo reset | `admin` |
 
 Public display names are shortened to "Anna K." (privacy rule from the mock-ups).
+
+### 5.7 Derived views (pure functions over observations)
+
+| View | Module | Rule |
+|---|---|---|
+| Place badge `verification` | `verification.py` | from known states: newest `last_verified`, mean confidence (high ≥ 0.8, medium ≥ 0.5); status conflict · confirmed today · ≤ 30 d · ≤ 90 d · needs update |
+| Activity feed | `verification.activity_type` | one item per observation, newest first: issue reported · confirmation · owner update · admin decision · OSM import · initial data |
+| Audit trail | `history.py` | observations + conflict detected/resolved (`resolved_at`) |
+| Dashboard tiles | `stats.py` | today vs yesterday: reports, open conflicts, low confidence, observations, abuse flags, places |
+| Search | `use_cases.find_places` | features AND, category, text, place type, distance + radius, bbox, sort (nearest/name/recently verified), pages, map markers |
+| Route A→B | `route.py` | straight line; street-level features of places ≤ 100 m: `no` = barrier, `yes` = helper; `partial`/`yes`/`unknown` |
+| Text → observations | `text_parse.py` | clauses + polarity keywords (PL/EN), stairs/step-free special cases, temporary words |
 
 ## 6. Persistence (`REPO_MODE`)
 
@@ -222,7 +247,7 @@ Public display names are shortened to "Anna K." (privacy rule from the mock-ups)
   - After every non-GET request, middleware calls `repo.commit()`. It diffs the current rows against a snapshot of the last commit and issues the needed `INSERT`, `UPDATE` and `DELETE` statements.
   - Datetimes are stored as ISO strings to keep time zones; lists and dicts are stored as JSON.
   - At bootstrap: an empty DB is seeded. A non-empty DB is loaded, and the id counters continue past the stored ids so new ids never collide.
-  - Tables: `users`, `sessions`, `places`, `feature_states`, `observations`, `reports`, `photos`, `queue_items`.
+  - Tables: `users`, `sessions`, `places`, `feature_states`, `observations`, `reports`, `photos`, `queue_items`, `ownership_requests`.
 - **Why write-behind:** the `Repo` port is synchronous and the use cases mutate domain objects in place. This adds persistence without touching the domain or use cases.
 - **Schema evolution:** on start, `SqlRepo` adds any **missing nullable columns** to existing tables (`ALTER TABLE … ADD COLUMN`), so databases created by older versions keep working (e.g. `queue_items.resolved_at`, F13). It never drops or renames anything.
 - **Limit:** a single process only (one uvicorn worker), on both SQLite and Postgres. Multiple workers or replicas would need a fully SQL-backed repository; the port stays the same.
@@ -256,8 +281,10 @@ It is a **client of the Open API**, not part of the backend process. With in-mem
 | Observations + computed state | Trust, history, conflicts, "Yanosik" model | More logic than a flag; mitigated by pure, tested domain functions |
 | Hexagon with mock/offline adapters | Offline, deterministic demo; fast tests | More files; ports only where there are ≥2 implementations |
 | Sync `Repo` + write-behind SQLite | Atomic use cases, persistence without a rewrite | Single process |
-| MVP feature set: 5 features, `yes/no/unknown` | Scope for the hackathon | `partial` states and the other 30 features are in the full contract only |
+| 13 features, states `yes/partial/no/unknown` | Covers all user questions from the brief | 22 more features in the full model |
+| Route A→B as a heuristic | No routing engine needed; honest `note` | Not turn-by-turn; only barriers near a straight line |
+| `/geocode` from the local index | Offline demo | No address search outside known places |
 | AI = suggestion only + fallback | AI never corrupts data; demo never breaks | Keyword mapping is simple (PL/EN) |
 | Open API mounted at `/public/v1` | Separate versioning from the internal API | Differs from the full contract (`/api/v1/public/v1`) |
 | OSM from a snapshot | Overpass timed out on the corporate network | No live import (port ready) |
-| Admin assigns owners directly | Simplicity | No "owner applies → admin verifies" flow |
+| Ownership: admin assigns, or user applies → admin verifies | Both flows from the full plan | No document upload for proof of ownership |

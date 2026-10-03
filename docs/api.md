@@ -63,12 +63,13 @@ Every error has the same shape:
 | Feature | `step_free_entrance`, `ramp` · `elevator` · `accessible_toilet` · `induction_loop`, `sign_language_interpreter` · `braille`, `tactile_paths`, `good_lighting` · `lowered_curb`, `platform_elevator`, `crutches_friendly` · `assistance_dog_allowed` (13) |
 | Feature group | `entrance`, `inside`, `toilet`, `hearing`, `vision`, `mobility`, `other` |
 | Needs profile (`check`) | `wheelchair`, `stroller`, `crutches`, `blind`, `low_vision`, `deaf`, `assistance_dog` |
-| State | `yes`, `no`, `unknown` |
-| Observation value | `yes`, `no` |
+| State | `yes`, `partial`, `no`, `unknown` |
+| Observation value | `yes`, `partial`, `no` (+ optional `valid_until` for temporary issues) |
 | Source | `community` (0.5), `open_data` (0.6), `verified_owner` (0.85), `admin` (1.0) |
-| Validation | `VALID`, `CONFLICT`, `REJECTED` |
+| Validation | `VALID`, `CONFLICT`, `REJECTED`, `FLAGGED` |
+| Place type | `venue`, `shop`, `public_transport_stop`, `platform`, `parking`, `office`, `street_segment`, `other` |
 | Check answer | `yes`, `partial`, `no`, `unknown` |
-| Report `current_state` / `severity` / `nature` | `works·not_working` / `critical·obstacle·minor` / `permanent·temporary·unknown` |
+| Report `current_state` / `severity` / `nature` | `works·partially_works·not_working` / `critical·obstacle·minor` / `permanent·temporary·unknown` |
 | Role | `guest`, `user`, `owner`, `admin` |
 
 ## 2. Endpoint overview
@@ -242,6 +243,7 @@ All 13 features in 7 groups; features without data come back as `unknown`.
 |---|---|
 | `lat`, `lon` | together; adds `distance_m` to items; default sort `nearest`; filters by `radius_m` (default 2000) |
 | `bbox` | `minLon,minLat,maxLon,maxLat`, the map viewport |
+| `place_type` | CSV of place types (`office,public_transport_stop`); unknown type → 400 |
 | `sort` | `nearest` (needs lat/lon) · `name` · `recently_verified` |
 | `page`, `page_size` | 1-based, size 1–100 (default 20); `total` counts all matches |
 | `view=map` | returns `{ total, items: [ { id, name, location, category, marker } ] }`, all matches without paging; `marker` = wheelchair answer → `accessible` · `partial` · `inaccessible` · `unknown` |
@@ -327,7 +329,7 @@ Validation: description 1–1000 characters, ≤ 5 known photos, valid enums, ex
 `{ "items": [Observation] }`. `active=true` hides `REJECTED`; `active=false` returns the full history.
 
 ### `POST /api/v1/places/{id}/observations`
-Quick observation without the report form: `{ "feature": "elevator", "value": "yes", "temporary": false, "comment": "", "photo_ids": [] }` → 201 `Observation`. The source follows the author: admin → `admin`, owner of this place → `verified_owner`, otherwise `community`.
+Quick observation without the report form: `{ "feature": "elevator", "value": "yes|partial|no", "temporary": false, "comment": "", "photo_ids": [], "valid_until": "2026-10-05T18:00:00+02:00" }` → 201 `Observation`. `valid_until` (optional, future, else 400) marks a temporary issue that stops counting after that time. The source follows the author: admin → `admin`, owner of this place → `verified_owner`, otherwise `community`.
 
 ### `POST /api/v1/observations/{id}/votes`
 Body `{ "value": 1 }` or `{ "value": -1 }`. Voting again replaces the previous vote; voting on your own observation → 400. The response includes the recomputed state:
@@ -457,8 +459,8 @@ The audit trail ("Historia i audyt"), newest first, for **admins and the owner o
 `{ "source": "osm_file" }` (the only source in the MVP). Idempotent; rules in [architecture.md §5.5](architecture.md#55-osm-import-domainosmpy).
 
 ```json
-{ "source": "osm_file", "points": 18, "places_created": 10, "places_matched": 0,
-  "observations": 10, "skipped_unnamed": 7, "skipped_no_data": 1 }
+{ "source": "osm_file", "points": 18, "places_created": 11, "places_matched": 0,
+  "observations": 11, "skipped_unnamed": 7, "skipped_no_data": 0 }
 ```
 
 ### `POST /api/v1/admin/demo/reset` → 204
@@ -499,7 +501,7 @@ Read-only, the same data as the internal API, rate-limited per key.
 | `GET /places/{id}/accessibility` | **flat format**, below |
 | `GET /places/{id}/check?profile=wheelchair` | `{ place_id, profile, answer, confidence, advice }` |
 
-Flat format: `yes` → `true`, `no` → `false`, `unknown` → omitted, and `last_verified` is a date.
+Flat format: `yes` → `true`, `no` → `false`, `partial` → `"partial"`, `unknown` → omitted, and `last_verified` is a date.
 
 ```json
 { "place": { "id": "plc_mnk", "name": "Muzeum Narodowe w Krakowie" },

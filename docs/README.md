@@ -23,7 +23,7 @@ More detailed material is elsewhere in the repo:
 
 ```bash
 uv sync                      # once, online
-uv run pytest                # ~190 tests, offline, ~5 s
+uv run pytest                # ~390 tests, offline, ~10 s
 uv run python main.py        # http://localhost:8000 → Swagger UI (/docs)
 ```
 
@@ -68,3 +68,11 @@ flowchart LR
 | AI assistant integration (MCP) | `clients/mcp_server.py` | F8 |
 | Persistence (SQLite or Postgres via SQLAlchemy) | — | F9/F11 |
 | Docker (Postgres + API) | `docker compose up -d --build` | F11 |
+| Favourites, my reports | `/me/*` | F16 |
+| Location search, map markers, categories, search suggestions | `/places?lat&lon&bbox&sort&view=map`, `/categories`, `/geocode` | F17 |
+| Report drafts ("Zapisz szkic") | `POST /reports {draft}`, `PATCH`, `/submit` | F18 |
+| AI from text | `POST /ai/parse-text` | F19 |
+| Similar places, accessible route A→B (heuristic) | `/places/{id}/similar`, `/routes/accessible` | F20 |
+| Moderation extras: confidence, comments, abuse flag, merge, revalidate, ownership requests | `/admin/*`, `/owner/ownership-requests` | F21 |
+| Owner panel: profile, stats, edit, opening hours, photos, reply/approve, reminders, suggestions, batch, CSV | `/owner/*` | F22 |
+| `partial` state, data ageing, temporary issues with end date, place types | across the API | F23 |

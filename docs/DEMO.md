@@ -34,6 +34,19 @@ Every click and its expected result. Tool: VS Code + **REST Client** on [`../req
 
 The owner variant (Ewa, verified owner says "repaired") is **O0–O9**, if the jury asks about owners.
 
+## Extended demo (if time or the jury asks)
+
+| Topic | Click (`demo.http`) | Expected |
+|---|---|---|
+| "Near me" + map | **1b**, **1c** | nearest first with `distance_m`; markers accessible / partial / inaccessible |
+| Route for a wheelchair / blind person | **1g**, **1h** | `feasible: yes`, helpers (lowered kerb, tactile paths), honest `note` |
+| AI from text | **4a-TXT** | "winda od dwóch tygodni nie działa" → elevator / no / temporary |
+| Draft report ("Zapisz szkic") | **D1–D3** | draft → completed → submitted (observation created) |
+| Favourites | **4b-FAV**, **4b-FAV2** | museum in favourites with its badge |
+| Owner panel | **O9a–O9k** | stats, reply, opening hours, reminders, suggestions, batch, CSV import |
+| Moderation extras | **7j–7q** | confidence widget, comment, spam flagged, ownership request approved |
+| Temporary issue with end date | **1k** | `valid_until` → stops counting automatically |
+
 ## If something goes wrong
 
 | Problem | Do |

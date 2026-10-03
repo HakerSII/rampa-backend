@@ -5,24 +5,28 @@
 
 ## Current
 
-- **Task:** final docs + STATUS pass
-- **Who:** Claude
-- **State:** todo
-- **Next step:** update architecture/api/config/README/PITCH/DEMO for F16–F23
-- **Last pytest:** `uv run pytest` → see commit
-- **Branch:** `feat/mvp-backend`
+- **State:** **full plan implemented** (F0–F23) — 63/64 operations of the full contract (`/auth/login` replaced by `/auth/demo` + `/auth/google`), 69 HTTP operations (65 internal + 4 public), 13 features, 7 needs profiles
+- **Last pytest:** `uv run pytest` → 377 passed, 12 skipped (Postgres-only; 14/14 SqlRepo tests pass with `TEST_POSTGRES_URL`)
+- **e2e:** `requests/demo.http` — 129 requests, all statuses as expected (memory + SQLite; Postgres verified up to F11)
+- **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json) — up to date with F23
+- **Branch:** `feat/mvp-backend` (local commits ahead of origin — not pushed)
 
 ## Run
 
 ```
 uv sync
 uv run pytest
-uv run python main.py   # http://localhost:8000/docs
+uv run python main.py                 # http://localhost:8000/docs
+docker compose up -d --build          # Postgres + API (API_PORT=8001 if 8000 is taken)
 ```
 
-## Blockers / decisions
+## Blockers / open items (need a human or a decision)
 
-- F1.0 needs a human: Google Cloud OAuth "Web" client + `GOOGLE_CLIENT_ID` in `.env`. Demo mode works without it.
+- F1.0: Google Cloud OAuth "Web" client + `GOOGLE_CLIENT_ID` in `.env` (demo mode works without it).
+- F1.5: frontend (mockups) — not in this repo.
+- Gemini key: free tier exhausted during tests on 2026-10-03 (fixed: tests no longer read `.env`); check quota before the demo or keep `AI_MODE=mock`.
+- Postgres: migrations of F13–F23 (new columns/table) verified on SQLite and on a copy of the real DB; re-run `docker compose up -d --build` + `TEST_POSTGRES_URL=… uv run --extra postgres pytest tests/adapters` to verify on Postgres.
+- Push `feat/mvp-backend` + PR to `master` (on request).
 
 ## Tasks
 
@@ -59,6 +63,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 
 ## Log (newest first)
 
+- 2026-10-03 · DOCS · final docs + STATUS pass for F16–F23 (README, architecture, api, PITCH, DEMO, docs index)
 - 2026-10-03 · F23 · done · partial state, trust ageing 180 d, valid_until with lazy refresh, place_type filter
 - 2026-10-03 · F23 red: domain gaps tests
 - 2026-10-03 · F22 · done · owner profile/stats/edit/hours/photos/reply/approve/reminders/suggestions/batch/CSV
