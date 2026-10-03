@@ -1,6 +1,6 @@
 # Mini MVP — trimmed plan, split by feature
 
-> **Documentation:** [docs/](docs/README.md) — [architecture](docs/architecture.md) · [API reference](docs/api.md) · [configuration](docs/configuration.md) · [operations](docs/operations.md) · [openapi.json](docs/openapi.json)
+> **Documentation:** [docs/](docs/README.md) — [architecture](docs/architecture.md) · [API reference](docs/api.md) · [configuration](docs/configuration.md) · [operations](docs/operations.md) · [pitch](docs/PITCH.md) · [demo script](docs/DEMO.md) · [openapi.json](docs/openapi.json)
 
 Full contract: [../openapi.yaml](../openapi.yaml) · full plan: [../plan_fastapi.md](../plan_fastapi.md) · API notes: [../api.md](../api.md) · status: [STATUS.md](STATUS.md)
 

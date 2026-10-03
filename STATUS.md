@@ -5,10 +5,10 @@
 
 ## Current
 
-- **Task:** F15 pitch + demo script
+- **Task:** — plan (F11–F15) done
 - **Who:** Claude
-- **State:** todo
-- **Next step:** write PITCH.md + DEMO.md (stage script, fallbacks, Q&A)
+- **State:** done
+- **Next step:** optional: verify F13 migration on Postgres (containers stopped); push; frontend; Google OAuth client; fresh Gemini quota before demo
 - **Last pytest:** `uv run pytest` → 259 passed, 8 skipped
 - **Branch:** `feat/mvp-backend`
 
@@ -46,10 +46,12 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F11.1–F11.5 | Postgres + docker-compose, DB choice via env/config | Claude | done | verified on PG in docker |
 | F12.1–F12.3 | Place screen: activity feed, photos, verification label | Claude | done | e2e 7d–7f + 400 |
 | F13.1–F13.2 | Admin panel: stats tiles + audit history (+ column migration) | Claude | done | migration verified on SQLite + copy of real rampa.db; PG run pending (containers stopped) |
-| F14.1–F14.2 | +8 features, +6 needs profiles (generic check rules) | Claude | done | e2e 3b–3f + 400; scenario obs ids shifted +8 (anna obs_20) |
+| F14.1–F14.2 | +8 features, +6 needs profiles (generic check rules) | Claude | done | e2e 3b–3f + 400 |
+| F15 | Pitch + stage demo script | Claude | done | docs/PITCH.md, docs/DEMO.md |
 
 ## Log (newest first)
 
+- 2026-10-03 · F15 · done · docs/PITCH.md (pitch, evidence, Q&A), docs/DEMO.md (stage script, pre-flight, fallbacks)
 - 2026-10-03 · F14 · done · 13 features / 7 groups, 7 needs profiles via rule table, seed extras, AI keywords, specs+docs updated
 - 2026-10-03 · F14 · red · profile rule tests, seeded answers, public check
 - 2026-10-03 · F13 · done · /admin/stats tiles, /places/{id}/history, QueueItem.resolved_at, SqlRepo adds missing columns

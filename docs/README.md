@@ -10,6 +10,8 @@
 | [api.md](api.md) | Full HTTP API reference: conventions, auth, errors, every endpoint with real request/response examples |
 | [configuration.md](configuration.md) | Every setting (`.env` ↔ `app/config.py`), defaults, modes |
 | [operations.md](operations.md) | Run, test, demo script, MCP in Claude, Gemini/ONNX, Google login, troubleshooting |
+| [PITCH.md](PITCH.md) | 90-second pitch, evidence, architecture slide, Q&A |
+| [DEMO.md](DEMO.md) | Stage demo script: pre-flight checks, every click and expected result, fallbacks |
 | [openapi.json](openapi.json) | Machine-readable OpenAPI 3.1, exported from the app (`uv run python scripts/export_openapi.py`) |
 
 More detailed material is elsewhere in the repo:
