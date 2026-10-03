@@ -111,6 +111,19 @@ _SCORE = {CheckAnswer.YES: 2, CheckAnswer.PARTIAL: 1, CheckAnswer.UNKNOWN: 0, Ch
 _FEATURE_SCORE = {StateValue.YES: 2, StateValue.PARTIAL: 1, StateValue.UNKNOWN: 0, StateValue.NO: -3}
 
 
+def evaluate(place_id: str, states: dict[F, FeatureStateRecord], profiles: list[P],
+             features: list[F]) -> tuple[str, int, list[CheckAnswer]]:
+    """match (yes | partial | unknown | no) + score for a place, from DB states only."""
+    full = {f: states.get(f) or FeatureStateRecord(place_id, f, StateValue.UNKNOWN) for f in F}
+    answers = [check_place(place_id, full, p).answer for p in profiles]
+    feature_states = [full[f].state for f in features]
+    parts = [str(a) for a in answers] + [str(s) for s in feature_states]
+    match = ("no" if "no" in parts else "unknown" if not parts or all(p == "unknown" for p in parts)
+             else "yes" if all(p == "yes" for p in parts) else "partial")
+    score = sum(_SCORE[a] for a in answers) + sum(_FEATURE_SCORE[s] for s in feature_states)
+    return match, score, answers
+
+
 def in_categories(place: Place, groups: list[str]) -> bool:
     return not groups or any(place.category in CATEGORY_GROUPS.get(g, (g,)) for g in groups)
 
@@ -128,13 +141,11 @@ def rank(places: list[tuple[Place, dict[F, FeatureStateRecord], dict[str, str]]]
         if centre and haversine_m(place.location, centre) > radius:
             continue
         get = lambda f: states.get(f) or FeatureStateRecord(place.id, f, StateValue.UNKNOWN)  # noqa: E731
-        answers, relevant = [], []
+        match, score, answers = evaluate(place.id, states, intent.profiles, intent.features)
+        relevant = []
         for profile in intent.profiles:
-            result = check_place(place.id, {f: get(f) for f in F}, profile)
-            answers.append(result.answer)
             rule = PROFILE_RULES[profile]
             relevant += list(rule.required) + list(rule.downgrades)
-        feature_states = [get(f).state for f in intent.features]
         relevant += intent.features
         relevant = list(dict.fromkeys(relevant))
         reasons = [Reason(f, s.state, sources.get(s.active_observation_id or ""), s.last_verified)
@@ -145,10 +156,6 @@ def rank(places: list[tuple[Place, dict[F, FeatureStateRecord], dict[str, str]]]
                 missing += [f for f in PROFILE_RULES[profile].required if f not in missing]
         missing += [r.feature for r in reasons if r.last_verified and r.last_verified < stale
                     and r.feature not in missing]
-        parts = [str(a) for a in answers] + [str(s) for s in feature_states]
-        match = ("no" if "no" in parts else "unknown" if not parts or all(p == "unknown" for p in parts)
-                 else "yes" if all(p == "yes" for p in parts) else "partial")
-        score = sum(_SCORE[a] for a in answers) + sum(_FEATURE_SCORE[s] for s in feature_states)
         distance = round(haversine_m(place.location, here)) if here else None
         items.append(Recommendation(place, match, score, distance, reasons, missing))
     items.sort(key=lambda r: (r.match == "no", -r.score, r.distance_m if r.distance_m is not None else 0,

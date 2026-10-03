@@ -68,6 +68,7 @@ class PlaceSummary(BaseModel):
     verification: VerificationOut | None = None
     distance_m: int | None = None
     place_type: str = "venue"
+    match: str | None = None  # F31: yes | partial | unknown | no for the requested / stored profile
 
 
 class PlaceOut(PlaceSummary):

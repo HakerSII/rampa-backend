@@ -147,6 +147,7 @@ Every error has the same shape:
 | GET | `/api/v1/observations` | — | Map layer: observations across places (one request) |
 | POST | `/api/v1/observations/{id}/abuse` | user | Report spam / false data → moderation queue (type abuse) |
 | POST | `/api/v1/ai/recommend` | — | Natural-language query → recommended places with reasons + missing data |
+| GET PUT DELETE | `/api/v1/me/profile` | user | Needs profile (needs + preferred features), used by best_match and recommend |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -562,6 +563,19 @@ Clears all data (including the SQLite DB) and loads the seed again.
 | `GET /me/reports` | `{ items: [Report] }`, mine only, newest first |
 
 Favourites are stored per user (`users.favorites`, JSON) and survive restarts in SQL mode.
+
+## 7a1. Needs profile and best match
+
+`PUT /api/v1/me/profile {"needs": ["wheelchair", "assistance_dog"], "features": ["accessible_toilet"]}` stores the user's **needs** (`NeedsProfile` values) and the features they care about.
+- At most 10 of each. Unknown values → 400; there are no free-text fields, so no diagnoses are stored.
+- `GET` returns the profile, `DELETE` (or empty lists) clears it. Anonymous device accounts can keep one too.
+
+`GET /api/v1/places?sort=best_match[&profile=wheelchair,blind]`:
+- uses `profile` if given, else the logged-in user's stored needs; neither → 400;
+- order: `check` answer `yes` > `partial` > `unknown` > `no`, ties by distance, then name;
+- every item gets `match` whenever a profile is known.
+
+`POST /ai/recommend` merges the stored needs and features of a logged-in user.
 
 ## 7b. Admin extras
 

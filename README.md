@@ -72,6 +72,7 @@ uv run python main.py                                          # http://localhos
 | 28 | Walking route from OSRM (`ROUTER=osrm`), barriers along the real path; fallback straight line | [plan](features/28-osrm-route/plan.md) | `engine` field added | 45 min |
 | 29 | Multi-worker consistency: `meta.data_version`, reload when stale, 409 on concurrent write | [plan](features/29-multi-worker/plan.md) | 409 on any write | 45 min |
 | 30 | AI recommendations `POST /ai/recommend` (rules / Claude tool call; facts only from DB) | [plan](features/30-ai-recommend/plan.md) | [openapi](features/30-ai-recommend/openapi.yaml) | 2 h |
+| 31 | Needs profile on the server `/me/profile` + `GET /places?sort=best_match` | [plan](features/31-needs-profile/plan.md) | [openapi](features/31-needs-profile/openapi.yaml) | 1.5 h |
 | 12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | [plan](features/12-frontend-bridge/plan.md) | [openapi](features/12-frontend-bridge/openapi.yaml) | 45 min |
 
 - F0 blocks all.

@@ -37,6 +37,8 @@ class User:
     email: str | None = None
     google_sub: str | None = None
     favorite_place_ids: list[str] = field(default_factory=list)
+    needs: list[str] = field(default_factory=list)          # F31 NeedsProfile values (needs, never diagnoses)
+    pref_features: list[str] = field(default_factory=list)  # F31 FeatureKey values the user cares about
 
 
 @dataclass(slots=True)

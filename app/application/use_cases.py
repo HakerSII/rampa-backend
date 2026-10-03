@@ -83,7 +83,8 @@ ANONYMOUS_NAME = "Anonim"
 IMAGE_SIGNATURES = {b"\x89PNG\r\n\x1a\n": "png", b"\xff\xd8\xff": "jpg"}
 
 
-SORTS = (None, "nearest", "name", "recently_verified")
+SORTS = (None, "nearest", "name", "recently_verified", "best_match")
+MAX_NEEDS = 10
 DEFAULT_RADIUS_M = 2000
 
 
@@ -99,6 +100,7 @@ class PlaceQuery:
     page: int = 1
     page_size: int = 20
     place_types: list[str] | None = None
+    profiles: list[NeedsProfile] | None = None  # F31 best_match
 
 
 @dataclass(slots=True)
@@ -355,7 +357,10 @@ class UseCases:
 
     def _filter_and_sort(self, query: PlaceQuery) -> list[tuple[Place, int | None]]:
         if query.sort not in SORTS:
-            raise ValidationFailed(f"sort must be one of: nearest, name, recently_verified (got {query.sort})")
+            raise ValidationFailed(f"sort must be one of: nearest, name, recently_verified, best_match "
+                                   f"(got {query.sort})")
+        if query.sort == "best_match" and not query.profiles:
+            raise ValidationFailed("sort=best_match needs profile= or a stored needs profile (PUT /me/profile)")
         if query.sort == "nearest" and query.near is None:
             raise ValidationFailed("sort=nearest needs lat and lon")
         try:
@@ -382,6 +387,11 @@ class UseCases:
             items.sort(key=lambda t: t[1])
         elif sort == "name":
             items.sort(key=lambda t: t[0].name.casefold())
+        elif sort == "best_match":
+            score = {p.id: recommend_domain.evaluate(p.id, self.repo.states_for(p.id), query.profiles, [])
+                     for p, _ in items}
+            items.sort(key=lambda t: (score[t[0].id][0] == "no", -score[t[0].id][1],
+                                      t[1] if t[1] is not None else 0, t[0].name.casefold()))
         elif sort == "recently_verified":
             last = {p.id: self.verification_for(p.id).last_verified for p, _ in items}
             items.sort(key=lambda t: (last[t[0].id] is not None, last[t[0].id] or 0), reverse=True)
@@ -487,8 +497,13 @@ class UseCases:
         if intent is None:
             intent = recommend_domain.interpret_rules(query)
         recognised = not intent.empty
-        if profile and profile not in intent.profiles:
-            intent.profiles.append(profile)
+        stored_needs, stored_features = self.get_needs_profile(user) if user else ([], [])
+        for p in [*stored_needs, *([profile] if profile else [])]:
+            if p not in intent.profiles:
+                intent.profiles.append(p)
+        for f in stored_features:
+            if f not in intent.features:
+                intent.features.append(f)
         origin = GeoPoint(lat, lon) if lat is not None and lon is not None else None
         places = []
         for p in self.repo.list_places():
@@ -513,6 +528,25 @@ class UseCases:
         except ValueError as e:
             raise ValidationFailed(f"point must be 'lat,lon' or a place id: {raw}") from e
         return GeoPoint(lat, lon)
+
+    def place_match(self, place_id: str, profiles: list[NeedsProfile]) -> str:
+        return recommend_domain.evaluate(place_id, self.repo.states_for(place_id), profiles, [])[0]
+
+    # ------------------------------------------------------------------ needs profile (F31)
+    def get_needs_profile(self, user: User | None) -> tuple[list[NeedsProfile], list[FeatureKey]]:
+        self._require_user(user)
+        return [NeedsProfile(n) for n in user.needs], [FeatureKey(f) for f in user.pref_features]
+
+    def set_needs_profile(self, user: User | None, needs: list[str], features: list[str]
+                          ) -> tuple[list[NeedsProfile], list[FeatureKey]]:
+        """Needs only (wheelchair, stroller …) — never diagnoses; empty lists clear the profile."""
+        self._require_user(user)
+        if len(needs or []) > MAX_NEEDS or len(features or []) > MAX_NEEDS:
+            raise ValidationFailed(f"at most {MAX_NEEDS} needs and {MAX_NEEDS} features")
+        parsed_needs = list(dict.fromkeys(_enum(NeedsProfile, n, "need") for n in needs or []))
+        parsed_features = list(dict.fromkeys(_enum(FeatureKey, f, "feature") for f in features or []))
+        user.needs, user.pref_features = [str(n) for n in parsed_needs], [str(f) for f in parsed_features]
+        return parsed_needs, parsed_features
 
     # ------------------------------------------------------------------ me (F16)
     def list_favorites(self, user: User | None) -> list[Place]:

@@ -7,7 +7,7 @@
 
 - **State:** todo
 - **Deploy:** **Render**, automatic after every merge to `master` (Docker service `rampa-backend` + `rampa-backend-postgres`); see docs/operations.md; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
-- **Last pytest:** `uv run pytest` → red: F31
+- **Last pytest:** `uv run pytest` → 489 passed, 13 skipped
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
@@ -72,7 +72,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F28 | OSRM walking route geometry, barriers along it (fallback straight line) | Claude | done | e2e F28 (straight + ROUTER=osrm); OSRM verified live: 2033 m / 192 pts |
 | F29 | Multi-worker consistency: data version, reload when stale, 409 on concurrent write | Claude | done | whole demo.http passes against uvicorn --workers 2 (147 requests); boot seeding race handled |
 | F30 | AI recommendations endpoint `POST /ai/recommend` — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F30a–d; Claude adapter via MockTransport (no API key here) |
-| F31 | Needs profile on server + sort best_match — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | red |  |
+| F31 | Needs profile on server + sort best_match — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F31a–f; SQL columns users.needs/pref_features |
 | F32 | Value n/a + missing attributes — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
 | F33 | Email magic-link login — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
 | F34 | Questions to owner + needs stats — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
@@ -84,6 +84,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 
 ## Log (newest first)
 
+- 2026-10-03 · F31 green: needs profile on server + sort best_match
 - 2026-10-03 · F31 red: needs profile tests
 - 2026-10-03 · F30 green: AI recommendations (rules + Claude tool call, facts only from DB)
 - 2026-10-03 · F30 red: recommend tests

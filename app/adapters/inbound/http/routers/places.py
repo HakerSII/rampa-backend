@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Query, Response
 from pydantic import BaseModel
 
-from app.adapters.inbound.http.deps import UC, CurrentUser
+from app.adapters.inbound.http.deps import UC, CurrentUser, OptionalUser
 from app.adapters.inbound.http.schemas import (
     CATEGORY_LABELS,
     AccessibilityOut,
@@ -70,24 +70,36 @@ class GeocodeOut(BaseModel):
     location: Location
 
 
+def parse_profiles(raw: str | None) -> list[NeedsProfile]:
+    try:
+        return [NeedsProfile(p.strip()) for p in (raw or "").split(",") if p.strip()]
+    except ValueError as e:
+        raise ValidationFailed(f"invalid profile: {raw}") from e
+
+
 @router.get("/places", response_model=PlacePage | MapMarkers, tags=["places"])
 async def search_places(uc: UC, features: Annotated[str | None, Query()] = None,
                         category: str | None = None, q: str | None = None,
                         lat: float | None = None, lon: float | None = None, radius_m: int | None = None,
                         bbox: str | None = None, sort: str | None = None,
                         page: int = 1, page_size: int = 20, view: Literal["list", "map"] = "list",
-                        place_type: str | None = None):
+                        place_type: str | None = None, profile: str | None = None,
+                        me: OptionalUser = None):
     if (lat is None) != (lon is None):
         raise ValidationFailed("lat and lon must be given together")
     query = PlaceQuery(parse_features(features), category, q, GeoPoint(lat, lon) if lat is not None else None,
                        radius_m, bbox, sort, page, page_size,
-                       [t.strip() for t in place_type.split(",") if t.strip()] if place_type else None)
+                       [t.strip() for t in place_type.split(",") if t.strip()] if place_type else None,
+                       parse_profiles(profile) or (uc.get_needs_profile(me)[0] if me else None) or None)
     if view == "map":
         markers = [MapMarker(id=p.id, name=p.name, location=Location(lat=p.location.lat, lon=p.location.lon),
                              category=p.category, marker=m) for p, m in uc.map_markers(query)]
         return MapMarkers(total=len(markers), items=markers)
     r = uc.find_places(query)
     items = [place_summary(p, uc.yes_features(p.id), uc.verification_for(p.id), d) for p, d in r.items]
+    if query.profiles:  # F31: how well each place fits the profile
+        for item in items:
+            item.match = uc.place_match(item.id, query.profiles)
     return PlacePage(items=items, page=r.page, page_size=r.page_size, total=r.total)
 
 

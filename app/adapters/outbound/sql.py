@@ -44,7 +44,8 @@ meta = Table("meta", md, Column("key", String, primary_key=True), Column("value"
 VERSION_KEY = "data_version"
 users = Table("users", md, Column("id", String, primary_key=True), Column("seq", Integer),
               Column("display_name", String), Column("role", String), Column("username", String),
-              Column("email", String), Column("google_sub", String), Column("favorites", JSON))
+              Column("email", String), Column("google_sub", String), Column("favorites", JSON),
+              Column("needs", JSON), Column("pref_features", JSON))
 sessions = Table("sessions", md, Column("token", String, primary_key=True), Column("user_id", String),
                  Column("expires_at", String))
 places = Table("places", md, Column("id", String, primary_key=True), Column("seq", Integer), Column("name", String),
@@ -188,7 +189,8 @@ class SqlRepo(InMemoryRepo):
     def _rows(self):
         for i, u in enumerate(self.users.values()):
             yield users, dict(id=u.id, seq=i, display_name=u.display_name, role=str(u.role), username=u.username,
-                              email=u.email, google_sub=u.google_sub, favorites=list(u.favorite_place_ids))
+                              email=u.email, google_sub=u.google_sub, favorites=list(u.favorite_place_ids),
+                              needs=list(u.needs), pref_features=list(u.pref_features))
         for s in self.sessions.values():
             yield sessions, dict(token=s.token, user_id=s.user_id, expires_at=_iso(s.expires_at))
         for i, p in enumerate(self.places.values()):
@@ -236,7 +238,8 @@ class SqlRepo(InMemoryRepo):
 
             for r in rows(users):
                 self.users[r["id"]] = User(r["id"], r["display_name"], Role(r["role"]), r["username"], r["email"],
-                                           r["google_sub"], list(r["favorites"] or []))
+                                           r["google_sub"], list(r["favorites"] or []), list(r["needs"] or []),
+                                           list(r["pref_features"] or []))
             for r in rows(sessions):
                 self.sessions[r["token"]] = Session(r["token"], r["user_id"], _dt(r["expires_at"]))
             for r in rows(places):

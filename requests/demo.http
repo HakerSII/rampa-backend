@@ -114,6 +114,34 @@ Content-Type: application/json
 
 {"feature": "disabled_parking", "value": "yes"}
 
+### F31a. Anna stores her needs profile (needs only, no diagnoses)
+PUT {{base}}/me/profile
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"needs": ["wheelchair"], "features": ["accessible_toilet"]}
+
+### F31b. Anna: my needs profile
+GET {{base}}/me/profile
+Authorization: Bearer {{anna}}
+
+### F31c. Places sorted by best match for Anna's stored profile (match per item; Urząd last, "no")
+GET {{base}}/places?sort=best_match
+Authorization: Bearer {{anna}}
+
+### F31d. Guest: best match for a blind visitor → MNK first (braille, tactile paths)
+GET {{base}}/places?sort=best_match&profile=blind
+
+### F31e. 400 VALIDATION_ERROR — best_match without any profile
+GET {{base}}/places?sort=best_match
+
+### F31f. 400 VALIDATION_ERROR — diagnosis instead of a need
+PUT {{base}}/me/profile
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"needs": ["diabetes"]}
+
 ### F30a. AI recommend (guest): stroller + dog in a museum → MNK first, pets_allowed in "missing"
 POST {{base}}/ai/recommend
 Content-Type: application/json
