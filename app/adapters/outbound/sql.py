@@ -27,6 +27,7 @@ from app.domain.model import (
     FeatureStateRecord,
     GeoPoint,
     Observation,
+    OwnershipRequest,
     Photo,
     Place,
     QueueItem,
@@ -56,7 +57,7 @@ observations = Table("observations", md, Column("id", String, primary_key=True),
                      Column("source", String), Column("author_id", String), Column("created_at", String),
                      Column("temporary", Boolean), Column("comment", String), Column("evidence_ids", JSON),
                      Column("votes", JSON), Column("validation", String), Column("confidence", Float),
-                     Column("report_id", String))
+                     Column("report_id", String), Column("flag_reason", String))
 reports = Table("reports", md, Column("id", String, primary_key=True), Column("seq", Integer),
                 Column("place_id", String), Column("author_id", String), Column("element", String),
                 Column("current_state", String), Column("severity", String), Column("nature", String),
@@ -67,7 +68,10 @@ photos = Table("photos", md, Column("id", String, primary_key=True), Column("seq
 queue = Table("queue_items", md, Column("id", String, primary_key=True), Column("seq", Integer),
               Column("place_id", String), Column("feature", String), Column("created_at", String),
               Column("observation_ids", JSON), Column("type", String), Column("status", String),
-              Column("decision", String), Column("resolved_at", String))
+              Column("decision", String), Column("resolved_at", String), Column("comments", JSON))
+ownership = Table("ownership_requests", md, Column("id", String, primary_key=True), Column("seq", Integer),
+                  Column("place_id", String), Column("user_id", String), Column("justification", String),
+                  Column("created_at", String), Column("status", String), Column("decided_at", String))
 
 PK = {t.name: [c.name for c in t.primary_key.columns] for t in md.sorted_tables}
 
@@ -157,7 +161,7 @@ class SqlRepo(InMemoryRepo):
                                      source=str(o.source), author_id=o.author_id, created_at=_iso(o.created_at),
                                      temporary=o.temporary, comment=o.comment, evidence_ids=list(o.evidence_ids),
                                      votes=dict(o.votes), validation=str(o.validation), confidence=o.confidence,
-                                     report_id=o.report_id)
+                                     report_id=o.report_id, flag_reason=o.flag_reason)
         for i, r in enumerate(self.reports.values()):
             yield reports, dict(id=r.id, seq=i, place_id=r.place_id, author_id=r.author_id, element=_s(r.element),
                                 current_state=_s(r.current_state), severity=_s(r.severity), nature=_s(r.nature),
@@ -168,7 +172,12 @@ class SqlRepo(InMemoryRepo):
         for i, q in enumerate(self.queue.values()):
             yield queue, dict(id=q.id, seq=i, place_id=q.place_id, feature=str(q.feature),
                               created_at=_iso(q.created_at), observation_ids=list(q.observation_ids), type=q.type,
-                              status=str(q.status), decision=q.decision, resolved_at=_iso(q.resolved_at))
+                              status=str(q.status), decision=q.decision, resolved_at=_iso(q.resolved_at),
+                              comments=list(q.comments))
+        for i, r in enumerate(self.ownership_requests.values()):
+            yield ownership, dict(id=r.id, seq=i, place_id=r.place_id, user_id=r.user_id,
+                                  justification=r.justification, created_at=_iso(r.created_at), status=r.status,
+                                  decided_at=_iso(r.decided_at))
 
     # ------------------------------------------------------------------ rows → domain
     def _load(self) -> None:
@@ -195,7 +204,7 @@ class SqlRepo(InMemoryRepo):
                     r["id"], r["place_id"], FeatureKey(r["feature"]), ObservationValue(r["value"]),
                     ObservationSource(r["source"]), r["author_id"], _dt(r["created_at"]), r["temporary"],
                     r["comment"], list(r["evidence_ids"]), dict(r["votes"]), ValidationStatus(r["validation"]),
-                    r["confidence"], r["report_id"])
+                    r["confidence"], r["report_id"], r["flag_reason"])
             for r in rows(reports):
                 self.reports[r["id"]] = Report(
                     r["id"], r["place_id"], r["author_id"], _e(FeatureKey, r["element"]),
@@ -207,6 +216,10 @@ class SqlRepo(InMemoryRepo):
             for r in rows(queue):
                 self.queue[r["id"]] = QueueItem(r["id"], r["place_id"], FeatureKey(r["feature"]), _dt(r["created_at"]),
                                                 list(r["observation_ids"]), r["type"], QueueStatus(r["status"]),
-                                                r["decision"], _dt(r["resolved_at"]))
+                                                r["decision"], _dt(r["resolved_at"]), list(r["comments"] or []))
+            for r in rows(ownership):
+                self.ownership_requests[r["id"]] = OwnershipRequest(
+                    r["id"], r["place_id"], r["user_id"], r["justification"], _dt(r["created_at"]), r["status"],
+                    _dt(r["decided_at"]))
         self._snapshot = {(t.name, tuple(row[k] for k in PK[t.name])): row for t, row in self._rows()}
 

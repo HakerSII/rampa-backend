@@ -50,6 +50,7 @@ class ValidationStatus(StrEnum):
     VALID = "VALID"
     CONFLICT = "CONFLICT"
     REJECTED = "REJECTED"
+    FLAGGED = "FLAGGED"  # abuse / spam, set by a moderator
 
 
 class NeedsProfile(StrEnum):

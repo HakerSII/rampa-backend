@@ -25,9 +25,10 @@ def observation_confidence(obs: Observation) -> float:
 
 def compute_feature_state(place_id: str, feature: FeatureKey, observations: list[Observation],
                           conflict_open: bool = False) -> FeatureStateRecord:
-    """Winner = highest confidence; tie → newer; same time → later in list. REJECTED ignored."""
+    """Winner = highest confidence; tie → newer; same time → later in list. REJECTED/FLAGGED ignored."""
     validation = ValidationStatus.CONFLICT if conflict_open else ValidationStatus.VALID
-    active = [(i, o) for i, o in enumerate(observations) if o.validation != ValidationStatus.REJECTED]
+    active = [(i, o) for i, o in enumerate(observations)
+              if o.validation not in (ValidationStatus.REJECTED, ValidationStatus.FLAGGED)]
     if not active:
         return FeatureStateRecord(place_id, feature, StateValue.UNKNOWN, validation=validation)
 

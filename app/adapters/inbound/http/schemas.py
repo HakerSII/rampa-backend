@@ -291,7 +291,8 @@ def photo_out(photo: Photo) -> PhotoOut:
 
 def observation_out(uc, o: Observation, me: User | None = None) -> ObservationOut:
     photos = [p for p in (uc.repo.get_photo(i) for i in o.evidence_ids) if p]
-    reason = "contradicting observations within 30 days" if o.validation == ValidationStatus.CONFLICT else ""
+    reason = ("contradicting observations within 30 days" if o.validation == ValidationStatus.CONFLICT
+              else (o.flag_reason or "") if o.validation == ValidationStatus.FLAGGED else "")
     return ObservationOut(
         id=o.id, place_id=o.place_id, feature=o.feature, value=o.value, temporary=o.temporary,
         source=o.source, author=author_out(uc, o.author_id), report_id=o.report_id, comment=o.comment,
@@ -334,10 +335,17 @@ class QueuePage(BaseModel):
     counts: dict[str, int]
 
 
+class QueueCommentOut(BaseModel):
+    author: AuthorOut
+    text: str
+    created_at: str
+
+
 class QueueDetailOut(QueueItemOut):
     summary: str
     observations: list[ObservationOut]
     feature_state: FeatureStateOut
+    comments: list[QueueCommentOut] = []
 
 
 class DecisionIn(BaseModel):
@@ -369,6 +377,8 @@ def queue_detail_out(uc, q: QueueItem, me: User) -> QueueDetailOut:
         summary=f"Sprzeczne zgłoszenia: {LABELS_PL[q.feature]}",
         observations=[observation_out(uc, o, me) for o in observations],
         feature_state=feature_state_out(state),
+        comments=[QueueCommentOut(author=author_out(uc, c["author_id"]), text=c["text"], created_at=c["created_at"])
+                  for c in q.comments],
     )
 
 
@@ -416,6 +426,23 @@ def activity_item_out(uc, o: Observation) -> ActivityItemOut:
         photo_url=first.url if first else None, votes_up=o.up_votes, validation=o.validation,
         created_at=iso(o.created_at),
     )
+
+
+# ---------------------------------------------------------------- ownership requests (F21)
+class OwnershipRequestOut(BaseModel):
+    id: str
+    place_id: str
+    user: AuthorOut
+    justification: str
+    status: str
+    created_at: str
+    decided_at: str | None
+
+
+def ownership_out(uc, r) -> OwnershipRequestOut:
+    return OwnershipRequestOut(id=r.id, place_id=r.place_id, user=author_out(uc, r.user_id),
+                               justification=r.justification, status=r.status, created_at=iso(r.created_at),
+                               decided_at=iso(r.decided_at))
 
 
 def user_out(user: User) -> UserOut:

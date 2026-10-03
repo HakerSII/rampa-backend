@@ -21,6 +21,7 @@ from app.domain.history import HistoryEvent, build_history
 from app.domain.stats import AdminStats, compute_stats
 from app.domain.verification import Verification, activity_type, summarize
 from app.domain.enums import (
+    FEATURE_GROUP,
     CurrentState,
     DecisionAction,
     FeatureKey,
@@ -49,6 +50,7 @@ from app.domain.model import (
     GeoPoint,
     ImageAnalysis,
     Observation,
+    OwnershipRequest,
     Photo,
     Place,
     QueueItem,
@@ -102,6 +104,13 @@ class GeocodeHit:
     label: str
     place_id: str
     location: GeoPoint
+
+
+@dataclass(slots=True)
+class PlaceConfidence:
+    overall: float
+    by_group: dict[str, float]
+    note: str
 
 
 @dataclass(slots=True)
@@ -299,7 +308,7 @@ class UseCases:
         states = self.get_accessibility(place_id)
         issues = [o for o in self.repo.list_observations(place_id)
                   if o.temporary and o.value == ObservationValue.NO
-                  and o.validation != ValidationStatus.REJECTED
+                  and validation.is_active(o)
                   and states[o.feature].active_observation_id == o.id]
         return domain_check.check_place(place_id, states, profile, issues)
 
@@ -437,7 +446,7 @@ class UseCases:
 
     def _has_open_data(self, place_id: str, feature: FeatureKey, value: ObservationValue) -> bool:
         return any(o.source == ObservationSource.OPEN_DATA and o.value == value
-                   and o.validation != ValidationStatus.REJECTED
+                   and validation.is_active(o)
                    for o in self.repo.list_observations(place_id, feature))
 
     # ------------------------------------------------------------------ owner (F7)
@@ -545,6 +554,109 @@ class UseCases:
         if not 1 <= len((text or "").strip()) <= MAX_DESCRIPTION:
             raise ValidationFailed(f"text must have 1..{MAX_DESCRIPTION} characters")
         return parse_text(text)
+
+    # ------------------------------------------------------------------ admin extras (F21)
+    def place_confidence(self, admin: User | None, place_id: str) -> "PlaceConfidence":
+        self._require_admin(admin)
+        states = [st for st in self.get_accessibility(place_id).values() if st.state != StateValue.UNKNOWN]
+        groups: dict[str, list[float]] = {}
+        for st in states:
+            groups.setdefault(str(FEATURE_GROUP[st.feature]), []).append(st.confidence)
+        by_group = {g: round(sum(v) / len(v), 2) for g, v in groups.items()}
+        overall = round(sum(st.confidence for st in states) / len(states), 2) if states else 0.0
+        conflict = any(st.validation == ValidationStatus.CONFLICT for st in states)
+        note = "Dane są częściowo sprzeczne i wymagają weryfikacji." if conflict else ""
+        return PlaceConfidence(overall, by_group, note)
+
+    def add_queue_comment(self, admin: User | None, item_id: str, text: str) -> QueueItem:
+        item = self.get_queue_item(admin, item_id)
+        text = (text or "").strip()
+        if not 1 <= len(text) <= MAX_DESCRIPTION:
+            raise ValidationFailed(f"comment must have 1..{MAX_DESCRIPTION} characters")
+        item.comments.append({"author_id": admin.id, "text": text, "created_at": self.clock.now().isoformat()})
+        return item
+
+    def flag_observation(self, admin: User | None, observation_id: str, reason: str) -> Observation:
+        """Abuse / spam: excluded from trust and conflicts; history kept."""
+        self._require_admin(admin)
+        obs = self._get_observation(observation_id)
+        reason = (reason or "").strip()
+        if not 1 <= len(reason) <= 200:
+            raise ValidationFailed("reason must have 1..200 characters")
+        obs.validation, obs.flag_reason = ValidationStatus.FLAGGED, reason
+        self.recompute(obs.place_id, obs.feature)
+        return obs
+
+    def merge_places(self, admin: User | None, source_id: str, target_id: str) -> Place:
+        """Duplicate → target: move observations, reports, queue items, favourites, requests; delete duplicate."""
+        self._require_admin(admin)
+        if source_id == target_id:
+            raise ValidationFailed("cannot merge a place into itself")
+        self.get_place(source_id)
+        target = self.get_place(target_id)
+        features = set()
+        for o in self.repo.list_observations(source_id):
+            o.place_id = target_id
+            features.add(o.feature)
+        for r in self.repo.list_reports():
+            if r.place_id == source_id:
+                r.place_id = target_id
+        for q in self.repo.list_queue_items():
+            if q.place_id == source_id:
+                q.place_id = target_id
+        for req in self.repo.list_ownership_requests():
+            if req.place_id == source_id:
+                req.place_id = target_id
+        for u in [self.repo.get_user(i) for i in self.all_user_ids()]:
+            if u and source_id in u.favorite_place_ids:
+                u.favorite_place_ids = list(dict.fromkeys(
+                    target_id if f == source_id else f for f in u.favorite_place_ids))
+        self.repo.delete_place(source_id)
+        for feature in features:
+            self.recompute(target_id, feature)
+        return target
+
+    def all_user_ids(self) -> list[str]:
+        return [i for i in self.repo.all_ids() if i.startswith("usr_")]
+
+    def revalidate(self, admin: User | None) -> dict:
+        """Recompute validation + trust for every place feature."""
+        self._require_admin(admin)
+        places = self.repo.list_places()
+        count = 0
+        for p in places:
+            features = set(self.repo.states_for(p.id)) | {o.feature for o in self.repo.list_observations(p.id)}
+            for feature in features:
+                self.recompute(p.id, feature)
+                count += 1
+        return {"places": len(places), "features": count}
+
+    def request_ownership(self, user: User | None, place_id: str, justification: str) -> OwnershipRequest:
+        """"Jestem właścicielem" — any logged-in user applies; an admin verifies."""
+        self._require_user(user)
+        self.get_place(place_id)
+        req = OwnershipRequest(self.ids.new("own"), place_id, user.id, (justification or "").strip()[:1000],
+                               self.clock.now())
+        self.repo.add_ownership_request(req)
+        return req
+
+    def list_ownership_requests(self, admin: User | None, status: str = "pending") -> list[OwnershipRequest]:
+        self._require_admin(admin)
+        if status not in ("pending", "approved", "rejected", "all"):
+            raise ValidationFailed("status: pending|approved|rejected|all")
+        return [r for r in self.repo.list_ownership_requests() if status == "all" or r.status == status]
+
+    def verify_ownership(self, admin: User | None, request_id: str, approved: bool) -> OwnershipRequest:
+        self._require_admin(admin)
+        req = self.repo.get_ownership_request(request_id)
+        if req is None:
+            raise NotFound(f"ownership request not found: {request_id}")
+        if req.status != "pending":
+            raise ConflictError(f"request already {req.status}")
+        if approved:
+            self.assign_owner(admin, req.place_id, req.user_id)
+        req.status, req.decided_at = ("approved" if approved else "rejected"), self.clock.now()
+        return req
 
     # ------------------------------------------------------------------ moderation (F4)
     def list_queue(self, admin: User | None, filter: str = "all", status: str = "open") -> list[QueueItem]:
@@ -731,7 +843,7 @@ class UseCases:
         self.get_place(place_id)
         observations = self.repo.list_observations(place_id, feature)
         if active:
-            observations = [o for o in observations if o.validation != ValidationStatus.REJECTED]
+            observations = [o for o in observations if validation.is_active(o)]
         return observations
 
     def vote(self, user: User | None, observation_id: str, value: int) -> tuple[Observation, FeatureStateRecord]:

@@ -1935,6 +1935,66 @@
         }
       }
     },
+    "/api/v1/owner/ownership-requests": {
+      "post": {
+        "tags": [
+          "owner"
+        ],
+        "summary": "Request Ownership",
+        "description": "\"Jestem właścicielem\" — any logged-in user applies; an admin verifies.",
+        "operationId": "request_ownership_api_v1_owner_ownership_requests_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnershipRequestIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnershipRequestOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/places/{place_id}/owner": {
       "post": {
         "tags": [
@@ -2204,7 +2264,7 @@
           "admin"
         ],
         "summary": "Admin Stats",
-        "description": "Dashboard tiles: value + change vs yesterday (%). No abuse tile (no flagging in MVP).",
+        "description": "Dashboard tiles: value + change vs yesterday (%).",
         "operationId": "admin_stats_api_v1_admin_stats_get",
         "parameters": [
           {
@@ -2332,6 +2392,452 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/places/{place_id}/confidence": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Place Confidence",
+        "description": "Widget \"Pewność danych\": mean confidence overall and per group (known features).",
+        "operationId": "place_confidence_api_v1_admin_places__place_id__confidence_get",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfidenceOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/queue/{item_id}/comments": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Add Queue Comment",
+        "operationId": "add_queue_comment_api_v1_admin_queue__item_id__comments_post",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QueueCommentOut"
+                  },
+                  "title": "Response Add Queue Comment Api V1 Admin Queue  Item Id  Comments Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/observations/{observation_id}/flag": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Flag Observation",
+        "description": "Abuse / spam → FLAGGED: excluded from trust and conflicts, history kept.",
+        "operationId": "flag_observation_api_v1_admin_observations__observation_id__flag_post",
+        "parameters": [
+          {
+            "name": "observation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Observation Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlagIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/places/{place_id}/merge": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Merge Places",
+        "description": "Duplicate → target (observations, reports, queue, favourites moved; duplicate deleted).",
+        "operationId": "merge_places_api_v1_admin_places__place_id__merge_post",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MergeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/revalidate": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Revalidate",
+        "operationId": "revalidate_api_v1_admin_revalidate_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevalidateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/ownership-requests": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Ownership Requests",
+        "operationId": "list_ownership_requests_api_v1_admin_ownership_requests_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "pending",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnershipRequests"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/ownership-requests/{request_id}/verify": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Verify Ownership",
+        "description": "approved=true → user becomes owner of the place.",
+        "operationId": "verify_ownership_api_v1_admin_ownership_requests__request_id__verify_post",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnershipRequestOut"
                 }
               }
             }
@@ -2799,6 +3305,9 @@
           "observations_today": {
             "$ref": "#/components/schemas/StatTileOut"
           },
+          "abuse_flags": {
+            "$ref": "#/components/schemas/StatTileOut"
+          },
           "places": {
             "$ref": "#/components/schemas/StatTileOut"
           },
@@ -2813,6 +3322,7 @@
           "data_conflicts",
           "low_confidence",
           "observations_today",
+          "abuse_flags",
           "places",
           "updated_at"
         ],
@@ -2993,6 +3503,45 @@
           "advice"
         ],
         "title": "CheckResultOut"
+      },
+      "CommentIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "CommentIn"
+      },
+      "ConfidenceOut": {
+        "properties": {
+          "overall": {
+            "type": "number",
+            "title": "Overall"
+          },
+          "by_group": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "By Group"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "overall",
+          "by_group",
+          "note"
+        ],
+        "title": "ConfidenceOut"
       },
       "CurrentState": {
         "type": "string",
@@ -3244,6 +3793,19 @@
           "active_observation_id"
         ],
         "title": "FeatureStateOut"
+      },
+      "FlagIn": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "FlagIn"
       },
       "GalleryOut": {
         "properties": {
@@ -3720,6 +4282,37 @@
         ],
         "title": "MapMarkers"
       },
+      "MergeIn": {
+        "properties": {
+          "into_place_id": {
+            "type": "string",
+            "title": "Into Place Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "into_place_id"
+        ],
+        "title": "MergeIn"
+      },
+      "MergeOut": {
+        "properties": {
+          "merged": {
+            "type": "string",
+            "title": "Merged"
+          },
+          "into_place_id": {
+            "type": "string",
+            "title": "Into Place Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "merged",
+          "into_place_id"
+        ],
+        "title": "MergeOut"
+      },
       "MyReports": {
         "properties": {
           "items": {
@@ -3948,6 +4541,89 @@
           "items"
         ],
         "title": "OwnerReports"
+      },
+      "OwnershipRequestIn": {
+        "properties": {
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "justification": {
+            "type": "string",
+            "title": "Justification",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "place_id"
+        ],
+        "title": "OwnershipRequestIn"
+      },
+      "OwnershipRequestOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthorOut"
+          },
+          "justification": {
+            "type": "string",
+            "title": "Justification"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "place_id",
+          "user",
+          "justification",
+          "status",
+          "created_at",
+          "decided_at"
+        ],
+        "title": "OwnershipRequestOut"
+      },
+      "OwnershipRequests": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OwnershipRequestOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "OwnershipRequests"
       },
       "ParseTextIn": {
         "properties": {
@@ -4321,6 +4997,28 @@
         ],
         "title": "PublicPlaceRef"
       },
+      "QueueCommentOut": {
+        "properties": {
+          "author": {
+            "$ref": "#/components/schemas/AuthorOut"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "author",
+          "text",
+          "created_at"
+        ],
+        "title": "QueueCommentOut"
+      },
       "QueueDetailOut": {
         "properties": {
           "id": {
@@ -4366,6 +5064,14 @@
           },
           "feature_state": {
             "$ref": "#/components/schemas/FeatureStateOut"
+          },
+          "comments": {
+            "items": {
+              "$ref": "#/components/schemas/QueueCommentOut"
+            },
+            "type": "array",
+            "title": "Comments",
+            "default": []
           }
         },
         "type": "object",
@@ -4736,6 +5442,24 @@
         "type": "object",
         "title": "ReportPatchIn"
       },
+      "RevalidateOut": {
+        "properties": {
+          "places": {
+            "type": "integer",
+            "title": "Places"
+          },
+          "features": {
+            "type": "integer",
+            "title": "Features"
+          }
+        },
+        "type": "object",
+        "required": [
+          "places",
+          "features"
+        ],
+        "title": "RevalidateOut"
+      },
       "Role": {
         "type": "string",
         "enum": [
@@ -5063,7 +5787,8 @@
         "enum": [
           "VALID",
           "CONFLICT",
-          "REJECTED"
+          "REJECTED",
+          "FLAGGED"
         ],
         "title": "ValidationStatus"
       },
@@ -5114,6 +5839,17 @@
           "sources"
         ],
         "title": "VerificationOut"
+      },
+      "VerifyIn": {
+        "properties": {
+          "approved": {
+            "type": "boolean",
+            "title": "Approved",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "VerifyIn"
       },
       "VoteIn": {
         "properties": {

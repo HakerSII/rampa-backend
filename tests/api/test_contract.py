@@ -25,7 +25,7 @@ def app_operations(tmp_path_factory):
 
 
 def test_specs_found():
-    assert len(SPECS) == 15
+    assert len(SPECS) == 16
 
 
 @pytest.mark.parametrize("feature, method, path", list(contract_operations()))

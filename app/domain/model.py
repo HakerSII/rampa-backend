@@ -82,6 +82,7 @@ class Observation:
     validation: ValidationStatus = ValidationStatus.VALID
     confidence: float = 0.0
     report_id: str | None = None
+    flag_reason: str | None = None  # set when validation == FLAGGED
 
     @property
     def up_votes(self) -> int:
@@ -132,6 +133,18 @@ class QueueItem:
     status: QueueStatus = QueueStatus.OPEN
     decision: str | None = None  # approved | rejected
     resolved_at: datetime | None = None
+    comments: list[dict] = field(default_factory=list)  # {author_id, text, created_at (ISO)}
+
+
+@dataclass(slots=True)
+class OwnershipRequest:
+    id: str
+    place_id: str
+    user_id: str
+    justification: str
+    created_at: datetime
+    status: str = "pending"  # pending | approved | rejected
+    decided_at: datetime | None = None
 
 
 @dataclass(slots=True)

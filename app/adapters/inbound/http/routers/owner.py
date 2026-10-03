@@ -5,10 +5,12 @@ from app.adapters.inbound.http.deps import UC, AdminUser, CurrentUser
 from app.adapters.inbound.http.schemas import (
     ObservationIn,
     ObservationList,
+    OwnershipRequestOut,
     PlaceSummary,
     ReportOut,
     UserOut,
     observation_out,
+    ownership_out,
     place_summary,
     report_out,
     user_out,
@@ -54,6 +56,17 @@ async def add_owner_observations(place_id: str, body: OwnerObservationsIn, uc: U
 @router.get("/owner/reports", response_model=OwnerReports, tags=["owner"])
 async def list_owner_reports(uc: UC, user: CurrentUser):
     return OwnerReports(items=[report_out(uc, r) for r in uc.list_owner_reports(user)])
+
+
+class OwnershipRequestIn(BaseModel):
+    place_id: str
+    justification: str = ""
+
+
+@router.post("/owner/ownership-requests", status_code=201, response_model=OwnershipRequestOut, tags=["owner"])
+async def request_ownership(body: OwnershipRequestIn, uc: UC, user: CurrentUser):
+    """"Jestem właścicielem" — any logged-in user applies; an admin verifies."""
+    return ownership_out(uc, uc.request_ownership(user, body.place_id, body.justification))
 
 
 @router.post("/admin/places/{place_id}/owner", response_model=AssignOwnerOut, tags=["admin"])

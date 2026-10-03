@@ -276,6 +276,62 @@ Authorization: Bearer {{ewa}}
 GET {{base}}/places/plc_mnk/history
 Authorization: Bearer {{anna}}
 
+### 7j. Confidence widget for MNK (overall + per group)
+GET {{base}}/admin/places/plc_mnk/confidence
+Authorization: Bearer {{admin}}
+
+### 7k. Moderator comment on the (resolved) conflict
+POST {{base}}/admin/queue/{{queue.response.body.$.items[0].id}}/comments
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"text": "Zadzwoniłem do muzeum — winda działa od rana."}
+
+### 7l. Spam observation on Camelot (Marek) …
+# @name spam
+POST {{base}}/places/plc_camelot/observations
+Authorization: Bearer {{marek}}
+Content-Type: application/json
+
+{"feature": "ramp", "value": "no", "comment": "asdasd"}
+
+### 7m. … admin flags it → FLAGGED, excluded from trust (ramp back to yes)
+POST {{base}}/admin/observations/{{spam.response.body.$.id}}/flag
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"reason": "spam"}
+
+### 7n. Jan applies for ownership of ICE ("Jestem właścicielem")
+# @name ownReq
+POST {{base}}/owner/ownership-requests
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"place_id": "plc_ice", "justification": "Kierownik obiektu ICE"}
+
+### 7o. Admin: pending ownership requests
+GET {{base}}/admin/ownership-requests
+Authorization: Bearer {{admin}}
+
+### 7p. Admin approves → Jan becomes owner of ICE
+POST {{base}}/admin/ownership-requests/{{ownReq.response.body.$.id}}/verify
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"approved": true}
+
+### 7q. Recompute all states
+POST {{base}}/admin/revalidate
+Authorization: Bearer {{admin}}
+
+### 409 CONFLICT — ownership request decided twice
+POST {{base}}/admin/ownership-requests/{{ownReq.response.body.$.id}}/verify
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"approved": false}
+
 ### 403 FORBIDDEN — non-admin dashboard
 GET {{base}}/admin/stats
 Authorization: Bearer {{ewa}}

@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from app.domain.enums import QueueStatus, StateValue
+from app.domain.enums import QueueStatus, StateValue, ValidationStatus
 from app.domain.model import FeatureStateRecord, Observation, QueueItem, Report
 
 LOW_CONFIDENCE = 0.5
@@ -21,6 +21,7 @@ class AdminStats:
     data_conflicts: StatTile
     low_confidence: StatTile
     observations_today: StatTile
+    abuse_flags: StatTile
     places: StatTile
     updated_at: datetime
 
@@ -47,6 +48,7 @@ def compute_stats(*, reports: list[Report], observations: list[Observation], que
         data_conflicts=StatTile(open_conflicts, _change(q_t, q_y)),
         low_confidence=StatTile(low, None),
         observations_today=StatTile(obs_t, _change(obs_t, obs_y)),
+        abuse_flags=StatTile(sum(1 for o in observations if o.validation == ValidationStatus.FLAGGED), None),
         places=StatTile(places, None),
         updated_at=now,
     )

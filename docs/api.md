@@ -120,6 +120,14 @@ Every error has the same shape:
 | POST | `/api/v1/ai/parse-text` | user | Free text → suggested observations |
 | GET | `/api/v1/places/{id}/similar` | — | Similar places nearby |
 | GET | `/api/v1/routes/accessible` | — | A→B route for a profile (heuristic) |
+| GET | `/api/v1/admin/places/{id}/confidence` | admin | Confidence widget |
+| POST | `/api/v1/admin/queue/{id}/comments` | admin | Moderator comment |
+| POST | `/api/v1/admin/observations/{id}/flag` | admin | Flag abuse/spam |
+| POST | `/api/v1/admin/places/{id}/merge` | admin | Merge duplicate place |
+| POST | `/api/v1/admin/revalidate` | admin | Recompute all states |
+| POST | `/api/v1/owner/ownership-requests` | user | Apply for ownership |
+| GET | `/api/v1/admin/ownership-requests` | admin | Ownership requests |
+| POST | `/api/v1/admin/ownership-requests/{id}/verify` | admin | Approve / reject ownership |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -433,6 +441,19 @@ Clears all data (including the SQLite DB) and loads the seed again.
 | `GET /me/reports` | `{ items: [Report] }`, mine only, newest first |
 
 Favourites are stored per user (`users.favorites`, JSON) and survive restarts in SQL mode.
+
+## 7b. Admin extras
+
+| Endpoint | Behaviour |
+|---|---|
+| `GET /admin/places/{id}/confidence` | `{ overall, by_group: { entrance: 0.5, … }, note }`: means over known features; `note` warns about conflicts |
+| `POST /admin/queue/{id}/comments {text}` | 201 → all comments of the item; comments also appear in the queue detail |
+| `POST /admin/observations/{id}/flag {reason}` | abuse/spam → `validation.status: FLAGGED`, `validation.reason`; excluded from trust and conflicts (like REJECTED), state recomputed, history kept; dashboard tile `abuse_flags` |
+| `POST /admin/places/{id}/merge {into_place_id}` | duplicate → target: moves observations, reports, queue items, favourites and ownership requests; deletes the duplicate; recomputes the target |
+| `POST /admin/revalidate` | recomputes every state → `{ places, features }` |
+| `POST /owner/ownership-requests {place_id, justification}` | any user, 201 `status: pending` |
+| `GET /admin/ownership-requests?status=pending` | `{ items: [ { id, place_id, user, justification, status, created_at, decided_at } ] }` |
+| `POST /admin/ownership-requests/{id}/verify {approved}` | approved → the user becomes the owner (promoted to `owner`); a second decision → 409 |
 
 ## 8. Open API (`/public/v1`, header `X-Api-Key`)
 
