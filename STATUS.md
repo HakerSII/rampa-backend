@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** — MVP backend done
+- **Task:** F5 Open API
 - **Who:** Claude
-- **State:** done
-- **Next step:** F1.0 (human): Google OAuth client → real-token login check; frontend integration (F1.5); then README §6 next steps
-- **Last pytest:** `uv run pytest` → 92 passed (unit, application, demo flow, contract)
+- **State:** todo
+- **Next step:** 🟢 implement routers/public.py + key/limit dependency
+- **Last pytest:** `uv run pytest` → red: test_public_api.py
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -37,9 +37,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F2.1–F2.5 | Places, search, check; demo steps 1–3 | Claude | done | steps 1–3 green |
 | F3.1–F3.8 | Trust, validation, reports, uploads, votes; steps 4–6 | Claude | done | steps 4–5 green; step 6 needs F4 endpoint |
 | F4.1–F4.4 | Queue, decision; step 7 → full flow green | Claude | done | full demo flow green |
+| F5.1–F5.4 | Open API: key, rate limit, flat format | Claude | red | |
 
 ## Log (newest first)
 
+- 2026-10-03 · F5 · red · plan, contract, tests for Open API
 - 2026-10-03 · MVP · done · contract test (20 ops × 4 specs), live uvicorn smoke OK; 92 passed
 - 2026-10-03 · F1 · done · Google Sign-In (verifier port + adapter), logout, /me, demo/google mode switch; 67 passed
 - 2026-10-03 · F4 · done · queue, detail, decision confirm/reject; test_demo_flow fully green; 58 passed
