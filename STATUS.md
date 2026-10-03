@@ -7,7 +7,7 @@
 
 - **State:** todo
 - **Deploy:** `master` is deployed on **Render**; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
-- **Last pytest:** `uv run pytest` → 426 passed, 12 skipped
+- **Last pytest:** `uv run pytest` → red: F27
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
@@ -66,10 +66,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F24 | Map observations: `GET /observations?active&bbox` (front-end request) | Claude | done | e2e 4b-MAP/MAP2 + 400; '+' in since fixed |
 | F25 | Full feature model (35 + escalator), group parking | Claude | done | e2e 1l–1m |
 | F26 | Escalate + abuse reports from users (typed moderation queue) | Claude | done | e2e 7m1–7m9 |
-| F27 | Live geocoding (Nominatim) + OSM (Overpass), fallback to local | Claude | todo | |
+| F27 | Live geocoding (Nominatim) + OSM (Overpass), fallback to local | Claude | red |  |
 
 ## Log (newest first)
 
+- 2026-10-03 · F27 red: live geocoder + Overpass tests
 - 2026-10-03 · F26 green: escalate + user abuse reports, typed queue
 - 2026-10-03 · F26 red: escalate + abuse report tests
 - 2026-10-03 · F25 · done · 35 features / 8 groups (+ escalator, parking), text parse escalator, specs + docs
