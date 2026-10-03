@@ -72,6 +72,19 @@ Every error has the same shape:
 | Report `current_state` / `severity` / `nature` | `works·partially_works·not_working` / `critical·obstacle·minor` / `permanent·temporary·unknown` |
 | Role | `guest`, `user`, `owner`, `admin` |
 
+### Security of text and responses (F42)
+
+- **User text is plain text.** Every string in a JSON request body loses HTML tags, `<`, `>` and control characters before validation; newlines and tabs are kept. Example: `"<script>alert(1)</script>Stromy"` is stored as `"alert(1)Stromy"`. Text that is empty after cleaning fails like empty text (400). The same applies to upload file names and to the image description returned by the AI model.
+- **Links:** `contact.website` must be `http(s)://…`, so `javascript:` gives 400. `email` and `phone` are validated too.
+- **Headers on every response:**
+  - `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`;
+  - on the API: `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`;
+  - on `/media`: a sandboxed CSP;
+  - `/docs` (Swagger) keeps working.
+- **Front end:** this is defence in depth. Render user text as text (`textContent` or framework escaping), never with `innerHTML`, because data stored before F42 is not rewritten.
+- **SQL:** SQLAlchemy Core with bound parameters only. The single raw statement is the schema migration (`ALTER TABLE … ADD COLUMN`), built from the schema in code, never from a request.
+- **AI input:** see [5e](#5e-ai-recommendations). The model returns only enum filters, and facts come from the database.
+
 ## 2. Endpoint overview
 
 | Method | Path | Auth | Purpose |

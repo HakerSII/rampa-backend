@@ -5,9 +5,9 @@
 
 ## Current
 
-- **State:** done
+- **State:** todo
 - **Deploy:** **Render**, automatic after every merge to `master` (Docker service `rampa-backend` + `rampa-backend-postgres`); see docs/operations.md; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
-- **Last pytest:** `uv run pytest` → 566 passed, 16 skipped
+- **Last pytest:** `uv run pytest` → 582 passed, 16 skipped
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
@@ -83,10 +83,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F39 | City open-data import (blocked: dataset) — [PLAN-GAPS.md](PLAN-GAPS.md) | — | blocked | needs dataset + licence choice |
 | F40 | One LLM filter-tool schema (Claude + Gemini), AI_RECOMMENDER=gemini — option A | Claude | done | schema in domain; guard test; e2e unchanged (needs a key, rules path covered by F30a–d) |
 | F41 | Public remote MCP (Streamable HTTP /mcp) as a separate Render service | Claude | done | own env file .mcpenv (gitignored, template .mcpenv.example); verified live: local MCP (HTTP) + .mcpenv → https://rampa-backend.onrender.com → real data; compose env_file |
-| F42 | XSS hardening: input text cleaning, http(s) links, security headers | Claude | red | |
+| F42 | XSS hardening: input text cleaning, http(s) links, security headers | Claude | done | tests/api/test_xss.py (17); e2e F42a–c; headers + clean text verified |
 
 ## Log (newest first)
 
+- 2026-10-03 · F42 green: XSS hardening (clean text, http links, security headers)
 - 2026-10-03 · F41: .mcpenv for the MCP service, verified against Render backend
 - 2026-10-03 · F41 green: remote MCP over HTTP + compose + Render guide (docs/mcp.md)
 - 2026-10-03 · F40 A green: one LLM tool schema for Claude + Gemini, AI_RECOMMENDER=gemini

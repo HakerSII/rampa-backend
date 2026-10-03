@@ -280,6 +280,18 @@ Transport: **stdio** locally (`.mcp.json`) or **Streamable HTTP** at `/mcp` (F41
 
 It is a **client of the Open API**, not part of the backend process. With in-memory data, a separate process would not see the app's live data, and going through the public API proves that external integrations work. If the backend is down, a tool returns `{"error": …}` instead of crashing.
 
+## 8a. Security (F42)
+
+| Threat | Defence |
+|---|---|
+| SQL injection | SQLAlchemy Core with bound parameters; the only raw SQL is `ALTER TABLE ADD COLUMN` from the schema in code |
+| Stored XSS | `CleanJsonBodyMiddleware` makes every JSON string plain text (`app/domain/text.py`); comments, file names and model output are also cleaned below HTTP; `http(s)` links only; the front end must still render text as text |
+| Content sniffing, clickjacking | `SecurityHeadersMiddleware`: `nosniff`, CSP `default-src 'none'`, `frame-ancestors 'none'`, sandboxed `/media` |
+| Prompt injection | the model gets only the query and returns only enum filters (forced tool call, unknown values dropped); facts, ranking and reasons come from the DB; image analysis is a suggestion only |
+| Upload abuse | PNG/JPG signature check, size limit, generated file names (no path traversal) |
+| Secrets | `.env` / `.mcpenv` gitignored and dockerignored, keys only in headers, login codes stored as SHA-256 |
+| **Open** | production must not run `AUTH_MODE=demo` (anyone becomes admin with `demo-admin`); no rate limit on `/ai/*`, `/auth/anonymous`, `/auth/email/request` beyond the per-address e-mail limit; the public `demo-key` |
+
 ## 9. Design decisions and known limits
 
 | Decision | Why | Cost / limit |

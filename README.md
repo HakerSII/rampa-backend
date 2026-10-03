@@ -82,6 +82,7 @@ uv run python main.py                                          # http://localhos
 | 37 | City configuration JSON (`CITY_CONFIG`) + `GET /city` | [plan](features/37-city-config/plan.md) | [openapi](features/37-city-config/openapi.yaml) | 1 h |
 | 40 | One LLM filter-tool schema for Claude + Gemini (`AI_RECOMMENDER=gemini`) | [plan](features/40-llm-tools-unification/plan.md) | — | 30 min |
 | 41 | Remote MCP over Streamable HTTP (`/mcp`, `/health`, optional Bearer) as a separate Render service (`Dockerfile.mcp`) | [plan](features/41-remote-mcp/plan.md) | [docs/mcp.md](docs/mcp.md) | 1 h |
+| 42 | XSS hardening: user text → plain text, `http(s)` links, security headers (nosniff, CSP, sandboxed media) | [plan](features/42-xss/plan.md) | — | 45 min |
 | 12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | [plan](features/12-frontend-bridge/plan.md) | [openapi](features/12-frontend-bridge/openapi.yaml) | 45 min |
 
 - F0 blocks all.

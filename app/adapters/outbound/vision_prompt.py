@@ -2,6 +2,8 @@
 import json
 import re
 
+from app.domain.text import clean_text
+
 from app.domain.model import ImageAnalysis
 
 INSTRUCTION = """You are an accessibility inspector.
@@ -35,9 +37,9 @@ def parse_analysis(raw: str, model: str) -> ImageAnalysis:
     return ImageAnalysis(
         real_place=bool(data.get("real_place", True)),
         barrier_detected=bool(data.get("barrier_detected", False)),
-        barrier_type=str(data.get("barrier_type") or ""),
-        affected_disabilities=[str(x) for x in data.get("affected_disabilities") or []],
-        description=str(data.get("description") or ""),
+        barrier_type=clean_text(str(data.get("barrier_type") or "")),
+        affected_disabilities=[clean_text(str(x)) for x in data.get("affected_disabilities") or []],
+        description=clean_text(str(data.get("description") or "")),  # F42: model output is untrusted text
         confidence=float(data.get("confidence") or 0.0),
         model=model,
     )

@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.adapters.inbound.http.errors import error_body, install_error_handlers
 from app.adapters.inbound.http.rate_limit import FixedWindowRateLimiter
+from app.adapters.inbound.http.security import CleanJsonBodyMiddleware, SecurityHeadersMiddleware
 from app.adapters.inbound.http.routers import admin, ai, auth, me, observations, owner, places, public
 from app.application.ports import IdentityVerifier, StaleData
 from app.bootstrap import build_use_cases
@@ -23,6 +24,8 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
     app.state.rate_limiter = FixedWindowRateLimiter(settings.public_rate_limit_per_min)
 
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(CleanJsonBodyMiddleware)     # F42: user text → plain text
+    app.add_middleware(SecurityHeadersMiddleware)   # F42: nosniff, CSP, no framing
     install_error_handlers(app)
     for module in (auth, me, places, observations, ai, owner, admin):
         app.include_router(module.router, prefix=API_PREFIX)
