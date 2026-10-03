@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** F4 moderation queue
+- **Task:** F1 auth (Google Sign-In)
 - **Who:** Claude
 - **State:** todo
-- **Next step:** 🔴 tests/application/test_admin.py (decide confirm/reject)
-- **Last pytest:** `uv run pytest` → 48 passed, 2 xfailed
+- **Next step:** 🔴 tests/application/test_auth.py (FakeIdentityVerifier)
+- **Last pytest:** `uv run pytest` → 58 passed
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -36,10 +36,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F1.5 | Front button | frontend | todo | |
 | F2.1–F2.5 | Places, search, check; demo steps 1–3 | Claude | done | steps 1–3 green |
 | F3.1–F3.8 | Trust, validation, reports, uploads, votes; steps 4–6 | Claude | done | steps 4–5 green; step 6 needs F4 endpoint |
-| F4.1–F4.4 | Queue, decision; step 7 → full flow green | | todo | |
+| F4.1–F4.4 | Queue, decision; step 7 → full flow green | Claude | done | full demo flow green |
 
 ## Log (newest first)
 
+- 2026-10-03 · F4 · done · queue, detail, decision confirm/reject; test_demo_flow fully green; 58 passed
 - 2026-10-03 · F3 · done · trust, validation, reports, uploads, observations, votes; 48 passed, 2 xfail
 - 2026-10-03 · F2 · done · check rules, search/details/accessibility/check endpoints; 16 passed, 4 xfail
 - 2026-10-03 · F0 · done · skeleton, seed, demo auth, reset; 1 passed, 7 xfail · `2c032f2`

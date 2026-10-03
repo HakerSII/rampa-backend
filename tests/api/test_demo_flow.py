@@ -78,7 +78,7 @@ def test_step5_three_confirmations(client, ctx):
     assert r.json()["answer"] == "partial"
 
 
-@pytest.mark.xfail(strict=True, reason="F3/F4")
+
 def test_step6_marek_contradicts_conflict(client, ctx):
     r = client.post("/api/v1/places/plc_mnk/observations", headers=auth("marek"),
                     json={"feature": "elevator", "value": "yes", "comment": "Winda działa"})
@@ -91,7 +91,7 @@ def test_step6_marek_contradicts_conflict(client, ctx):
     ctx["queue_id"] = q["items"][0]["id"]
 
 
-@pytest.mark.xfail(strict=True, reason="F4")
+
 def test_step7_admin_confirms(client, ctx):
     r = client.post(f"/api/v1/admin/queue/{ctx['queue_id']}/decision", headers=auth("admin"),
                     json={"action": "confirm", "winning_observation_id": ctx["marek_obs"]})

@@ -7,17 +7,19 @@ from app.application.ports import Clock, FileStorage, IdentityVerifier, IdGenera
 from app.domain import check as domain_check, trust, validation
 from app.domain.enums import (
     CurrentState,
+    DecisionAction,
     FeatureKey,
     Nature,
     NeedsProfile,
     ObservationSource,
     ObservationValue,
+    QueueStatus,
     Role,
     Severity,
     StateValue,
     ValidationStatus,
 )
-from app.domain.errors import FileTooLarge, Forbidden, NotFound, Unauthorized, ValidationFailed
+from app.domain.errors import ConflictError, FileTooLarge, Forbidden, NotFound, Unauthorized, ValidationFailed
 from app.domain.model import (
     CheckResult,
     FeatureStateRecord,
@@ -137,6 +139,50 @@ class UseCases:
 
     def yes_features(self, place_id: str) -> list[FeatureKey]:
         return [f for f, s in self.repo.states_for(place_id).items() if s.state == StateValue.YES]
+
+    # ------------------------------------------------------------------ moderation (F4)
+    def list_queue(self, admin: User | None, filter: str = "all", status: str = "open") -> list[QueueItem]:
+        self._require_admin(admin)
+        items = self.repo.list_queue_items()
+        if filter not in ("all", "conflict") or status not in ("open", "resolved", "all"):
+            raise ValidationFailed("filter must be all|conflict, status open|resolved|all")
+        if filter == "conflict":
+            items = [q for q in items if q.type == "conflict"]
+        if status != "all":
+            items = [q for q in items if q.status == status]
+        return items
+
+    def get_queue_item(self, admin: User | None, item_id: str) -> QueueItem:
+        self._require_admin(admin)
+        item = self.repo.get_queue_item(item_id)
+        if item is None:
+            raise NotFound(f"queue item not found: {item_id}")
+        return item
+
+    def decide(self, admin: User | None, item_id: str, action: str,
+               winning_observation_id: str | None = None, comment: str = "") -> FeatureStateRecord:
+        """confirm: winner kept + admin observation, opposite values REJECTED; reject: all REJECTED.
+        Observations are never deleted — only their validation changes."""
+        item = self.get_queue_item(admin, item_id)
+        action_v = _enum(DecisionAction, action, "action")
+        if item.status != QueueStatus.OPEN:
+            raise ConflictError(f"queue item already resolved: {item_id}")
+        observations = [self._get_observation(i) for i in item.observation_ids]
+
+        if action_v == DecisionAction.CONFIRM:
+            if winning_observation_id not in item.observation_ids:
+                raise ValidationFailed("confirm requires winning_observation_id from this queue item")
+            winner = self._get_observation(winning_observation_id)
+            for o in observations:
+                o.validation = ValidationStatus.VALID if o.value == winner.value else ValidationStatus.REJECTED
+            item.status, item.decision = QueueStatus.RESOLVED, "approved"
+            self._new_observation(admin, item.place_id, item.feature, winner.value, temporary=winner.temporary,
+                                  comment=comment or "Potwierdzone przez moderatora", photo_ids=[])
+        else:
+            for o in observations:
+                o.validation = ValidationStatus.REJECTED
+            item.status, item.decision = QueueStatus.RESOLVED, "rejected"
+        return self.recompute(item.place_id, item.feature)
 
     # ------------------------------------------------------------------ observations (F3)
     def recompute(self, place_id: str, feature: FeatureKey) -> FeatureStateRecord:
