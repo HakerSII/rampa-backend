@@ -26,3 +26,15 @@ def test_db_choice_from_environment(monkeypatch):
     monkeypatch.setenv("POSTGRES_HOST", "pg.example")
     monkeypatch.delenv("DATABASE_URL", raising=False)
     assert Settings(_env_file=None).db_url == "postgresql+psycopg://rampa:rampa@pg.example:5432/rampa"
+
+
+def test_empty_optional_values_from_env_mean_not_set(monkeypatch):
+    # compose passes DEMO_NOW="" and .env.example ships "DEMO_NOW=" — must not crash the app
+    monkeypatch.setenv("DEMO_NOW", "")
+    assert Settings(_env_file=None).demo_now is None
+
+
+def test_tests_never_read_local_env_file():
+    # a developer's .env (e.g. AI_MODE=gemini + real key) must not leak into tests → no network, no quota use
+    s = Settings()
+    assert (s.ai_mode, s.gemini_api_key, s.repo_mode) == ("mock", "", "memory")

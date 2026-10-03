@@ -6,6 +6,7 @@ from app.domain.enums import FeatureKey, QueueStatus
 from app.domain.model import (
     FeatureStateRecord,
     Observation,
+    OwnershipRequest,
     Photo,
     Place,
     QueueItem,
@@ -28,6 +29,7 @@ class InMemoryRepo:
         self.reports: dict[str, Report] = {}
         self.photos: dict[str, Photo] = {}
         self.queue: dict[str, QueueItem] = {}
+        self.ownership_requests: dict[str, OwnershipRequest] = {}
 
     def commit(self) -> None:
         """Nothing to persist."""
@@ -36,7 +38,8 @@ class InMemoryRepo:
         return not self.users
 
     def all_ids(self) -> list[str]:
-        return [*self.users, *self.places, *self.observations, *self.reports, *self.photos, *self.queue]
+        return [*self.users, *self.places, *self.observations, *self.reports, *self.photos, *self.queue,
+                *self.ownership_requests]
 
     # users / sessions
     def add_user(self, user: User) -> None:
@@ -69,6 +72,10 @@ class InMemoryRepo:
 
     def list_places(self) -> list[Place]:
         return list(self.places.values())
+
+    def delete_place(self, place_id: str) -> None:
+        self.places.pop(place_id, None)
+        self.states.pop(place_id, None)
 
     def save_state(self, state: FeatureStateRecord) -> None:
         self.states[state.place_id][state.feature] = state
@@ -120,6 +127,17 @@ class InMemoryRepo:
              if q.place_id == place_id and q.feature == feature and q.status == QueueStatus.OPEN),
             None,
         )
+
+
+    # ownership requests
+    def add_ownership_request(self, req: OwnershipRequest) -> None:
+        self.ownership_requests[req.id] = req
+
+    def get_ownership_request(self, req_id: str) -> OwnershipRequest | None:
+        return self.ownership_requests.get(req_id)
+
+    def list_ownership_requests(self) -> list[OwnershipRequest]:
+        return list(self.ownership_requests.values())
 
 
 class SystemClock:

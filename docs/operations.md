@@ -14,6 +14,22 @@ uv run uvicorn main:app --reload
 - **Later starts:** the data is loaded and kept.
 - **Back to the seed:** `POST /api/v1/admin/demo/reset` as `demo-admin`, or delete `data/rampa.db`.
 
+### Docker (Postgres + API)
+
+```bash
+docker compose up -d --build          # db (postgres:17) + api → http://localhost:8000/docs
+API_PORT=8001 docker compose up -d    # if 8000 is taken (e.g. local main.py running)
+docker compose logs -f api            # logs (AI fallbacks, DB retries)
+docker compose down                   # stop (data kept in volume pgdata)
+docker compose down -v                # stop + wipe Postgres data and media
+```
+
+- The API waits for a healthy Postgres, retries the connection, then seeds an empty database.
+- Settings come from `.env` in this folder through compose interpolation (`AUTH_MODE`, `AI_MODE`, `GEMINI_*`, `POSTGRES_*`, …). `.env` is **not** copied into the image (`.dockerignore`).
+- Only Postgres in Docker, app locally: `docker compose up -d db`, then in `.env` set `DB_ENGINE=postgres` and run `uv run --extra postgres python main.py`.
+- The image has no ONNX model or GPU: use `AI_MODE=mock` or `gemini`.
+- One uvicorn worker (write-behind cache; see [architecture.md §6](architecture.md#6-persistence-repo_mode)).
+
 ## 2. Test
 
 ```bash
@@ -27,6 +43,13 @@ uv run pytest tests/unit       # domain only, < 1 s
 | `tests/application` | use cases on in-memory fakes (auth, places, observations, admin, owner, AI, import) |
 | `tests/adapters` | `SqlRepo` round-trips on a temp SQLite file; Gemini adapter against `httpx.MockTransport` |
 | `tests/api` | HTTP: full demo flow, Open API, persistence across restart, MCP tools via ASGI, **contract test** (every operation in `features/*/openapi.yaml` exists, specs valid), `docs/openapi.json` up to date |
+
+SqlRepo tests on Postgres (they **drop the tables** of the target database, so use a separate DB):
+
+```bash
+docker compose exec -T db psql -U rampa -d rampa -c "CREATE DATABASE rampa_test"
+TEST_POSTGRES_URL=postgresql+psycopg://rampa:rampa@localhost:5432/rampa_test uv run --extra postgres pytest tests/adapters
+```
 
 Tests force `REPO_MODE=memory` (set in `tests/conftest.py`) and never touch the network. Google, Gemini and Overpass are faked.
 
@@ -106,5 +129,8 @@ A test fails if `docs/openapi.json` is stale, so re-export after changing endpoi
 | Demo shows old data | SQLite keeps data: `POST /admin/demo/reset` or delete `data/rampa.db` |
 | MCP tool says `API niedostępne` | the backend isn't running, or `RAMPA_API_URL`/`RAMPA_API_KEY` is wrong |
 | MCP: `fastmcp` not found | run with `--extra mcp` (a plain `uv run` removes extras) |
+| API container exits on start | `docker compose logs api` — wrong `POSTGRES_*`, or a bad value in `.env` |
+| `port is already allocated` / wrong server answers on 8000 | another process uses 8000 → `API_PORT=8001 docker compose up -d` |
+| Gemini 429 "exceeded your current quota" | the key's free quota is used up; fallback serves mock; wait or use another key/plan |
 | Data differs between two servers | SQLite mode is single-process (write-behind cache); run one uvicorn worker |
 | `VIRTUAL_ENV … does not match` warning | another venv is active (e.g. the outer project's); `deactivate` or ignore |

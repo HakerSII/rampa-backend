@@ -28,7 +28,7 @@ class PublicPlacePage(BaseModel):
 
 
 class PublicFeature(BaseModel):
-    value: bool
+    value: bool | str  # true | false | "partial"
     temporary: bool
     confidence: float
     last_verified: str | None
@@ -59,7 +59,8 @@ def public_place(uc, place: Place) -> PublicPlace:
 
 
 def public_feature(s: FeatureStateRecord) -> PublicFeature:
-    return PublicFeature(value=s.state == StateValue.YES, temporary=s.temporary, confidence=s.confidence,
+    value = "partial" if s.state == StateValue.PARTIAL else s.state == StateValue.YES
+    return PublicFeature(value=value, temporary=s.temporary, confidence=s.confidence,
                          last_verified=s.last_verified.date().isoformat() if s.last_verified else None)
 
 

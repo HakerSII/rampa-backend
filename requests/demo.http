@@ -40,6 +40,60 @@ Authorization: Bearer {{anna}}
 ### 1. Search step-free places → plc_mnk, plc_ice
 GET {{base}}/places?features=step_free_entrance
 
+### 1b. Near me (Rynek Główny), nearest first with distance_m, 2 per page
+GET {{base}}/places?lat=50.0617&lon=19.9373&page_size=2
+
+### 1c. Map view: markers (accessible / partial / inaccessible) for the viewport
+GET {{base}}/places?view=map&bbox=19.90,50.04,19.96,50.08
+
+### 1d. Categories with counts (chips)
+GET {{base}}/categories
+
+### 1e. Search-box suggestions ("muz" → Muzeum Narodowe)
+GET {{base}}/geocode?q=muz
+
+### 400 VALIDATION_ERROR — sort=nearest without location
+GET {{base}}/places?sort=nearest
+
+### 1f. Similar places near the museum (same category first, then nearest)
+GET {{base}}/places/plc_mnk/similar?limit=3
+
+### 1g. Route museum → office for a wheelchair (heuristic: helpers/barriers within 100 m)
+GET {{base}}/routes/accessible?from=plc_mnk&to=plc_urzad&profile=wheelchair
+
+### 1h. Same route for a blind person (tactile paths, kerbs)
+GET {{base}}/routes/accessible?from=plc_mnk&to=plc_urzad&profile=blind
+
+### 404 NOT_FOUND — route from unknown place
+GET {{base}}/routes/accessible?from=nowhere&to=plc_urzad
+
+### 1i. Filter by place type (venue / shop / public_transport_stop / platform / parking / office / …)
+GET {{base}}/places?place_type=office
+
+### 1j. "Partially accessible": Jan reports ICE entrance works only partly (value partial)
+POST {{base}}/places/plc_ice/observations
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"feature": "ramp", "value": "partial", "comment": "Podjazd jest, ale stromy"}
+
+### 1k. Temporary issue with end date: lift on ICE closed until tomorrow (valid_until)
+POST {{base}}/places/plc_ice/observations
+Authorization: Bearer {{ola}}
+Content-Type: application/json
+
+{"feature": "platform_elevator", "value": "no", "temporary": true, "valid_until": "2099-01-01T00:00:00+00:00"}
+
+### 400 VALIDATION_ERROR — valid_until in the past
+POST {{base}}/places/plc_ice/observations
+Authorization: Bearer {{ola}}
+Content-Type: application/json
+
+{"feature": "platform_elevator", "value": "no", "valid_until": "2000-01-01T00:00:00+00:00"}
+
+### 400 VALIDATION_ERROR — unknown place type
+GET {{base}}/places?place_type=spaceport
+
 ### Feature dictionary (filters)
 GET {{base}}/accessibility/features
 
@@ -53,6 +107,24 @@ GET {{base}}/places/plc_mnk/accessibility
 ### ---------------------------------------------------------------------
 ### 3. Can I get in by wheelchair? → answer: yes
 GET {{base}}/places/plc_mnk/check?profile=wheelchair
+
+### 3b. Other needs (F14): blind → yes (Braille / tactile paths)
+GET {{base}}/places/plc_mnk/check?profile=blind
+
+### 3c. "Czy mogę wejść z psem?" → yes
+GET {{base}}/places/plc_mnk/check?profile=assistance_dog
+
+### 3d. Urząd: deaf → yes (PJM interpreter); low vision → no (poor lighting)
+GET {{base}}/places/plc_urzad/check?profile=deaf
+
+### 3e. Urząd: low vision → no
+GET {{base}}/places/plc_urzad/check?profile=low_vision
+
+### 3f. Search: assistance dog + PJM interpreter → plc_urzad
+GET {{base}}/places?features=assistance_dog_allowed,sign_language_interpreter
+
+### 400 VALIDATION_ERROR — unknown profile
+GET {{base}}/places/plc_mnk/check?profile=teleport
 
 ### ---------------------------------------------------------------------
 ### 4a. Anna uploads a photo → 201 {id: ph_…, url}
@@ -77,6 +149,13 @@ Content-Type: application/json
 
 {"photo_ids": ["{{upload.response.body.$.id}}"], "place_id": "plc_mnk"}
 
+### 4a-TXT. AI from text: "winda od dwóch tygodni nie działa" → elevator / no / temporary
+POST {{base}}/ai/parse-text
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"text": "Winda od dwóch tygodni nie działa, ale podjazd jest odśnieżony"}
+
 ### 4b. Anna reports broken elevator → 201, observation_ids[0]
 # @name report
 POST {{base}}/reports
@@ -92,6 +171,41 @@ Content-Type: application/json
   "description": "Winda przy wejściu głównym nieczynna, kartka o awarii.",
   "photo_ids": ["{{upload.response.body.$.id}}"]
 }
+
+### 4b-ME. Anna: my reports → the report just sent
+GET {{base}}/me/reports
+Authorization: Bearer {{anna}}
+
+### 4b-FAV. Anna saves the museum to favourites → 204 (idempotent)
+PUT {{base}}/me/favorites/plc_mnk
+Authorization: Bearer {{anna}}
+
+### 4b-FAV2. Anna's favourites → plc_mnk with verification badge
+GET {{base}}/me/favorites
+Authorization: Bearer {{anna}}
+
+### D1. Jan starts a draft ("Zapisz szkic") → 201 status draft, no observation
+# @name janDraft
+POST {{base}}/reports
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"place_id": "plc_ice", "draft": true, "description": "Coś nie tak z podjazdem"}
+
+### D2. Jan completes the draft → 200
+PATCH {{base}}/reports/{{janDraft.response.body.$.id}}
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"element": "ramp", "current_state": "not_working", "severity": "obstacle", "nature": "temporary", "description": "Podjazd zastawiony rowerami"}
+
+### D3. Jan submits → 200 status submitted + observation
+POST {{base}}/reports/{{janDraft.response.body.$.id}}/submit
+Authorization: Bearer {{jan}}
+
+### 409 CONFLICT — submit twice
+POST {{base}}/reports/{{janDraft.response.body.$.id}}/submit
+Authorization: Bearer {{jan}}
 
 ### 4c. Elevator now: no, temporary, confidence 0.6
 GET {{base}}/places/plc_mnk/accessibility
@@ -163,6 +277,94 @@ GET {{base}}/places/plc_mnk/check?profile=wheelchair
 
 ### 7c. History kept: Anna's observation REJECTED, not deleted (active=false shows all)
 GET {{base}}/places/plc_mnk/observations?feature=elevator&active=false
+
+### 7d. Place screen: activity feed (admin decision, Marek, Anna's report …) — newest first
+GET {{base}}/places/plc_mnk/activity?limit=10
+
+### 7e. Place screen: photo gallery (Anna's evidence photo)
+GET {{base}}/places/plc_mnk/photos
+
+### 7f. Place details: verification block → "Potwierdzone dzisiaj", sources, confidence level
+GET {{base}}/places/plc_mnk
+
+### 7g. Admin dashboard tiles (reports today, open conflicts, low confidence, observations today)
+GET {{base}}/admin/stats
+Authorization: Bearer {{admin}}
+
+### 7h. Audit trail of MNK: observations (incl. REJECTED), conflict detected → resolved
+GET {{base}}/places/plc_mnk/history
+Authorization: Bearer {{admin}}
+
+### 7i. Owner Ewa can read history of her place
+GET {{base}}/places/plc_mnk/history
+Authorization: Bearer {{ewa}}
+
+### 403 FORBIDDEN — regular user cannot read the audit trail
+GET {{base}}/places/plc_mnk/history
+Authorization: Bearer {{anna}}
+
+### 7j. Confidence widget for MNK (overall + per group)
+GET {{base}}/admin/places/plc_mnk/confidence
+Authorization: Bearer {{admin}}
+
+### 7k. Moderator comment on the (resolved) conflict
+POST {{base}}/admin/queue/{{queue.response.body.$.items[0].id}}/comments
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"text": "Zadzwoniłem do muzeum — winda działa od rana."}
+
+### 7l. Spam observation on Camelot (Marek) …
+# @name spam
+POST {{base}}/places/plc_camelot/observations
+Authorization: Bearer {{marek}}
+Content-Type: application/json
+
+{"feature": "ramp", "value": "no", "comment": "asdasd"}
+
+### 7m. … admin flags it → FLAGGED, excluded from trust (ramp back to yes)
+POST {{base}}/admin/observations/{{spam.response.body.$.id}}/flag
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"reason": "spam"}
+
+### 7n. Jan applies for ownership of ICE ("Jestem właścicielem")
+# @name ownReq
+POST {{base}}/owner/ownership-requests
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"place_id": "plc_ice", "justification": "Kierownik obiektu ICE"}
+
+### 7o. Admin: pending ownership requests
+GET {{base}}/admin/ownership-requests
+Authorization: Bearer {{admin}}
+
+### 7p. Admin approves → Jan becomes owner of ICE
+POST {{base}}/admin/ownership-requests/{{ownReq.response.body.$.id}}/verify
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"approved": true}
+
+### 7q. Recompute all states
+POST {{base}}/admin/revalidate
+Authorization: Bearer {{admin}}
+
+### 409 CONFLICT — ownership request decided twice
+POST {{base}}/admin/ownership-requests/{{ownReq.response.body.$.id}}/verify
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"approved": false}
+
+### 403 FORBIDDEN — non-admin dashboard
+GET {{base}}/admin/stats
+Authorization: Bearer {{ewa}}
+
+### 400 VALIDATION_ERROR — activity limit out of range
+GET {{base}}/places/plc_mnk/activity?limit=0
 
 ### =====================================================================
 ### F5 Open API (/public/v1) — external apps, X-Api-Key, 60 req/min per key
@@ -281,6 +483,79 @@ Content-Type: application/json
 
 {"action": "confirm", "winning_observation_id": "{{ewaUpdate.response.body.$.items[0].id}}"}
 
+### O9a. Owner profile + tiles
+GET {{base}}/owner/me
+Authorization: Bearer {{ewa}}
+
+### O9b. Owner stats (managed places, reports 30 d, my updates 30 d, conflicts)
+GET {{base}}/owner/stats
+Authorization: Bearer {{ewa}}
+
+### O9c. Reply to Anna's report
+POST {{base}}/owner/reports/{{ownReport.response.body.$.id}}/reply
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"text": "Dziękujemy — serwis był rano, winda działa."}
+
+### O9d. Opening hours (shown on the place card)
+PUT {{base}}/owner/places/plc_mnk/opening-hours
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+[{"days": "Tue-Sun", "open": "10:00", "close": "18:00"}, {"days": "Mon", "closed": true}]
+
+### O9e. Edit contact + description
+PATCH {{base}}/owner/places/plc_mnk
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"contact": {"phone": "+48 12 433 55 00", "website": "https://mnk.pl"}}
+
+### O9f. Reminders ("Uzupełnij dane…", unanswered reports first)
+GET {{base}}/owner/reminders
+Authorization: Bearer {{ewa}}
+
+### O9g. Suggestions ("Rozważ: …")
+GET {{base}}/owner/suggestions
+Authorization: Bearer {{ewa}}
+
+### O9h. Place stats
+GET {{base}}/owner/places/plc_mnk/stats
+Authorization: Bearer {{ewa}}
+
+### O9i. Batch update of both places (all-or-nothing)
+POST {{base}}/owner/observations/batch
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+[{"place_id": "plc_camelot", "feature": "accessible_toilet", "value": "yes"}, {"place_id": "plc_mnk", "feature": "lowered_curb", "value": "yes"}]
+
+### O9j. CSV template
+GET {{base}}/owner/places/import/template
+Authorization: Bearer {{ewa}}
+
+### O9k. CSV import (row 3 is not her place → error, rest imported)
+POST {{base}}/owner/places/import
+Authorization: Bearer {{ewa}}
+Content-Type: multipart/form-data; boundary=----DemoBoundary
+
+------DemoBoundary
+Content-Disposition: form-data; name="file"; filename="import.csv"
+Content-Type: text/csv
+
+place_id,feature,value,temporary,comment
+plc_camelot,step_free_entrance,no,false,Dwa stopnie
+plc_ice,ramp,yes,false,nie moje
+------DemoBoundary--
+
+### 400 VALIDATION_ERROR — opening hours close before open
+PUT {{base}}/owner/places/plc_mnk/opening-hours
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+[{"days": "Mon", "open": "18:00", "close": "10:00"}]
+
 ### O10. Admin assigns Marek as owner of ICE → 200, role owner
 POST {{base}}/admin/places/plc_ice/owner
 Authorization: Bearer {{admin}}
@@ -326,7 +601,7 @@ Content-Type: application/json
 GET {{public}}/places?q=tauron
 X-Api-Key: {{apiKey}}
 
-### I2. Admin imports OSM → 18 points, 10 places created, 7 unnamed skipped
+### I2. Admin imports OSM → 18 points, 11 places created (wheelchair=limited → partial), 7 unnamed skipped
 POST {{base}}/admin/imports
 Authorization: Bearer {{admin}}
 Content-Type: application/json
@@ -386,6 +661,13 @@ Content-Type: application/json
 
 {"username": "daniel"}
 
+### 404 NOT_FOUND — favourite of unknown place
+PUT {{base}}/me/favorites/nope
+Authorization: Bearer {{anna}}
+
+### 401 UNAUTHORIZED — favourites without login
+GET {{base}}/me/favorites
+
 ### 403 FORBIDDEN — non-admin opens queue
 GET {{base}}/admin/queue
 Authorization: Bearer {{anna}}
@@ -416,6 +698,13 @@ Authorization: Bearer {{anna}}
 Content-Type: application/json
 
 {"photo_ids": ["{{screenshot.response.body.$.id}}"]}
+
+### 400 VALIDATION_ERROR — parse-text with empty text
+POST {{base}}/ai/parse-text
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"text": ""}
 
 ### 400 VALIDATION_ERROR — AI with unknown photo
 POST {{base}}/ai/image-tags

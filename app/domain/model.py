@@ -36,6 +36,7 @@ class User:
     username: str | None = None  # demo accounts
     email: str | None = None
     google_sub: str | None = None
+    favorite_place_ids: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -63,6 +64,10 @@ class Place:
     address: str = ""
     owner_id: str | None = None
     external_id: str | None = None  # e.g. osm:<lat>,<lon>
+    opening_hours: list[dict] = field(default_factory=list)  # [{days, open, close} | {days, closed: True}]
+    contact: dict = field(default_factory=dict)  # {phone, website, email}
+    photo_ids: list[str] = field(default_factory=list)  # owner/presentation photos
+    place_type: str = "venue"  # PlaceType value
 
 
 @dataclass(slots=True)
@@ -81,6 +86,8 @@ class Observation:
     validation: ValidationStatus = ValidationStatus.VALID
     confidence: float = 0.0
     report_id: str | None = None
+    flag_reason: str | None = None  # set when validation == FLAGGED
+    valid_until: datetime | None = None  # temporary issue end; after it the observation no longer counts
 
     @property
     def up_votes(self) -> int:
@@ -109,15 +116,17 @@ class Report:
     id: str
     place_id: str
     author_id: str
-    element: FeatureKey
-    current_state: CurrentState
-    severity: Severity
-    nature: Nature
-    description: str
+    element: FeatureKey | None  # None allowed only while status == "draft"
+    current_state: CurrentState | None
+    severity: Severity | None
+    nature: Nature | None
+    description: str | None
     created_at: datetime
     photo_ids: list[str] = field(default_factory=list)
     status: str = "submitted"
     observation_ids: list[str] = field(default_factory=list)
+    replies: list[dict] = field(default_factory=list)  # owner replies {author_id, text, created_at}
+    owner_status: str | None = None  # approved (owner confirmed the report)
 
 
 @dataclass(slots=True)
@@ -130,6 +139,19 @@ class QueueItem:
     type: str = "conflict"
     status: QueueStatus = QueueStatus.OPEN
     decision: str | None = None  # approved | rejected
+    resolved_at: datetime | None = None
+    comments: list[dict] = field(default_factory=list)  # {author_id, text, created_at (ISO)}
+
+
+@dataclass(slots=True)
+class OwnershipRequest:
+    id: str
+    place_id: str
+    user_id: str
+    justification: str
+    created_at: datetime
+    status: str = "pending"  # pending | approved | rejected
+    decided_at: datetime | None = None
 
 
 @dataclass(slots=True)

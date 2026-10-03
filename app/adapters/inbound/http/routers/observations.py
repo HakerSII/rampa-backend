@@ -8,6 +8,7 @@ from app.adapters.inbound.http.schemas import (
     PhotoOut,
     ReportIn,
     ReportOut,
+    ReportPatchIn,
     VoteIn,
     VoteResultOut,
     feature_state_out,
@@ -36,6 +37,18 @@ async def upload_photo(file: UploadFile, uc: UC, user: CurrentUser):
 @router.post("/reports", status_code=201, response_model=ReportOut, tags=["reports"])
 async def create_report(body: ReportIn, uc: UC, user: CurrentUser):
     return report_out(uc, uc.create_report(user, **body.model_dump()))
+
+
+@router.patch("/reports/{report_id}", response_model=ReportOut, tags=["reports"])
+async def update_report(report_id: str, body: ReportPatchIn, uc: UC, user: CurrentUser):
+    """Edit a draft (author only)."""
+    return report_out(uc, uc.update_report(user, report_id, **body.model_dump(exclude_unset=True)))
+
+
+@router.post("/reports/{report_id}/submit", response_model=ReportOut, tags=["reports"])
+async def submit_report(report_id: str, uc: UC, user: CurrentUser):
+    """Draft → submitted: full validation, creates the observation."""
+    return report_out(uc, uc.submit_report(user, report_id))
 
 
 @router.get("/reports/{report_id}", response_model=ReportOut, tags=["reports"])

@@ -71,3 +71,9 @@ def test_rate_limit_per_key(tmp_path):
     assert r.status_code == 429 and r.json()["error"]["code"] == "RATE_LIMITED"
     assert int(r.headers["Retry-After"]) > 0
     assert c.get("/public/v1/places", headers={"X-Api-Key": "b"}).status_code == 200  # separate bucket
+
+
+def test_public_check_supports_new_profiles(client):
+    r = client.get("/public/v1/places/plc_mnk/check", params={"profile": "assistance_dog"}, headers=KEY).json()
+    assert r["answer"] == "yes"
+    assert client.get("/public/v1/places/plc_mnk/check", params={"profile": "teleport"}, headers=KEY).status_code == 400

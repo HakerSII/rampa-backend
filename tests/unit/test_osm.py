@@ -13,7 +13,7 @@ def point(wheelchair="yes", toilet="brak danych", category="cafe"):
 @pytest.mark.parametrize("wheelchair, expected", [
     ("yes", [(F.STEP_FREE_ENTRANCE, V.YES)]),
     ("no", [(F.STEP_FREE_ENTRANCE, V.NO)]),
-    ("limited", []),           # no partial in MVP
+    ("limited", [(F.STEP_FREE_ENTRANCE, V.PARTIAL)]),  # F23: partial state
     ("brak informacji", []),
 ])
 def test_wheelchair_tag(wheelchair, expected):
@@ -21,8 +21,8 @@ def test_wheelchair_tag(wheelchair, expected):
 
 
 def test_toilet_tag():
-    assert map_features(point(wheelchair="limited", toilet="yes")) == [(F.ACCESSIBLE_TOILET, V.YES)]
-    assert map_features(point(wheelchair="limited", toilet="no")) == [(F.ACCESSIBLE_TOILET, V.NO)]
+    assert map_features(point(wheelchair="brak informacji", toilet="yes")) == [(F.ACCESSIBLE_TOILET, V.YES)]
+    assert map_features(point(wheelchair="brak informacji", toilet="no")) == [(F.ACCESSIBLE_TOILET, V.NO)]
 
 
 def test_category():

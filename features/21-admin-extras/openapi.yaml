@@ -1,0 +1,140 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F21 Admin extras
+  version: 0.1.0-mvp
+  description: Confidence widget, queue comments, abuse flagging, duplicate merge, revalidate, ownership requests.
+servers:
+  - url: http://localhost:8000/api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: admin
+  - name: owner
+paths:
+  /admin/places/{placeId}/confidence:
+    parameters: [{ $ref: "#/components/parameters/PlaceId" }]
+    get:
+      tags: [admin]
+      summary: Confidence widget (overall + per group)
+      operationId: placeConfidence
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overall: { type: number }
+                  by_group: { type: object, additionalProperties: { type: number } }
+                  note: { type: string }
+        "403": { description: FORBIDDEN }
+        "404": { description: NOT_FOUND }
+  /admin/queue/{queueId}/comments:
+    parameters:
+      - { name: queueId, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [admin]
+      summary: Moderator comment (returns all comments of the item)
+      operationId: addQueueComment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [text], properties: { text: { type: string, maxLength: 1000 } } }
+      responses:
+        "201": { description: Comments }
+        "400": { description: VALIDATION_ERROR }
+        "403": { description: FORBIDDEN }
+        "404": { description: NOT_FOUND }
+  /admin/observations/{observationId}/flag:
+    parameters:
+      - { name: observationId, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [admin]
+      summary: Flag abuse/spam → FLAGGED (excluded from trust and conflicts)
+      operationId: flagObservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [reason], properties: { reason: { type: string, maxLength: 200 } } }
+      responses:
+        "200": { description: "Flagged observation (validation.status FLAGGED, reason)" }
+        "400": { description: VALIDATION_ERROR }
+        "403": { description: FORBIDDEN }
+        "404": { description: NOT_FOUND }
+  /admin/places/{placeId}/merge:
+    parameters: [{ $ref: "#/components/parameters/PlaceId" }]
+    post:
+      tags: [admin]
+      summary: Merge duplicate into target place
+      operationId: mergePlaces
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [into_place_id], properties: { into_place_id: { type: string } } }
+      responses:
+        "200": { description: "{ merged, into_place_id }" }
+        "400": { description: VALIDATION_ERROR (into itself) }
+        "403": { description: FORBIDDEN }
+        "404": { description: NOT_FOUND }
+  /admin/revalidate:
+    post:
+      tags: [admin]
+      summary: Recompute validation + trust for all places
+      operationId: revalidate
+      responses:
+        "200": { description: "{ places, features }" }
+        "403": { description: FORBIDDEN }
+  /owner/ownership-requests:
+    post:
+      tags: [owner]
+      summary: Apply for ownership of a place (any logged-in user)
+      operationId: requestOwnership
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [place_id]
+              properties:
+                place_id: { type: string }
+                justification: { type: string }
+      responses:
+        "201": { description: OwnershipRequest (status pending) }
+        "401": { description: UNAUTHORIZED }
+        "404": { description: NOT_FOUND }
+  /admin/ownership-requests:
+    get:
+      tags: [admin]
+      summary: Ownership requests
+      operationId: listOwnershipRequests
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [pending, approved, rejected, all], default: pending } }
+      responses:
+        "200": { description: "{ items: [OwnershipRequest] }" }
+        "403": { description: FORBIDDEN }
+  /admin/ownership-requests/{requestId}/verify:
+    parameters:
+      - { name: requestId, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [admin]
+      summary: Approve (assign owner) or reject
+      operationId: verifyOwnership
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, properties: { approved: { type: boolean, default: true } } }
+      responses:
+        "200": { description: OwnershipRequest (approved | rejected) }
+        "403": { description: FORBIDDEN }
+        "404": { description: NOT_FOUND }
+        "409": { description: CONFLICT (already decided) }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  parameters:
+    PlaceId: { name: placeId, in: path, required: true, schema: { type: string } }

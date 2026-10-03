@@ -10,6 +10,8 @@
 | [api.md](api.md) | Full HTTP API reference: conventions, auth, errors, every endpoint with real request/response examples |
 | [configuration.md](configuration.md) | Every setting (`.env` ↔ `app/config.py`), defaults, modes |
 | [operations.md](operations.md) | Run, test, demo script, MCP in Claude, Gemini/ONNX, Google login, troubleshooting |
+| [PITCH.md](PITCH.md) | 90-second pitch, evidence, architecture slide, Q&A |
+| [DEMO.md](DEMO.md) | Stage demo script: pre-flight checks, every click and expected result, fallbacks |
 | [openapi.json](openapi.json) | Machine-readable OpenAPI 3.1, exported from the app (`uv run python scripts/export_openapi.py`) |
 
 More detailed material is elsewhere in the repo:
@@ -21,7 +23,7 @@ More detailed material is elsewhere in the repo:
 
 ```bash
 uv sync                      # once, online
-uv run pytest                # ~190 tests, offline, ~5 s
+uv run pytest                # ~390 tests, offline, ~10 s
 uv run python main.py        # http://localhost:8000 → Swagger UI (/docs)
 ```
 
@@ -42,7 +44,7 @@ flowchart LR
     FE -->|/api/v1 + Bearer| API[FastAPI backend]
     EXT[City apps, partners] -->|/public/v1 + X-Api-Key| API
     CL[Claude / AI assistant] -->|MCP stdio| MCP[clients/mcp_server.py] -->|/public/v1| API
-    API --> DB[(SQLite)]
+    API --> DB[(SQLite / Postgres)]
     API --> M[(media/ photos)]
     API -.->|AI_MODE=gemini| G[Google Gemini]
     API -.->|AI_MODE=onnx| P[Phi-3.5 Vision local]
@@ -53,13 +55,24 @@ flowchart LR
 | Capability | Endpoint(s) | Feature |
 |---|---|---|
 | Search places by required accessibility features | `GET /api/v1/places?features=…` | F2 |
-| "Can I get in?" (wheelchair) | `GET /api/v1/places/{id}/check` | F2 |
+| "Can I get in?" for 7 needs profiles (wheelchair, crutches, stroller, blind, low vision, deaf, assistance dog) | `GET /api/v1/places/{id}/check?profile=` | F2/F14 |
+| Place screen: activity feed, gallery, "Potwierdzone dzisiaj" badge | `/places/{id}/activity`, `/photos`, `verification` | F12 |
 | Report a change with a photo | `POST /uploads`, `POST /reports` | F3 |
 | Community confirmations 👍/👎 | `POST /observations/{id}/votes` | F3 |
 | Automatic conflict detection → moderation | `GET /admin/queue`, `POST …/decision` | F3/F4 |
 | AI suggestions from photos (mock / Phi-3.5 / Gemini) | `POST /ai/image-tags` | F6/F10 |
 | Owner panel (verified owner observations) | `/owner/*` | F7 |
+| Admin dashboard tiles + audit trail | `/admin/stats`, `/places/{id}/history` | F13 |
 | Open data import (OpenStreetMap) | `POST /admin/imports` | F8 |
 | Open API for external apps | `/public/v1/*` | F5 |
 | AI assistant integration (MCP) | `clients/mcp_server.py` | F8 |
-| Persistence (SQLite via SQLAlchemy) | — | F9 |
+| Persistence (SQLite or Postgres via SQLAlchemy) | — | F9/F11 |
+| Docker (Postgres + API) | `docker compose up -d --build` | F11 |
+| Favourites, my reports | `/me/*` | F16 |
+| Location search, map markers, categories, search suggestions | `/places?lat&lon&bbox&sort&view=map`, `/categories`, `/geocode` | F17 |
+| Report drafts ("Zapisz szkic") | `POST /reports {draft}`, `PATCH`, `/submit` | F18 |
+| AI from text | `POST /ai/parse-text` | F19 |
+| Similar places, accessible route A→B (heuristic) | `/places/{id}/similar`, `/routes/accessible` | F20 |
+| Moderation extras: confidence, comments, abuse flag, merge, revalidate, ownership requests | `/admin/*`, `/owner/ownership-requests` | F21 |
+| Owner panel: profile, stats, edit, opening hours, photos, reply/approve, reminders, suggestions, batch, CSV | `/owner/*` | F22 |
+| `partial` state, data ageing, temporary issues with end date, place types | across the API | F23 |

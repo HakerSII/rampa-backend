@@ -11,6 +11,11 @@ FEATURE_KEYWORDS: dict[FeatureKey, tuple[str, ...]] = {
     FeatureKey.RAMP: ("ramp", "podjazd"),
     FeatureKey.ACCESSIBLE_TOILET: ("toilet", "wc", "toaleta"),
     FeatureKey.INDUCTION_LOOP: ("induction", "pętla"),
+    FeatureKey.BRAILLE: ("braille", "brajl"),
+    FeatureKey.TACTILE_PATHS: ("tactile", "ścieżk"),
+    FeatureKey.LOWERED_CURB: ("curb", "kerb", "krawęż"),
+    FeatureKey.GOOD_LIGHTING: ("poorly lit", "dark", "lighting", "ciemn", "oświetl"),
+    FeatureKey.ASSISTANCE_DOG_ALLOWED: ("guide dog", "assistance dog", "pies", "psa"),
 }
 EXTRA_TAGS: dict[str, tuple[str, ...]] = {
     "awaria": ("out of order", "broken", "not working", "nieczynn", "awari", "zepsut", "damaged"),

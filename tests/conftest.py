@@ -12,6 +12,11 @@ from app.domain.model import GoogleIdentity
 # tests default to in-memory storage (set before app modules create the module-level app)
 os.environ.setdefault("REPO_MODE", "memory")
 
+# never read the developer's .env in tests (it may hold AI_MODE=gemini + a real key → network calls, quota)
+from app.config import Settings  # noqa: E402
+
+Settings.model_config["env_file"] = None
+
 NOW = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
 OSM_SNAPSHOT = Path(__file__).parents[1] / "data" / "osm_krakow_tauron.json"
 

@@ -1,0 +1,90 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F13 Admin panel
+  version: 0.1.0-mvp
+  description: Dashboard tiles + audit trail of a place (admin; history also for the place owner).
+servers:
+  - url: http://localhost:8000/api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: admin
+paths:
+  /admin/stats:
+    get:
+      tags: [admin]
+      summary: Dashboard tiles (value + % change vs yesterday)
+      operationId: adminStats
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminStats" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /places/{placeId}/history:
+    parameters:
+      - { name: placeId, in: path, required: true, schema: { type: string, examples: [plc_mnk] } }
+    get:
+      tags: [admin]
+      summary: Audit trail "Historia i audyt", newest first (admin or owner of the place)
+      operationId: placeHistory
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/HistoryEvent" } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code: { type: string }
+                  message: { type: string }
+  schemas:
+    StatTile:
+      type: object
+      properties:
+        value: { type: integer }
+        change_pct: { type: [number, "null"], description: "today vs yesterday in %, null if yesterday = 0" }
+    AdminStats:
+      type: object
+      properties:
+        new_reports_today: { $ref: "#/components/schemas/StatTile" }
+        data_conflicts: { $ref: "#/components/schemas/StatTile" }
+        low_confidence: { $ref: "#/components/schemas/StatTile" }
+        observations_today: { $ref: "#/components/schemas/StatTile" }
+        places: { $ref: "#/components/schemas/StatTile" }
+        updated_at: { type: string, format: date-time }
+    HistoryEvent:
+      type: object
+      properties:
+        event: { type: string, enum: [observation_added, conflict_detected, conflict_resolved] }
+        description: { type: string, examples: ["community: elevator = no (tymczasowo) · REJECTED · 👍3 👎0"] }
+        created_at: { type: string, format: date-time }
+        actor:
+          oneOf:
+            - type: "null"
+            - type: object
+              properties:
+                id: { type: string }
+                display_name: { type: string }
+        observation_id: { type: [string, "null"] }
+        queue_id: { type: [string, "null"] }

@@ -50,17 +50,31 @@ class Category(BaseModel):
     label: str
 
 
+class VerificationOut(BaseModel):
+    status: str
+    label: str
+    last_verified: str | None
+    confidence: float
+    confidence_level: str
+    sources: list[str]
+
+
 class PlaceSummary(BaseModel):
     id: str
     name: str
     category: Category
     location: Location
     accessibility_summary: list[FeatureKey]
+    verification: VerificationOut | None = None
+    distance_m: int | None = None
+    place_type: str = "venue"
 
 
 class PlaceOut(PlaceSummary):
     short_description: str
     address: str
+    opening_hours: list[dict] = []
+    contact: dict = {}
 
 
 class PlacePage(BaseModel):
@@ -143,8 +157,17 @@ CATEGORY_LABELS = {"museum": "Muzeum", "cafe": "Kawiarnia", "culture": "Kultura"
                    "other": "Inne"}
 
 
-def place_summary(place: Place, yes_features: list[FeatureKey]) -> PlaceSummary:
+def verification_out(v) -> VerificationOut:
+    return VerificationOut(status=v.status, label=v.label, last_verified=iso(v.last_verified),
+                           confidence=v.confidence, confidence_level=v.confidence_level, sources=v.sources)
+
+
+def place_summary(place: Place, yes_features: list[FeatureKey], verification=None,
+                  distance: int | None = None) -> PlaceSummary:
     return PlaceSummary(
+        distance_m=distance,
+        place_type=place.place_type,
+        verification=verification_out(verification) if verification else None,
         id=place.id, name=place.name,
         category=Category(key=place.category, label=CATEGORY_LABELS.get(place.category, place.category)),
         location=Location(lat=place.location.lat, lon=place.location.lon),
@@ -152,9 +175,10 @@ def place_summary(place: Place, yes_features: list[FeatureKey]) -> PlaceSummary:
     )
 
 
-def place_out(place: Place, yes_features: list[FeatureKey]) -> PlaceOut:
-    return PlaceOut(**place_summary(place, yes_features).model_dump(),
-                    short_description=place.short_description, address=place.address)
+def place_out(place: Place, yes_features: list[FeatureKey], verification=None) -> PlaceOut:
+    return PlaceOut(**place_summary(place, yes_features, verification).model_dump(),
+                    short_description=place.short_description, address=place.address,
+                    opening_hours=place.opening_hours, contact=place.contact)
 
 
 def feature_state_out(s: FeatureStateRecord) -> FeatureStateOut:
@@ -203,17 +227,34 @@ class AuthorOut(BaseModel):
     display_name: str
 
 
-class ReportIn(BaseModel):
-    place_id: str
-    element: str
-    current_state: str
-    severity: str
-    nature: str
-    description: str
+class ReportFields(BaseModel):
+    element: str | None = None
+    current_state: str | None = None
+    severity: str | None = None
+    nature: str | None = None
+    description: str | None = None
     photo_ids: list[str] = []
 
 
-class ReportOut(ReportIn):
+class ReportIn(ReportFields):
+    place_id: str
+    draft: bool = False  # true → "Zapisz szkic": no observation until submit
+
+
+class ReportPatchIn(ReportFields):
+    photo_ids: list[str] | None = None
+
+
+class ReplyOut(BaseModel):
+    author: "AuthorOut"
+    text: str
+    created_at: str
+
+
+class ReportOut(ReportFields):
+    place_id: str
+    replies: list[ReplyOut] = []
+    owner_status: str | None = None
     id: str
     status: str
     author: AuthorOut
@@ -227,6 +268,7 @@ class ObservationIn(BaseModel):
     temporary: bool = False
     comment: str = ""
     photo_ids: list[str] = []
+    valid_until: str | None = None  # ISO date-time; temporary issue end (future)
 
 
 class VotesOut(BaseModel):
@@ -255,6 +297,7 @@ class ObservationOut(BaseModel):
     validation: ValidationOut
     confidence: float
     created_at: str
+    valid_until: str | None = None
 
 
 class ObservationList(BaseModel):
@@ -281,14 +324,15 @@ def photo_out(photo: Photo) -> PhotoOut:
 
 def observation_out(uc, o: Observation, me: User | None = None) -> ObservationOut:
     photos = [p for p in (uc.repo.get_photo(i) for i in o.evidence_ids) if p]
-    reason = "contradicting observations within 30 days" if o.validation == ValidationStatus.CONFLICT else ""
+    reason = ("contradicting observations within 30 days" if o.validation == ValidationStatus.CONFLICT
+              else (o.flag_reason or "") if o.validation == ValidationStatus.FLAGGED else "")
     return ObservationOut(
         id=o.id, place_id=o.place_id, feature=o.feature, value=o.value, temporary=o.temporary,
         source=o.source, author=author_out(uc, o.author_id), report_id=o.report_id, comment=o.comment,
         evidence=[photo_out(p) for p in photos],
         votes=VotesOut(up=o.up_votes, down=o.down_votes, my_vote=o.votes.get(me.id) if me else None),
         validation=ValidationOut(status=o.validation, reason=reason),
-        confidence=o.confidence, created_at=iso(o.created_at),
+        confidence=o.confidence, created_at=iso(o.created_at), valid_until=iso(o.valid_until),
     )
 
 
@@ -297,7 +341,9 @@ def report_out(uc, r: Report) -> ReportOut:
         id=r.id, place_id=r.place_id, element=r.element, current_state=r.current_state,
         severity=r.severity, nature=r.nature, description=r.description, photo_ids=r.photo_ids,
         status=r.status, author=author_out(uc, r.author_id), created_at=iso(r.created_at),
-        observation_ids=r.observation_ids,
+        observation_ids=r.observation_ids, owner_status=r.owner_status,
+        replies=[ReplyOut(author=author_out(uc, x["author_id"]), text=x["text"], created_at=x["created_at"])
+                 for x in r.replies],
     )
 
 
@@ -324,10 +370,17 @@ class QueuePage(BaseModel):
     counts: dict[str, int]
 
 
+class QueueCommentOut(BaseModel):
+    author: AuthorOut
+    text: str
+    created_at: str
+
+
 class QueueDetailOut(QueueItemOut):
     summary: str
     observations: list[ObservationOut]
     feature_state: FeatureStateOut
+    comments: list[QueueCommentOut] = []
 
 
 class DecisionIn(BaseModel):
@@ -359,7 +412,73 @@ def queue_detail_out(uc, q: QueueItem, me: User) -> QueueDetailOut:
         summary=f"Sprzeczne zgłoszenia: {LABELS_PL[q.feature]}",
         observations=[observation_out(uc, o, me) for o in observations],
         feature_state=feature_state_out(state),
+        comments=[QueueCommentOut(author=author_out(uc, c["author_id"]), text=c["text"], created_at=c["created_at"])
+                  for c in q.comments],
     )
+
+
+# ---------------------------------------------------------------- place screen (F12)
+class ActivityItemOut(BaseModel):
+    type: str
+    label: str
+    observation_id: str
+    feature: FeatureKey
+    value: ObservationValue
+    source: ObservationSource
+    author: AuthorOut
+    comment: str
+    photo_url: str | None
+    votes_up: int
+    validation: ValidationStatus
+    created_at: str
+
+
+class ActivityList(BaseModel):
+    items: list[ActivityItemOut]
+
+
+class GalleryPhotoOut(BaseModel):
+    id: str
+    url: str
+    author: AuthorOut | None
+    kind: str = "evidence"  # evidence (from observations) | owner (presentation photos)
+    feature: FeatureKey | None = None
+    observation_id: str | None = None
+    created_at: str | None = None
+
+
+class GalleryOut(BaseModel):
+    items: list[GalleryPhotoOut]
+    total: int
+
+
+def activity_item_out(uc, o: Observation) -> ActivityItemOut:
+    from app.domain.verification import ACTIVITY_LABELS
+    kind = uc.activity_type(o)
+    first = next((p for p in (uc.repo.get_photo(i) for i in o.evidence_ids) if p), None)
+    return ActivityItemOut(
+        type=kind, label=ACTIVITY_LABELS[kind], observation_id=o.id, feature=o.feature, value=o.value,
+        source=o.source, author=author_out(uc, o.author_id), comment=o.comment,
+        photo_url=first.url if first else None, votes_up=o.up_votes, validation=o.validation,
+        created_at=iso(o.created_at),
+    )
+
+
+# ---------------------------------------------------------------- ownership requests (F21)
+class OwnershipRequestOut(BaseModel):
+    id: str
+    place_id: str
+    user: AuthorOut
+    justification: str
+    status: str
+    created_at: str
+    decided_at: str | None
+
+
+def ownership_out(uc, r) -> OwnershipRequestOut:
+    return OwnershipRequestOut(id=r.id, place_id=r.place_id, user=author_out(uc, r.user_id),
+                               justification=r.justification, status=r.status, created_at=iso(r.created_at),
+                               decided_at=iso(r.decided_at))
 
 
 def user_out(user: User) -> UserOut:

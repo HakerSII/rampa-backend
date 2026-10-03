@@ -1,0 +1,58 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F18 Report drafts
+  version: 0.1.0-mvp
+  description: >
+    POST /reports with draft=true creates a draft (no observation). PATCH edits it,
+    /submit validates fully and creates the observation. Without draft → submitted immediately (F3).
+servers:
+  - url: http://localhost:8000/api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: reports
+paths:
+  /reports/{reportId}:
+    parameters:
+      - { name: reportId, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [reports]
+      summary: Edit a draft (author only; partial update)
+      operationId: updateReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReportFields" }
+      responses:
+        "200": { description: Updated draft }
+        "400": { description: VALIDATION_ERROR }
+        "403": { description: FORBIDDEN (not the author) }
+        "404": { description: NOT_FOUND }
+        "409": { description: CONFLICT (not a draft) }
+  /reports/{reportId}/submit:
+    parameters:
+      - { name: reportId, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [reports]
+      summary: Submit a draft → observation (full validation)
+      operationId: submitReport
+      responses:
+        "200": { description: Submitted report with observation_ids }
+        "400": { description: "VALIDATION_ERROR (message lists missing fields)" }
+        "403": { description: FORBIDDEN }
+        "404": { description: NOT_FOUND }
+        "409": { description: CONFLICT (already submitted) }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  schemas:
+    ReportFields:
+      type: object
+      properties:
+        element: { type: string }
+        current_state: { type: string, enum: [works, partially_works, not_working] }
+        severity: { type: string, enum: [critical, obstacle, minor] }
+        nature: { type: string, enum: [permanent, temporary, unknown] }
+        description: { type: string, maxLength: 1000 }
+        photo_ids: { type: array, items: { type: string }, maxItems: 5 }

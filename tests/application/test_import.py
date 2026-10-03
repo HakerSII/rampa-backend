@@ -30,8 +30,9 @@ def uc(tmp_path):
 
 async def test_first_import_creates_places_and_open_data_observations(uc):
     r = await uc.import_osm(user(uc, "admin"))
+    # F23: "Sklep Limited" (wheelchair=limited) now imported as partial instead of skipped
     assert (r.points, r.places_created, r.places_matched, r.observations, r.skipped_unnamed, r.skipped_no_data) == (
-        5, 2, 1, 4, 1, 1)
+        5, 3, 1, 5, 1, 0)
     (cafe,) = uc.search_places(q="Kawiarnia Testowa")
     assert cafe.id.startswith("plc_osm_") and cafe.external_id == "osm:50.070000,19.990000"
     states = uc.get_accessibility(cafe.id)
@@ -52,7 +53,7 @@ async def test_matched_place_gets_open_data_observation(uc):
 async def test_import_is_idempotent(uc):
     await uc.import_osm(user(uc, "admin"))
     r = await uc.import_osm(user(uc, "admin"))
-    assert (r.places_created, r.places_matched, r.observations) == (0, 3, 0)
+    assert (r.places_created, r.places_matched, r.observations) == (0, 4, 0)
 
 
 @pytest.mark.parametrize("who, error", [("anna", Forbidden), (None, Unauthorized)])

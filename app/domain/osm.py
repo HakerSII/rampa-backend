@@ -6,7 +6,7 @@ from app.domain.enums import FeatureKey, ObservationValue
 
 UNNAMED = "Brak nazwy"
 MATCH_RADIUS_M = 50.0
-YES_NO = {"yes": ObservationValue.YES, "no": ObservationValue.NO}  # "limited" → skipped (no partial in MVP)
+YES_NO = {"yes": ObservationValue.YES, "limited": ObservationValue.PARTIAL, "no": ObservationValue.NO}
 
 
 @dataclass(frozen=True, slots=True)

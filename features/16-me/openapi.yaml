@@ -1,0 +1,63 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F16 Me
+  version: 0.1.0-mvp
+  description: Favourite places and my reports (logged-in user).
+servers:
+  - url: http://localhost:8000/api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: me
+paths:
+  /me/favorites:
+    get:
+      tags: [me]
+      summary: My favourite places (PlaceSummary with verification)
+      operationId: listFavorites
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { type: object } }
+        "401": { description: UNAUTHORIZED }
+  /me/favorites/{placeId}:
+    parameters:
+      - { name: placeId, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [me]
+      summary: Add to favourites (idempotent)
+      operationId: addFavorite
+      responses:
+        "204": { description: Added }
+        "401": { description: UNAUTHORIZED }
+        "404": { description: NOT_FOUND }
+    delete:
+      tags: [me]
+      summary: Remove from favourites (idempotent)
+      operationId: removeFavorite
+      responses:
+        "204": { description: Removed }
+        "401": { description: UNAUTHORIZED }
+  /me/reports:
+    get:
+      tags: [me]
+      summary: My reports, newest first
+      operationId: myReports
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { type: object } }
+        "401": { description: UNAUTHORIZED }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }

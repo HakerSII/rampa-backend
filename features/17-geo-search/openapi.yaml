@@ -1,0 +1,111 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F17 Geo search
+  version: 0.1.0-mvp
+  description: >
+    Extends GET /places (location, radius, bbox, sort, pagination, map view) and adds
+    /categories and /geocode (local index, offline).
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: places
+  - name: dictionaries
+paths:
+  /places:
+    get:
+      tags: [places]
+      summary: Search places (features AND, text, category, near, radius, bbox, sort, pages, map)
+      operationId: searchPlacesGeo
+      parameters:
+        - { name: features, in: query, schema: { type: string }, description: "CSV, AND, state must be yes" }
+        - { name: category, in: query, schema: { type: string } }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: lat, in: query, schema: { type: number }, description: "with lon → distance_m, default sort nearest" }
+        - { name: lon, in: query, schema: { type: number } }
+        - { name: radius_m, in: query, schema: { type: integer, default: 2000 } }
+        - { name: bbox, in: query, schema: { type: string }, description: "minLon,minLat,maxLon,maxLat" }
+        - { name: sort, in: query, schema: { type: string, enum: [nearest, name, recently_verified] } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: view, in: query, schema: { type: string, enum: [list, map], default: list } }
+      responses:
+        "200":
+          description: "view=list → PlacePage; view=map → MapMarkers"
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/PlacePage"
+                  - $ref: "#/components/schemas/MapMarkers"
+        "400": { description: "VALIDATION_ERROR (nearest without lat/lon, bad bbox/page, lat without lon)" }
+  /categories:
+    get:
+      tags: [dictionaries]
+      summary: Categories with counts
+      operationId: listCategories
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    key: { type: string, examples: [museum] }
+                    label: { type: string, examples: [Muzeum] }
+                    count: { type: integer }
+  /geocode:
+    get:
+      tags: [dictionaries]
+      summary: Search-box suggestions from local place names and addresses (max 10)
+      operationId: geocode
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 2 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    label: { type: string }
+                    place_id: { type: string }
+                    location: { $ref: "#/components/schemas/Location" }
+        "400": { description: VALIDATION_ERROR (q shorter than 2) }
+components:
+  schemas:
+    Location:
+      type: object
+      properties:
+        lat: { type: number }
+        lon: { type: number }
+    PlacePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            description: PlaceSummary + distance_m (int, null without lat/lon)
+        page: { type: integer }
+        page_size: { type: integer }
+        total: { type: integer }
+    MapMarkers:
+      type: object
+      properties:
+        total: { type: integer }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              location: { $ref: "#/components/schemas/Location" }
+              category: { type: string }
+              marker: { type: string, enum: [accessible, partial, inaccessible, unknown] }

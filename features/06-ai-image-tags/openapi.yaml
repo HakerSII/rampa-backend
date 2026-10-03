@@ -60,7 +60,7 @@ components:
             details: { type: object, additionalProperties: true }
     FeatureKey:
       type: string
-      enum: [step_free_entrance, ramp, elevator, accessible_toilet, induction_loop]
+      enum: [step_free_entrance, ramp, elevator, accessible_toilet, induction_loop, braille, tactile_paths, good_lighting, lowered_curb, platform_elevator, crutches_friendly, sign_language_interpreter, assistance_dog_allowed]
     ImageAnalysis:
       type: object
       description: Same schema as analyze_image() in get_model.py
@@ -91,6 +91,6 @@ components:
             - type: object
               properties:
                 element: { $ref: "#/components/schemas/FeatureKey" }
-                current_state: { type: string, enum: [works, not_working] }
+                current_state: { type: string, enum: [works, partially_works, not_working] }
                 severity: { type: string, enum: [critical, obstacle, minor] }
         model: { type: string, enum: [phi-3.5-vision-onnx, gemini, mock] }

@@ -130,13 +130,13 @@ components:
             details: { type: object, additionalProperties: true }
     FeatureKey:
       type: string
-      enum: [step_free_entrance, ramp, elevator, accessible_toilet, induction_loop]
+      enum: [step_free_entrance, ramp, elevator, accessible_toilet, induction_loop, braille, tactile_paths, good_lighting, lowered_curb, platform_elevator, crutches_friendly, sign_language_interpreter, assistance_dog_allowed]
     FeatureStateValue:
       type: string
-      enum: ["yes", "no", unknown]
+      enum: ["yes", partial, "no", unknown]
     ObservationValue:
       type: string
-      enum: ["yes", "no"]
+      enum: ["yes", partial, "no"]
     ObservationSource:
       type: string
       enum: [community, verified_owner, admin]

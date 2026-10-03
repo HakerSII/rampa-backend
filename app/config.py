@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Literal
 from urllib.parse import quote
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -37,6 +38,11 @@ class Settings(BaseSettings):
     osm_file: str = "data/osm_krakow_tauron.json"  # offline OSM snapshot
     public_api_keys: str = "demo-key"  # comma-separated X-Api-Key values for /public/v1
     public_rate_limit_per_min: int = 60
+
+    @field_validator("demo_now", mode="before")
+    @classmethod
+    def _empty_is_none(cls, v):
+        return None if v == "" else v  # "DEMO_NOW=" in .env / compose = not set
 
     @property
     def db_url(self) -> str:
