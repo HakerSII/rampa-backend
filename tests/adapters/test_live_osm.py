@@ -1,5 +1,6 @@
 """F27: live Nominatim geocoder + Overpass OSM source (httpx.MockTransport — no network)."""
 import json
+from urllib.parse import parse_qs
 
 import httpx
 import pytest
@@ -58,7 +59,7 @@ async def test_overpass_maps_nodes_and_way_centers():
         OsmPoint("Muzeum B", "limited", "", "museum", 50.07, 19.95),
         OsmPoint("", "yes", "", "inne", 50.0, 19.0),
     ]
-    body = seen[0].content.decode()
+    body = parse_qs(seen[0].content.decode())["data"][0]  # form-encoded
     assert "around:1500,50.0647,19.945" in body and "wheelchair" in body
 
 

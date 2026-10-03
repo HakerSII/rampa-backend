@@ -66,7 +66,7 @@ class CategoryOut(BaseModel):
 
 class GeocodeOut(BaseModel):
     label: str
-    place_id: str
+    place_id: str | None  # null = external geocoder hit (F27)
     location: Location
 
 
@@ -99,9 +99,9 @@ async def list_categories(uc: UC):
 
 @router.get("/geocode", response_model=list[GeocodeOut], tags=["dictionaries"])
 async def geocode(q: str, uc: UC):
-    """Search-box suggestions from the local place index (offline)."""
+    """Search-box suggestions: local places first, then Nominatim hits (GEOCODER=nominatim, place_id null)."""
     return [GeocodeOut(label=h.label, place_id=h.place_id, location=Location(lat=h.location.lat, lon=h.location.lon))
-            for h in uc.geocode(q)]
+            for h in await uc.geocode_live(q)]
 
 
 @router.post("/places/resolve", response_model=ResolvedPlaceOut, tags=["places"],

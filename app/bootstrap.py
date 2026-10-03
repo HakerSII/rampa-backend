@@ -28,6 +28,21 @@ def build_vision(settings: Settings):
     return mock
 
 
+def build_geocoder(settings: Settings):
+    if settings.geocoder != "nominatim":
+        return None
+    from app.adapters.outbound.osm_live import NominatimGeocoder
+    return NominatimGeocoder(settings.nominatim_url, settings.http_user_agent, timeout_s=settings.external_timeout_s)
+
+
+def build_osm_live(settings: Settings):
+    """Only used on explicit admin import {"source": "overpass"}; falls back to the snapshot."""
+    from app.adapters.outbound.osm_live import FallbackOsmSource, OverpassOsmSource
+    live = OverpassOsmSource(settings.overpass_url, settings.osm_center_lat, settings.osm_center_lon,
+                             settings.osm_radius_m, settings.http_user_agent, timeout_s=max(settings.external_timeout_s, 25))
+    return FallbackOsmSource(live, FileOsmSource(settings.osm_file))
+
+
 def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None) -> UseCases:
     clock = FixedClock(settings.demo_now) if settings.demo_now else SystemClock()
     if verifier is None and settings.auth_mode == "google":
@@ -41,7 +56,7 @@ def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None
         auth_mode=settings.auth_mode, admin_emails=settings.admin_email_list,
         session_ttl_hours=settings.session_ttl_hours, anonymous_auth=settings.anonymous_auth,
         anonymous_ttl_days=settings.anonymous_ttl_days, vision=vision,
-        osm=FileOsmSource(settings.osm_file),
+        osm=FileOsmSource(settings.osm_file), geocoder=build_geocoder(settings), osm_live=build_osm_live(settings),
     )
     if repo.is_empty():
         use_cases.load_seed()

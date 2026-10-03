@@ -27,7 +27,13 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `PUBLIC_API_KEYS` | `demo-key` | comma list of valid `X-Api-Key` values |
 | `PUBLIC_RATE_LIMIT_PER_MIN` | `60` | requests per minute per key (fixed window, in memory) |
 | **OSM** | | |
-| `OSM_FILE` | `data/osm_krakow_tauron.json` | snapshot used by `POST /admin/imports {"source":"osm_file"}` |
+| `OSM_FILE` | `data/osm_krakow_tauron.json` | snapshot used by `POST /admin/imports {"source":"osm_file"}` and as the Overpass fallback |
+| `GEOCODER` | `local` | `local` = place index only (offline, deterministic) · `nominatim` = local places first, then Nominatim hits in Kraków; failure → local |
+| `NOMINATIM_URL` | `https://nominatim.openstreetmap.org/search` | Nominatim search endpoint |
+| `OVERPASS_URL` | `https://overpass-api.de/api/interpreter` | used by `POST /admin/imports {"source":"overpass"}`; failure / empty → `OSM_FILE` |
+| `OSM_CENTER_LAT`, `OSM_CENTER_LON`, `OSM_RADIUS_M` | `50.0647`, `19.945`, `1500` | Overpass search area (Rynek Główny) |
+| `EXTERNAL_TIMEOUT_S` | `10` | timeout for Nominatim (Overpass: at least 25 s) |
+| `HTTP_USER_AGENT` | `RampaKrakowBezBarier/0.1 (HackYeah 2026)` | identifies the app to OSM services (usage policy) |
 | **AI** | | |
 | `AI_MODE` | `mock` | `mock` = deterministic, offline · `onnx` = Phi-3.5 Vision locally · `gemini` = Google Gemini API. Any failure → mock |
 | `AI_TIMEOUT_S` | `60` | max time per model call before falling back to mock |

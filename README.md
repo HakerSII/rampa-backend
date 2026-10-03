@@ -67,6 +67,7 @@ uv run python main.py                                          # http://localhos
 | 24 | Map layer: `GET /observations?active&bbox&value&current` (front-end request) | [plan](features/24-map-observations/plan.md) | [openapi](features/24-map-observations/openapi.yaml) | 45 min |
 | 25 | Full feature model: 35 features (+ `escalator`), group `parking` | [plan](features/25-features-full/plan.md) | specs updated | 30 min |
 | 26 | Escalate + user abuse reports (typed moderation queue) | [plan](features/26-escalate-abuse/plan.md) | [openapi](features/26-escalate-abuse/openapi.yaml) | 45 min |
+| 27 | Live OSM: Nominatim geocoder (`GEOCODER=nominatim`), Overpass import `{"source":"overpass"}`; fallback to local / snapshot | [plan](features/27-live-geo/plan.md) | endpoints unchanged | 45 min |
 | 12b | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | [plan](features/12-frontend-bridge/plan.md) | [openapi](features/12-frontend-bridge/openapi.yaml) | 45 min |
 
 - F0 blocks all.

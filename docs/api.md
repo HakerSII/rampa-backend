@@ -290,7 +290,7 @@ All 35 features in 8 groups; features without data come back as `unknown`.
 ```
 
 - `GET /categories` → `[ { "key": "museum", "label": "Muzeum", "count": 1 }, … ]`.
-- `GET /geocode?q=muz` → `[ { "label": "Muzeum Narodowe w Krakowie, al. 3 Maja 1, 30-062 Kraków", "place_id": "plc_mnk", "location": {…} } ]`. It matches place names and addresses (at least 2 characters, max 10 results), works offline and doesn't use Nominatim.
+- `GET /geocode?q=muz` → `[ { "label": "Muzeum Narodowe w Krakowie, al. 3 Maja 1, 30-062 Kraków", "place_id": "plc_mnk", "location": {…} } ]`. It matches place names and addresses (at least 2 characters, max 10 results). With `GEOCODER=nominatim` (F27), Nominatim hits limited to Kraków follow the local places with `"place_id": null` (an address without accessibility data yet; hits within 50 m of a known place are dropped). Nominatim failure → local results only. Default `local` works offline.
 
 ## 4b. Similar places and accessible route
 

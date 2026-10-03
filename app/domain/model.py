@@ -71,6 +71,13 @@ class Place:
 
 
 @dataclass(slots=True)
+class GeocodeHit:
+    label: str
+    place_id: str | None  # None = external geocoder hit (no accessibility data yet)
+    location: GeoPoint
+
+
+@dataclass(slots=True)
 class Observation:
     id: str
     place_id: str

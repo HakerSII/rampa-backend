@@ -668,7 +668,7 @@
           "dictionaries"
         ],
         "summary": "Geocode",
-        "description": "Search-box suggestions from the local place index (offline).",
+        "description": "Search-box suggestions: local places first, then Nominatim hits (GEOCODER=nominatim, place_id null).",
         "operationId": "geocode_api_v1_geocode_get",
         "parameters": [
           {
@@ -5280,7 +5280,14 @@
             "title": "Label"
           },
           "place_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Place Id"
           },
           "location": {

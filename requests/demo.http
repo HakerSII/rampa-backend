@@ -714,6 +714,13 @@ Content-Type: application/json
 
 {"source": "osm_file"}
 
+### I7. F27: live import from Overpass → 200; source "overpass", or "osm_file (fallback)" when offline
+POST {{base}}/admin/imports
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"source": "overpass"}
+
 ### 400 VALIDATION_ERROR — unknown import source
 POST {{base}}/admin/imports
 Authorization: Bearer {{admin}}

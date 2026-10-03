@@ -1,4 +1,5 @@
 """All MVP use cases (application layer). Depends only on domain + ports."""
+import logging
 import secrets
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ from app.application.ports import (
     FileStorage,
     IdentityVerifier,
     IdGenerator,
+    Geocoder,
     OsmSource,
     Repo,
     VisionAnalyzer,
@@ -52,6 +54,7 @@ from app.domain.errors import (
 from app.domain.model import (
     CheckResult,
     FeatureStateRecord,
+    GeocodeHit,
     GeoPoint,
     ImageAnalysis,
     Observation,
@@ -106,13 +109,6 @@ class PlaceResults:
 class CategoryCount:
     key: str
     count: int
-
-
-@dataclass(slots=True)
-class GeocodeHit:
-    label: str
-    place_id: str
-    location: GeoPoint
 
 
 @dataclass(slots=True)
@@ -198,6 +194,9 @@ REPORT_VALUE = {CurrentState.WORKS: ObservationValue.YES, CurrentState.PARTIALLY
                 CurrentState.NOT_WORKING: ObservationValue.NO}
 
 
+log = logging.getLogger(__name__)
+
+
 def _enum(enum_cls, value, field: str):
     try:
         return enum_cls(value)
@@ -210,7 +209,8 @@ class UseCases:
                  verifier: IdentityVerifier | None, *, auth_mode: str = "demo",
                  admin_emails: list[str] | None = None, session_ttl_hours: int = 24,
                  anonymous_auth: bool = True, anonymous_ttl_days: int = 365,
-                 vision: VisionAnalyzer | None = None, osm: OsmSource | None = None):
+                 vision: VisionAnalyzer | None = None, osm: OsmSource | None = None,
+                 geocoder: Geocoder | None = None, osm_live: OsmSource | None = None):
         self.repo = repo
         self.clock = clock
         self.ids = ids
@@ -223,6 +223,8 @@ class UseCases:
         self.anonymous_ttl = timedelta(days=anonymous_ttl_days)
         self.vision = vision
         self.osm = osm
+        self.geocoder = geocoder
+        self.osm_live = osm_live
 
     # ------------------------------------------------------------------ demo data
     def load_seed(self) -> None:
@@ -377,6 +379,21 @@ class UseCases:
                 if needle in p.name.casefold() or needle in (p.address or "").casefold()]
         return hits[:10]
 
+    async def geocode_live(self, q: str) -> list[GeocodeHit]:
+        """F27: local places first (they have data), then live geocoder hits; geocoder failure → local only."""
+        local = self.geocode(q)
+        if self.geocoder is None:
+            return local
+        try:
+            external = await self.geocoder.search(q.strip())
+        except Exception as e:  # noqa: BLE001 — network / quota / parse → offline answer
+            log.warning("geocoder failed (%s) → local only", e)
+            return local
+        places = self.repo.list_places()
+        fresh = [h for h in external
+                 if not any(haversine_m(p.location, h.location) <= domain_osm.MATCH_RADIUS_M for p in places)]
+        return (local + fresh)[:10]
+
     def get_place(self, place_id: str) -> Place:
         place = self.repo.get_place(place_id)
         if place is None:
@@ -504,11 +521,12 @@ class UseCases:
     async def import_osm(self, admin: User | None, source: str = "osm_file") -> ImportResult:
         """OSM points → open_data observations. Idempotent; matches places by external id or name ≤50 m."""
         self._require_admin(admin)
-        if source != "osm_file" or self.osm is None:
-            raise ValidationFailed(f"unknown import source: {source}")
-        points = await self.osm.fetch()
+        osm = {"osm_file": self.osm, "overpass": self.osm_live}.get(source)
+        if osm is None:
+            raise ValidationFailed(f"unknown or unavailable import source: {source}")
+        points = await osm.fetch()
 
-        result = ImportResult(source, points=len(points))
+        result = ImportResult(getattr(osm, "last_source", source), points=len(points))
         osm_user = self.repo.get_user(OSM_AUTHOR_ID)
         touched: set[tuple[str, FeatureKey]] = set()
         for p in points:

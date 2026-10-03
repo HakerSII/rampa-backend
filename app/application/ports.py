@@ -7,6 +7,7 @@ from typing import Protocol
 from app.domain.enums import FeatureKey
 from app.domain.osm import OsmPoint
 from app.domain.model import (
+    GeocodeHit,
     FeatureStateRecord,
     GoogleIdentity,
     ImageAnalysis,
@@ -95,6 +96,12 @@ class VisionAnalyzer(Protocol):
 
 class OsmSource(Protocol):
     async def fetch(self) -> list[OsmPoint]: ...
+
+
+class Geocoder(Protocol):
+    async def search(self, q: str) -> list[GeocodeHit]:
+        """Raise on failure; the use case falls back to the local index."""
+        ...
 
 
 class IdentityVerifier(Protocol):
