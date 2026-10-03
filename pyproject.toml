@@ -16,6 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 ai = ["onnxruntime-genai>=0.17"]
+mcp = ["fastmcp>=2.10"]
 
 [dependency-groups]
 dev = [

@@ -4,8 +4,17 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import timedelta
 
-from app.application.ports import Clock, FileStorage, IdentityVerifier, IdGenerator, Repo, VisionAnalyzer
-from app.domain import check as domain_check, suggestions, trust, validation
+from app.application.ports import (
+    Clock,
+    FileStorage,
+    IdentityVerifier,
+    IdGenerator,
+    OsmSource,
+    Repo,
+    VisionAnalyzer,
+)
+from app.domain import check as domain_check, osm as domain_osm, suggestions, trust, validation
+from app.domain.geo import haversine_m
 from app.domain.enums import (
     CurrentState,
     DecisionAction,
@@ -32,6 +41,7 @@ from app.domain.errors import (
 from app.domain.model import (
     CheckResult,
     FeatureStateRecord,
+    GeoPoint,
     ImageAnalysis,
     Observation,
     Photo,
@@ -41,7 +51,7 @@ from app.domain.model import (
     Session,
     User,
 )
-from app.seed import load_seed
+from app.seed import OSM_AUTHOR_ID, load_seed
 
 DEMO_TOKEN_PREFIX = "demo-"
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
@@ -49,6 +59,17 @@ MAX_PHOTOS = 5
 MAX_OWNER_BATCH = 10
 MAX_DESCRIPTION = 1000
 IMAGE_SIGNATURES = {b"\x89PNG\r\n\x1a\n": "png", b"\xff\xd8\xff": "jpg"}
+
+
+@dataclass(slots=True)
+class ImportResult:
+    source: str
+    points: int = 0
+    places_created: int = 0
+    places_matched: int = 0
+    observations: int = 0
+    skipped_unnamed: int = 0
+    skipped_no_data: int = 0
 
 
 @dataclass(slots=True)
@@ -71,7 +92,7 @@ class UseCases:
     def __init__(self, repo: Repo, clock: Clock, ids: IdGenerator, storage: FileStorage,
                  verifier: IdentityVerifier | None, *, auth_mode: str = "demo",
                  admin_emails: list[str] | None = None, session_ttl_hours: int = 24,
-                 vision: VisionAnalyzer | None = None):
+                 vision: VisionAnalyzer | None = None, osm: OsmSource | None = None):
         self.repo = repo
         self.clock = clock
         self.ids = ids
@@ -81,6 +102,7 @@ class UseCases:
         self.admin_emails = admin_emails or []
         self.session_ttl = timedelta(hours=session_ttl_hours)
         self.vision = vision
+        self.osm = osm
 
     # ------------------------------------------------------------------ demo data
     def load_seed(self) -> None:
@@ -181,6 +203,59 @@ class UseCases:
 
     def yes_features(self, place_id: str) -> list[FeatureKey]:
         return [f for f, s in self.repo.states_for(place_id).items() if s.state == StateValue.YES]
+
+    # ------------------------------------------------------------------ OSM import (F8)
+    async def import_osm(self, admin: User | None, source: str = "osm_file") -> ImportResult:
+        """OSM points → open_data observations. Idempotent; matches places by external id or name ≤50 m."""
+        self._require_admin(admin)
+        if source != "osm_file" or self.osm is None:
+            raise ValidationFailed(f"unknown import source: {source}")
+        points = await self.osm.fetch()
+
+        result = ImportResult(source, points=len(points))
+        osm_user = self.repo.get_user(OSM_AUTHOR_ID)
+        touched: set[tuple[str, FeatureKey]] = set()
+        for p in points:
+            if not p.name or p.name == domain_osm.UNNAMED:
+                result.skipped_unnamed += 1
+                continue
+            features = domain_osm.map_features(p)
+            if not features:
+                result.skipped_no_data += 1
+                continue
+            place = self._match_place(p)
+            if place:
+                result.places_matched += 1
+            else:
+                place = Place(self.ids.new("plc_osm"), p.name, domain_osm.map_category(p.category),
+                              GeoPoint(p.lat, p.lon), "Import: OpenStreetMap", external_id=p.external_id)
+                self.repo.add_place(place)
+                result.places_created += 1
+            for feature, value in features:
+                if self._has_open_data(place.id, feature, value):
+                    continue
+                self._new_observation(osm_user, place.id, feature, value, temporary=False,
+                                      comment="OpenStreetMap", photo_ids=[], source=ObservationSource.OPEN_DATA)
+                result.observations += 1
+                touched.add((place.id, feature))
+        for place_id, feature in touched:
+            self.recompute(place_id, feature)
+        return result
+
+    def _match_place(self, p: domain_osm.OsmPoint) -> Place | None:
+        here = GeoPoint(p.lat, p.lon)
+        for place in self.repo.list_places():
+            if place.external_id == p.external_id:
+                return place
+            if (place.name.lower() == p.name.lower()
+                    and haversine_m(place.location, here) <= domain_osm.MATCH_RADIUS_M):
+                return place
+        return None
+
+    def _has_open_data(self, place_id: str, feature: FeatureKey, value: ObservationValue) -> bool:
+        return any(o.source == ObservationSource.OPEN_DATA and o.value == value
+                   and o.validation != ValidationStatus.REJECTED
+                   for o in self.repo.list_observations(place_id, feature))
 
     # ------------------------------------------------------------------ owner (F7)
     def list_owner_places(self, user: User | None) -> list[Place]:
@@ -416,19 +491,22 @@ class UseCases:
 
     def _new_observation(self, user: User, place_id: str, feature: FeatureKey, value: ObservationValue, *,
                          temporary: bool, comment: str, photo_ids: list[str],
-                         report_id: str | None = None) -> Observation:
-        place = self.repo.get_place(place_id)
-        if user.role == Role.ADMIN:
-            source = ObservationSource.ADMIN
-        elif place is not None and place.owner_id == user.id:
-            source = ObservationSource.VERIFIED_OWNER
-        else:
-            source = ObservationSource.COMMUNITY
+                         report_id: str | None = None, source: ObservationSource | None = None) -> Observation:
+        source = source or self._source_for(user, place_id)
         obs = Observation(self.ids.new("obs"), place_id, feature, value, source, user.id, self.clock.now(),
                           temporary=temporary, comment=comment, evidence_ids=list(photo_ids),
                           report_id=report_id)
         self.repo.add_observation(obs)
         return obs
+
+    def _source_for(self, user: User, place_id: str) -> ObservationSource:
+        """admin → admin; owner of this place → verified_owner; else community."""
+        place = self.repo.get_place(place_id)
+        if user.role == Role.ADMIN:
+            return ObservationSource.ADMIN
+        if place is not None and place.owner_id == user.id:
+            return ObservationSource.VERIFIED_OWNER
+        return ObservationSource.COMMUNITY
 
     def _get_observation(self, observation_id: str) -> Observation:
         obs = self.repo.get_observation(observation_id)

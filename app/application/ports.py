@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Protocol
 
 from app.domain.enums import FeatureKey
+from app.domain.osm import OsmPoint
 from app.domain.model import (
     FeatureStateRecord,
     GoogleIdentity,
@@ -74,6 +75,10 @@ class VisionAnalyzer(Protocol):
     async def analyze(self, image_path: str, original_name: str) -> ImageAnalysis:
         """Raise on failure; FallbackVisionAnalyzer turns failures into the mock answer."""
         ...
+
+
+class OsmSource(Protocol):
+    async def fetch(self) -> list[OsmPoint]: ...
 
 
 class IdentityVerifier(Protocol):

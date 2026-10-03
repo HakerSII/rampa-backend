@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Response
+from pydantic import BaseModel
 
 from app.adapters.inbound.http.deps import UC, AdminUser, OptionalUser
 from app.adapters.inbound.http.schemas import (
@@ -38,3 +39,23 @@ async def decide(item_id: str, body: DecisionIn, uc: UC, admin: AdminUser):
 async def reset_demo(uc: UC, user: OptionalUser):
     uc.reset_demo(user)  # use case enforces admin (401/403)
     return Response(status_code=204)
+
+
+class ImportIn(BaseModel):
+    source: str
+
+
+class ImportOut(BaseModel):
+    source: str
+    points: int
+    places_created: int
+    places_matched: int
+    observations: int
+    skipped_unnamed: int
+    skipped_no_data: int
+
+
+@router.post("/admin/imports", response_model=ImportOut)
+async def run_import(body: ImportIn, uc: UC, admin: AdminUser):
+    r = await uc.import_osm(admin, body.source)
+    return ImportOut(**{f: getattr(r, f) for f in ImportOut.model_fields})

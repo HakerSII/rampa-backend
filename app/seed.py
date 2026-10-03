@@ -8,6 +8,7 @@ from app.domain.enums import FeatureKey as F, ObservationSource, ObservationValu
 from app.domain.model import GeoPoint, Observation, Place, User
 
 SEED_AUTHOR_ID = "usr_seed"
+OSM_AUTHOR_ID = "usr_osm"
 
 DEMO_USERS = [
     ("anna", "Anna Kowalska", Role.USER),
@@ -42,6 +43,7 @@ PLACES = [
 def load_seed(repo: Repo, clock: Clock, ids: IdGenerator, recompute) -> None:
     """recompute(place_id, feature) — use case hook, so states are always computed."""
     repo.add_user(User(SEED_AUTHOR_ID, "Dane startowe", Role.USER))
+    repo.add_user(User(OSM_AUTHOR_ID, "OpenStreetMap", Role.USER))  # system author of open_data
     for username, name, role in DEMO_USERS:
         repo.add_user(User(f"usr_{username}", name, role, username=username))
 

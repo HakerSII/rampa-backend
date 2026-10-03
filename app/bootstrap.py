@@ -1,5 +1,6 @@
 """Composition root: settings → adapters → use cases."""
 from app.adapters.outbound.files import LocalFileStorage
+from app.adapters.outbound.osm_file import FileOsmSource
 from app.adapters.outbound.vision_mock import FallbackVisionAnalyzer, MockVisionAnalyzer
 from app.adapters.outbound.memory import FixedClock, InMemoryRepo, SeqIdGenerator, SystemClock
 from app.application.ports import IdentityVerifier
@@ -25,6 +26,7 @@ def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None
         InMemoryRepo(), clock, SeqIdGenerator(), LocalFileStorage(settings.media_dir), verifier,
         auth_mode=settings.auth_mode, admin_emails=settings.admin_email_list,
         session_ttl_hours=settings.session_ttl_hours, vision=vision,
+        osm=FileOsmSource(settings.osm_file),
     )
     use_cases.load_seed()
     return use_cases

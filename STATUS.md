@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** F8 OSM import + MCP
+- **Task:** — F8 done; next: README §6.5 SQLAlchemy, or demo polish
 - **Who:** Claude
-- **State:** todo
-- **Next step:** 🟢 domain/osm.py, geo, FileOsmSource, import_osm, clients/rampa_tools.py
-- **Last pytest:** `uv run pytest` → red: F8 tests
+- **State:** done
+- **Next step:** decide with user: persistence (SQLAlchemy) vs pitch/demo polish
+- **Last pytest:** `uv run pytest` → 170 passed
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -40,10 +40,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F5.1–F5.4 | Open API: key, rate limit, flat format | Claude | done | e2e P1–P5 + 2×401 in demo.http |
 | F6.1–F6.5 | AI image tags: mock + ONNX Phi-3.5 + fallback | Claude | done | real ONNX inference untested here (manual: uv sync --extra ai) |
 | F7.1–F7.4 | Owner role + verified_owner observations | Claude | done | e2e owner scenario O0–O11 + 3×403 + 400 |
-| F8.1–F8.5 | OSM import (file) + MCP client of Open API | Claude | red | |
+| F8.1–F8.5 | OSM import (file) + MCP client of Open API | Claude | done | MCP stdio smoke OK (tools/list + call Tauron → yes) |
 
 ## Log (newest first)
 
+- 2026-10-03 · F8 · done · OSM import (file, idempotent, 50 m match), open_data 0.6, MCP client tools via Open API; 170 passed
 - 2026-10-03 · F8 · red · plan, contract, OSM mapping/import/MCP tool tests
 - 2026-10-03 · F7 · done · owner role, verified_owner 0.85, owner panel endpoints, admin assigns owner; fixed seed shared-state bug; 150 passed
 - 2026-10-03 · F7 · red · plan, contract, owner tests
