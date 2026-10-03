@@ -83,6 +83,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F39 | City open-data import (blocked: dataset) — [PLAN-GAPS.md](PLAN-GAPS.md) | — | blocked | needs dataset + licence choice |
 | F40 | One LLM filter-tool schema (Claude + Gemini), AI_RECOMMENDER=gemini — option A | Claude | done | schema in domain; guard test; e2e unchanged (needs a key, rules path covered by F30a–d) |
 | F41 | Public remote MCP (Streamable HTTP /mcp) as a separate Render service | Claude | done | own env file .mcpenv (gitignored, template .mcpenv.example); verified live: local MCP (HTTP) + .mcpenv → https://rampa-backend.onrender.com → real data; compose env_file |
+| F42 | XSS hardening: input text cleaning, http(s) links, security headers | Claude | red | |
 
 ## Log (newest first)
 
