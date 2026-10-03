@@ -44,6 +44,15 @@ class Settings(BaseSettings):
     osm_center_lon: float = 19.9450
     osm_radius_m: int = 1500
     external_timeout_s: float = 10.0
+    # F33 e-mail login (magic link / code): console (logs; demo returns dev_token) | smtp
+    email_login: bool = True
+    mailer: Literal["console", "smtp"] = "console"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""  # secret: only in .env / Render env
+    mail_from: str = "noreply@rampa.local"
+    email_link_url: str = ""  # front-end page that takes ?token=…; empty → code only
     # F30 recommendations: rules (offline) | claude (needs ANTHROPIC_API_KEY); failure → rules
     ai_recommender: Literal["rules", "claude"] = "rules"
     anthropic_api_key: str = ""  # secret: only in .env / Render env

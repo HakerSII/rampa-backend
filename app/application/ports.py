@@ -122,6 +122,14 @@ class QueryInterpreter(Protocol):
         ...
 
 
+class Mailer(Protocol):
+    name: str
+
+    async def send(self, to: str, subject: str, text: str) -> None:
+        """Raise on failure."""
+        ...
+
+
 class Geocoder(Protocol):
     async def search(self, q: str) -> list[GeocodeHit]:
         """Raise on failure; the use case falls back to the local index."""

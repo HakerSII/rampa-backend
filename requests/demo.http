@@ -142,6 +142,36 @@ Content-Type: application/json
 
 {"needs": ["diabetes"]}
 
+### F33a. E-mail login: request a code (demo + console mailer → dev_token in the response; mail in the log)
+# @name emailReq
+POST {{base}}/auth/email/request
+Content-Type: application/json
+
+{"email": "ola.nowak@example.com"}
+
+### F33b. Verify the code → session token + new user "ola.nowak"
+# @name emailLogin
+POST {{base}}/auth/email/verify
+Content-Type: application/json
+
+{"token": "{{emailReq.response.body.$.dev_token}}"}
+
+### F33c. Me with the e-mail session
+GET {{base}}/me
+Authorization: Bearer {{emailLogin.response.body.$.token}}
+
+### F33d. 401 UNAUTHORIZED — the code works only once
+POST {{base}}/auth/email/verify
+Content-Type: application/json
+
+{"token": "{{emailReq.response.body.$.dev_token}}"}
+
+### F33e. 400 VALIDATION_ERROR — invalid e-mail
+POST {{base}}/auth/email/request
+Content-Type: application/json
+
+{"email": "not-an-email"}
+
 ### F32a. Owner Ewa: Camelot is single-storey → elevator "not_applicable" (wheelchair answer stays yes)
 POST {{base}}/places/plc_camelot/observations
 Authorization: Bearer {{ewa}}

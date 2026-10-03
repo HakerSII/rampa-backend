@@ -35,6 +35,14 @@ def build_geocoder(settings: Settings):
     return NominatimGeocoder(settings.nominatim_url, settings.http_user_agent, timeout_s=settings.external_timeout_s)
 
 
+def build_mailer(settings: Settings):
+    from app.adapters.outbound.mailer import ConsoleMailer, SmtpMailer
+    if settings.mailer == "smtp":
+        return SmtpMailer(settings.smtp_host, settings.smtp_port, settings.smtp_user, settings.smtp_password,
+                          settings.mail_from)
+    return ConsoleMailer()
+
+
 def build_recommender(settings: Settings):
     if settings.ai_recommender != "claude":
         return None
@@ -75,6 +83,9 @@ def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None
         anonymous_ttl_days=settings.anonymous_ttl_days, vision=vision,
         osm=FileOsmSource(settings.osm_file), geocoder=build_geocoder(settings), osm_live=build_osm_live(settings),
         router=build_router(settings), recommender=build_recommender(settings),
+        mailer=build_mailer(settings), email_login=settings.email_login,
+        email_dev_token=settings.auth_mode == "demo" and settings.mailer == "console",
+        email_link_url=settings.email_link_url,
     )
     seed_or_continue(use_cases)
     return use_cases

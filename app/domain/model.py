@@ -48,6 +48,16 @@ class Session:
     expires_at: datetime
 
 
+@dataclass(slots=True)
+class LoginToken:
+    """F33 one-time e-mail login code; only the SHA-256 of the code is stored."""
+    token_hash: str
+    email: str
+    created_at: datetime
+    expires_at: datetime
+    used: bool = False
+
+
 @dataclass(frozen=True, slots=True)
 class GoogleIdentity:
     sub: str

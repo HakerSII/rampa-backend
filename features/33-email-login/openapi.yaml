@@ -1,0 +1,63 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F33 E-mail login
+  version: 0.1.0-mvp
+  description: >
+    Passwordless login: a one-time code / link sent by e-mail (15 min, single use, stored hashed).
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: auth
+paths:
+  /auth/email/request:
+    post:
+      tags: [auth]
+      summary: Send a login code / link to an e-mail address
+      operationId: requestEmailLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+      responses:
+        "202":
+          description: "Accepted — same answer for known and unknown addresses"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sent: { type: boolean }
+                  dev_token: { type: [string, "null"], description: "AUTH_MODE=demo + MAILER=console only" }
+        "400": { description: "VALIDATION_ERROR (invalid e-mail)" }
+        "404": { description: "NOT_FOUND (EMAIL_LOGIN=false)" }
+        "429": { description: "RATE_LIMITED (more than 3 per address per 15 min; Retry-After)" }
+  /auth/email/verify:
+    post:
+      tags: [auth]
+      summary: Exchange the code for a session
+      operationId: verifyEmailLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+      responses:
+        "200":
+          description: Session token + user (new user on first login)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { type: object }
+        "401": { description: "UNAUTHORIZED (invalid, used or expired code)" }

@@ -148,6 +148,8 @@ Every error has the same shape:
 | POST | `/api/v1/observations/{id}/abuse` | user | Report spam / false data → moderation queue (type abuse) |
 | POST | `/api/v1/ai/recommend` | — | Natural-language query → recommended places with reasons + missing data |
 | GET PUT DELETE | `/api/v1/me/profile` | user | Needs profile (needs + preferred features), used by best_match and recommend |
+| POST | `/api/v1/auth/email/request` | — | Send a one-time login code / link by e-mail |
+| POST | `/api/v1/auth/email/verify` | — | Code → session (new user on first login) |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -178,6 +180,18 @@ stay one per device and a device cannot confirm its own report. Works in every `
 ```
 
 ### `POST /api/v1/auth/logout` → 204 · `GET /api/v1/me` → `User` (401 without a valid token)
+
+## 3a. E-mail login (passwordless)
+
+1. `POST /api/v1/auth/email/request {"email": "ola@example.com"}` → `202 {"sent": true}`. The answer is the same whether or not the address has an account.
+   - The one-time code is valid 15 min and works once; only its SHA-256 is stored.
+   - At most 3 requests per address per 15 min → `429` with `Retry-After`.
+   - The mail holds the code and, with `EMAIL_LINK_URL` set, a link `…?token=<code>`.
+   - In `AUTH_MODE=demo` with `MAILER=console` the response also carries `dev_token`, for the stage and the e2e file. Never with SMTP.
+2. `POST /api/v1/auth/email/verify {"token": "<code>"}` → `{token, user}`, the same shape as `/auth/google`.
+   - First login creates a user (`display_name` = the part before `@`; role admin if the address is in `ADMIN_EMAILS`).
+   - A later Google login with the same verified e-mail reuses this account.
+   - Invalid, used or expired code → `401`.
 
 ## 4. Places (read, guest allowed)
 

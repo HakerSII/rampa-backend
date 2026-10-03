@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from app.domain.enums import FeatureKey
 from app.domain.model import (
+    LoginToken,
     FeatureStateRecord,
     Observation,
     OwnershipRequest,
@@ -23,6 +24,7 @@ class InMemoryRepo:
     def clear(self) -> None:
         self.users: dict[str, User] = {}
         self.sessions: dict[str, Session] = {}
+        self.login_tokens: dict[str, LoginToken] = {}
         self.places: dict[str, Place] = {}
         self.states: dict[str, dict[FeatureKey, FeatureStateRecord]] = defaultdict(dict)
         self.observations: dict[str, Observation] = {}  # insertion order = creation order
@@ -56,6 +58,18 @@ class InMemoryRepo:
 
     def find_user_by_google_sub(self, sub: str) -> User | None:
         return next((u for u in self.users.values() if u.google_sub == sub), None)
+
+    def find_user_by_email(self, email: str) -> User | None:
+        return next((u for u in self.users.values() if u.email and u.email.lower() == email.lower()), None)
+
+    def add_login_token(self, token: LoginToken) -> None:
+        self.login_tokens[token.token_hash] = token
+
+    def get_login_token(self, token_hash: str) -> LoginToken | None:
+        return self.login_tokens.get(token_hash)
+
+    def list_login_tokens(self, email: str) -> list[LoginToken]:
+        return [t for t in self.login_tokens.values() if t.email == email]
 
     def add_session(self, session: Session) -> None:
         self.sessions[session.token] = session

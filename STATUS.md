@@ -7,7 +7,7 @@
 
 - **State:** todo
 - **Deploy:** **Render**, automatic after every merge to `master` (Docker service `rampa-backend` + `rampa-backend-postgres`); see docs/operations.md; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
-- **Last pytest:** `uv run pytest` → red: F33
+- **Last pytest:** `uv run pytest` → 511 passed, 14 skipped
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
@@ -74,7 +74,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F30 | AI recommendations endpoint `POST /ai/recommend` — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F30a–d; Claude adapter via MockTransport (no API key here) |
 | F31 | Needs profile on server + sort best_match — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F31a–f; SQL columns users.needs/pref_features |
 | F32 | Value n/a + missing attributes — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F32a–d; 39 features |
-| F33 | Email magic-link login — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | red |  |
+| F33 | Email magic-link login — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F33a–e; SMTP adapter tested with fake smtplib (no real server); table login_tokens |
 | F34 | Questions to owner + needs stats — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
 | F35 | In-app notifications — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
 | F36 | Admin: new-place queue, activity, trends — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | todo | |
@@ -84,6 +84,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 
 ## Log (newest first)
 
+- 2026-10-03 · F33 green: passwordless e-mail login
 - 2026-10-03 · F33 red
 - 2026-10-03 · F32 green: not_applicable + 4 attributes + OSM changing_table/dog
 - 2026-10-03 · F32 red

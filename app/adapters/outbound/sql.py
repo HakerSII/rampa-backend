@@ -25,6 +25,7 @@ from app.domain.enums import (
     ValidationStatus,
 )
 from app.domain.model import (
+    LoginToken,
     FeatureStateRecord,
     GeoPoint,
     Observation,
@@ -48,6 +49,8 @@ users = Table("users", md, Column("id", String, primary_key=True), Column("seq",
               Column("needs", JSON), Column("pref_features", JSON))
 sessions = Table("sessions", md, Column("token", String, primary_key=True), Column("user_id", String),
                  Column("expires_at", String))
+login_tokens = Table("login_tokens", md, Column("token_hash", String, primary_key=True), Column("email", String),
+                     Column("created_at", String), Column("expires_at", String), Column("used", Boolean))
 places = Table("places", md, Column("id", String, primary_key=True), Column("seq", Integer), Column("name", String),
                Column("category", String), Column("lat", Float), Column("lon", Float),
                Column("short_description", String), Column("address", String), Column("owner_id", String),
@@ -193,6 +196,9 @@ class SqlRepo(InMemoryRepo):
                               needs=list(u.needs), pref_features=list(u.pref_features))
         for s in self.sessions.values():
             yield sessions, dict(token=s.token, user_id=s.user_id, expires_at=_iso(s.expires_at))
+        for t in self.login_tokens.values():
+            yield login_tokens, dict(token_hash=t.token_hash, email=t.email, created_at=_iso(t.created_at),
+                                     expires_at=_iso(t.expires_at), used=t.used)
         for i, p in enumerate(self.places.values()):
             yield places, dict(id=p.id, seq=i, name=p.name, category=p.category, lat=p.location.lat,
                                lon=p.location.lon, short_description=p.short_description, address=p.address,
@@ -242,6 +248,9 @@ class SqlRepo(InMemoryRepo):
                                            list(r["pref_features"] or []))
             for r in rows(sessions):
                 self.sessions[r["token"]] = Session(r["token"], r["user_id"], _dt(r["expires_at"]))
+            for r in rows(login_tokens):
+                self.login_tokens[r["token_hash"]] = LoginToken(r["token_hash"], r["email"], _dt(r["created_at"]),
+                                                                _dt(r["expires_at"]), bool(r["used"]))
             for r in rows(places):
                 self.places[r["id"]] = Place(r["id"], r["name"], r["category"], GeoPoint(r["lat"], r["lon"]),
                                              r["short_description"], r["address"], r["owner_id"], r["external_id"],

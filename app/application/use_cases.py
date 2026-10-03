@@ -1,5 +1,6 @@
 """All MVP use cases (application layer). Depends only on domain + ports."""
 import logging
+import hashlib
 import secrets
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ from app.application.ports import (
     IdGenerator,
     Geocoder,
     OsmSource,
+    Mailer,
     QueryInterpreter,
     WalkingRouter,
     Repo,
@@ -47,6 +49,7 @@ from app.domain.enums import (
     ValidationStatus,
 )
 from app.domain.errors import (
+    RateLimited,
     ConflictError,
     FileTooLarge,
     Forbidden,
@@ -59,6 +62,7 @@ from app.domain.model import (
     CheckResult,
     FeatureStateRecord,
     GeocodeHit,
+    LoginToken,
     GeoPoint,
     ImageAnalysis,
     Observation,
@@ -211,6 +215,16 @@ REPORT_VALUE = {CurrentState.WORKS: ObservationValue.YES, CurrentState.PARTIALLY
 log = logging.getLogger(__name__)
 
 
+EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]{2,}")
+MAX_EMAIL = 254
+EMAIL_TOKEN_TTL = timedelta(minutes=15)
+EMAIL_MAX_REQUESTS = 3
+
+
+def _hash(code: str) -> str:
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
 def _enum(enum_cls, value, field: str):
     try:
         return enum_cls(value)
@@ -225,7 +239,9 @@ class UseCases:
                  anonymous_auth: bool = True, anonymous_ttl_days: int = 365,
                  vision: VisionAnalyzer | None = None, osm: OsmSource | None = None,
                  geocoder: Geocoder | None = None, osm_live: OsmSource | None = None,
-                 router: WalkingRouter | None = None, recommender: QueryInterpreter | None = None):
+                 router: WalkingRouter | None = None, recommender: QueryInterpreter | None = None,
+                 mailer: Mailer | None = None, email_login: bool = True, email_dev_token: bool = False,
+                 email_link_url: str = ""):
         self.repo = repo
         self.clock = clock
         self.ids = ids
@@ -242,6 +258,10 @@ class UseCases:
         self.osm_live = osm_live
         self.router = router
         self.recommender = recommender
+        self.mailer = mailer
+        self.email_login = email_login
+        self.email_dev_token = email_dev_token  # demo + console mailer only: code returned in the response
+        self.email_link_url = email_link_url
 
     # ------------------------------------------------------------------ multi-worker (F29)
     def sync(self, force: bool = False) -> bool:
@@ -278,7 +298,9 @@ class UseCases:
         if not identity.email_verified:
             raise Unauthorized("Google e-mail not verified")
         role = Role.ADMIN if identity.email.lower() in self.admin_emails else Role.USER
-        user = self.repo.find_user_by_google_sub(identity.sub)
+        user = self.repo.find_user_by_google_sub(identity.sub) or self.repo.find_user_by_email(identity.email)
+        if user is not None:
+            user.google_sub = identity.sub  # same verified e-mail as an e-mail login (F33) → same account
         if user is None:
             user = User(self.ids.new("usr"), identity.name or identity.email, role,
                         email=identity.email, google_sub=identity.sub)
@@ -297,6 +319,42 @@ class UseCases:
         user = User(self.ids.new("usr"), name, Role.USER)
         self.repo.add_user(user)
         return self._new_session(user, self.anonymous_ttl), user
+
+    # ------------------------------------------------------------------ e-mail login (F33)
+    async def request_email_login(self, email: str) -> str | None:
+        """Send a one-time code (15 min, single use). Same answer for known and unknown addresses.
+        Returns the code only in demo + console mode (e2e / stage), never with a real mailer."""
+        if not self.email_login or self.mailer is None:
+            raise NotFound("e-mail login disabled (EMAIL_LOGIN=false)")
+        email = (email or "").strip().lower()
+        if len(email) > MAX_EMAIL or not EMAIL_RE.fullmatch(email):
+            raise ValidationFailed("invalid e-mail address")
+        now = self.clock.now()
+        recent = [t for t in self.repo.list_login_tokens(email) if t.created_at > now - EMAIL_TOKEN_TTL]
+        if len(recent) >= EMAIL_MAX_REQUESTS:
+            wait = int((min(t.created_at for t in recent) + EMAIL_TOKEN_TTL - now).total_seconds()) + 1
+            raise RateLimited("too many login e-mails for this address, try later", retry_after=wait)
+        code = secrets.token_urlsafe(24)
+        self.repo.add_login_token(LoginToken(_hash(code), email, now, now + EMAIL_TOKEN_TTL))
+        link = f"{self.email_link_url}?token={code}" if self.email_link_url else ""
+        text = (f"Kod logowania: {code}\n\n" + (f"Albo kliknij: {link}\n\n" if link else "")
+                + "Kod jest ważny 15 min i działa jeden raz. Jeśli to nie Ty — zignoruj tę wiadomość.")
+        await self.mailer.send(email, "Kraków bez barier — logowanie", text)
+        return code if self.email_dev_token else None
+
+    def verify_email_login(self, code: str) -> tuple[str, User]:
+        token = self.repo.get_login_token(_hash((code or "").strip()))
+        if token is None or token.used or token.expires_at <= self.clock.now():
+            raise Unauthorized("login code invalid, used or expired")
+        token.used = True
+        user = self.repo.find_user_by_email(token.email)
+        role = Role.ADMIN if token.email in self.admin_emails else Role.USER
+        if user is None:
+            user = User(self.ids.new("usr"), token.email.split("@")[0][:MAX_DISPLAY_NAME], role, email=token.email)
+            self.repo.add_user(user)
+        elif role == Role.ADMIN:
+            user.role = Role.ADMIN
+        return self._new_session(user), user
 
     def logout(self, token: str | None) -> None:
         if token:
