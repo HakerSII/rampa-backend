@@ -5,9 +5,9 @@
 
 ## Current
 
-- **State:** done
+- **State:** todo
 - **Deploy:** **Render**, automatic after every merge to `master` (Docker service `rampa-backend` + `rampa-backend-postgres`); see docs/operations.md; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
-- **Last pytest:** `uv run pytest` → 557 passed, 16 skipped
+- **Last pytest:** `uv run pytest` → red: F30b
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
@@ -71,7 +71,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F27 | Live geocoding (Nominatim) + OSM (Overpass), fallback to local | Claude | done | e2e I7; Nominatim verified live; Overpass unreachable from dev network → fallback path |
 | F28 | OSRM walking route geometry, barriers along it (fallback straight line) | Claude | done | e2e F28 (straight + ROUTER=osrm); OSRM verified live: 2033 m / 192 pts |
 | F29 | Multi-worker consistency: data version, reload when stale, 409 on concurrent write | Claude | done | whole demo.http passes against uvicorn --workers 2 (147 requests); boot seeding race handled |
-| F30 | AI recommendations endpoint `POST /ai/recommend` — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F30a–d; Claude adapter via MockTransport (no API key here) |
+| F30 | AI recommendations endpoint `POST /ai/recommend` — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F30a–d; F30b Gemini interpreter in progress |
 | F31 | Needs profile on server + sort best_match — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F31a–f; SQL columns users.needs/pref_features |
 | F32 | Value n/a + missing attributes — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F32a–d; 39 features |
 | F33 | Email magic-link login — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F33a–e; SMTP adapter tested with fake smtplib (no real server); table login_tokens |
@@ -84,6 +84,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 
 ## Log (newest first)
 
+- 2026-10-03 · F30b red: Gemini recommender tests
 - 2026-10-03 · PLAN-GAPS: F30–F37 done, F38 deferred, F39 blocked; docs updated
 - 2026-10-03 · F37 green: city config JSON + GET /city
 - 2026-10-03 · F37 red
