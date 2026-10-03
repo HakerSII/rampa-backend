@@ -5344,7 +5344,11 @@
           "level_surface",
           "more_than_n_spots",
           "drop_off_zone",
-          "pets_allowed"
+          "pets_allowed",
+          "baby_changing_table",
+          "stroller_space",
+          "rest_areas",
+          "luggage_storage"
         ],
         "title": "FeatureKey"
       },
@@ -6410,7 +6414,8 @@
         "enum": [
           "yes",
           "partial",
-          "no"
+          "no",
+          "not_applicable"
         ],
         "title": "ObservationValue"
       },
@@ -8239,6 +8244,7 @@
           "yes",
           "partial",
           "no",
+          "not_applicable",
           "unknown"
         ],
         "title": "StateValue"

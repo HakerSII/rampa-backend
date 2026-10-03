@@ -142,6 +142,30 @@ Content-Type: application/json
 
 {"needs": ["diabetes"]}
 
+### F32a. Owner Ewa: Camelot is single-storey → elevator "not_applicable" (wheelchair answer stays yes)
+POST {{base}}/places/plc_camelot/observations
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"feature": "elevator", "value": "not_applicable", "comment": "Lokal parterowy"}
+
+### F32b. New attribute: baby changing table at MNK
+POST {{base}}/places/plc_mnk/observations
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"feature": "baby_changing_table", "value": "yes"}
+
+### F32c. Check Camelot for a wheelchair → yes (n/a elevator ignored)
+GET {{base}}/places/plc_camelot/check?profile=wheelchair
+
+### F32d. 400 VALIDATION_ERROR — unknown value
+POST {{base}}/places/plc_camelot/observations
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"feature": "ramp", "value": "maybe"}
+
 ### F30a. AI recommend (guest): stroller + dog in a museum → MNK first, pets_allowed in "missing"
 POST {{base}}/ai/recommend
 Content-Type: application/json

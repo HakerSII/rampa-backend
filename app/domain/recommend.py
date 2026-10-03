@@ -54,6 +54,10 @@ FEATURE_WORDS: list[tuple[F, tuple[str, ...]]] = [
     (F.DISABLED_PARKING, ("parking", "zaparkow")),
     (F.SIGN_LANGUAGE_INTERPRETER, ("pjm", "język migowy", "sign language")),
     (F.PETS_ALLOWED, (" pies", " psem", " psa", "zwierz", " dog", " pet")),
+    (F.BABY_CHANGING_TABLE, ("przewij", "changing table")),
+    (F.STROLLER_SPACE, ("miejsce na wózek", "miejscem na wózek", "stroller parking", "stroller space")),
+    (F.LUGGAGE_STORAGE, ("bagaż", "bagaz", "walizk", "luggage")),
+    (F.REST_AREAS, ("odpocz", "ławk", "lawk", "usiąść", "rest area", "bench")),
 ]
 
 
@@ -108,7 +112,8 @@ def interpret_rules(query: str) -> Intent:
 
 
 _SCORE = {CheckAnswer.YES: 2, CheckAnswer.PARTIAL: 1, CheckAnswer.UNKNOWN: 0, CheckAnswer.NO: -3}
-_FEATURE_SCORE = {StateValue.YES: 2, StateValue.PARTIAL: 1, StateValue.UNKNOWN: 0, StateValue.NO: -3}
+_FEATURE_SCORE = {StateValue.YES: 2, StateValue.PARTIAL: 1, StateValue.UNKNOWN: 0, StateValue.NO: -3,
+                  StateValue.NOT_APPLICABLE: 0}
 
 
 def evaluate(place_id: str, states: dict[F, FeatureStateRecord], profiles: list[P],
@@ -116,7 +121,7 @@ def evaluate(place_id: str, states: dict[F, FeatureStateRecord], profiles: list[
     """match (yes | partial | unknown | no) + score for a place, from DB states only."""
     full = {f: states.get(f) or FeatureStateRecord(place_id, f, StateValue.UNKNOWN) for f in F}
     answers = [check_place(place_id, full, p).answer for p in profiles]
-    feature_states = [full[f].state for f in features]
+    feature_states = [full[f].state for f in features if full[f].state != StateValue.NOT_APPLICABLE]
     parts = [str(a) for a in answers] + [str(s) for s in feature_states]
     match = ("no" if "no" in parts else "unknown" if not parts or all(p == "unknown" for p in parts)
              else "yes" if all(p == "yes" for p in parts) else "partial")

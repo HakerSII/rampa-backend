@@ -64,7 +64,8 @@ class OverpassOsmSource(_LazyClient):
             tags = el.get("tags", {})
             category = next((tags[t] for t in CATEGORY_TAGS if tags.get(t)), "inne")
             points.append(OsmPoint(tags.get("name", ""), tags.get("wheelchair", ""),
-                                   tags.get("toilets:wheelchair", ""), category, float(geo["lat"]), float(geo["lon"])))
+                                   tags.get("toilets:wheelchair", ""), category, float(geo["lat"]), float(geo["lon"]),
+                                   tags.get("changing_table", ""), tags.get("dog", "")))
         return points
 
 

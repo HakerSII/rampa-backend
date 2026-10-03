@@ -172,7 +172,7 @@ paths:
                 properties:
                   place_id: { type: string }
                   feature: { type: string }
-                  value: { type: string, enum: ["yes", partial, "no"] }
+                  value: { type: string, enum: ["yes", partial, "no", not_applicable] }
                   temporary: { type: boolean }
                   comment: { type: string }
       responses:

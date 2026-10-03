@@ -60,11 +60,11 @@ Every error has the same shape:
 
 | Name | Values |
 |---|---|
-| Feature (35) | entrance: `step_free_entrance`, `ramp`, `elevator_entrance`, `wide_doors`, `automatic_doors`, `call_bell` · inside: `elevator`, `escalator`, `spacious_interior`, `high_contrast_info`, `tactile_info` · toilet: `accessible_toilet`, `adult_changing_table`, `turning_space`, `extra_accessible_toilets` · hearing: `induction_loop`, `sign_language_interpreter`, `video_captions`, `fm_system` · vision: `braille`, `tactile_paths`, `good_lighting`, `high_contrast_markings`, `accessible_digital_materials`, `audio_description` · mobility: `lowered_curb`, `platform_elevator`, `crutches_friendly` · parking: `disabled_parking`, `marked_parking`, `level_surface`, `more_than_n_spots`, `drop_off_zone` · other: `assistance_dog_allowed`, `pets_allowed` |
+| Feature (39) | entrance: `step_free_entrance`, `ramp`, `elevator_entrance`, `wide_doors`, `automatic_doors`, `call_bell` · inside: `elevator`, `escalator`, `spacious_interior`, `high_contrast_info`, `tactile_info`, `stroller_space`, `rest_areas` · toilet: `accessible_toilet`, `adult_changing_table`, `baby_changing_table`, `turning_space`, `extra_accessible_toilets` · hearing: `induction_loop`, `sign_language_interpreter`, `video_captions`, `fm_system` · vision: `braille`, `tactile_paths`, `good_lighting`, `high_contrast_markings`, `accessible_digital_materials`, `audio_description` · mobility: `lowered_curb`, `platform_elevator`, `crutches_friendly` · parking: `disabled_parking`, `marked_parking`, `level_surface`, `more_than_n_spots`, `drop_off_zone` · other: `assistance_dog_allowed`, `pets_allowed`, `luggage_storage` |
 | Feature group | `entrance`, `inside`, `toilet`, `hearing`, `vision`, `mobility`, `parking`, `other` |
 | Needs profile (`check`) | `wheelchair`, `stroller`, `crutches`, `blind`, `low_vision`, `deaf`, `assistance_dog` |
-| State | `yes`, `partial`, `no`, `unknown` |
-| Observation value | `yes`, `partial`, `no` (+ optional `valid_until` for temporary issues) |
+| State | `yes`, `partial`, `no`, `not_applicable` ("nie dotyczy": a fact, never a barrier, helper or missing data; ignored by `check`), `unknown` |
+| Observation value | `yes`, `partial`, `no`, `not_applicable` (+ optional `valid_until` for temporary issues) |
 | Source | `community` (0.5), `open_data` (0.6), `verified_owner` (0.85), `admin` (1.0) |
 | Validation | `VALID`, `CONFLICT`, `REJECTED`, `FLAGGED` |
 | Place type | `venue`, `shop`, `public_transport_stop`, `platform`, `parking`, `office`, `street_segment`, `other` |
@@ -246,7 +246,7 @@ reverse geocoding) with the coordinates. The same name (case-insensitive) within
 ```
 
 ### `GET /api/v1/places/{id}/accessibility`
-All 35 features in 8 groups; features without data come back as `unknown`.
+All 39 features in 8 groups; features without data come back as `unknown`.
 
 ```json
 { "place_id": "plc_mnk",
