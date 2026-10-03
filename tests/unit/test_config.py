@@ -26,3 +26,9 @@ def test_db_choice_from_environment(monkeypatch):
     monkeypatch.setenv("POSTGRES_HOST", "pg.example")
     monkeypatch.delenv("DATABASE_URL", raising=False)
     assert Settings(_env_file=None).db_url == "postgresql+psycopg://rampa:rampa@pg.example:5432/rampa"
+
+
+def test_empty_optional_values_from_env_mean_not_set(monkeypatch):
+    # compose passes DEMO_NOW="" and .env.example ships "DEMO_NOW=" — must not crash the app
+    monkeypatch.setenv("DEMO_NOW", "")
+    assert Settings(_env_file=None).demo_now is None

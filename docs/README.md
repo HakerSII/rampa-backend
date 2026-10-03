@@ -42,7 +42,7 @@ flowchart LR
     FE -->|/api/v1 + Bearer| API[FastAPI backend]
     EXT[City apps, partners] -->|/public/v1 + X-Api-Key| API
     CL[Claude / AI assistant] -->|MCP stdio| MCP[clients/mcp_server.py] -->|/public/v1| API
-    API --> DB[(SQLite)]
+    API --> DB[(SQLite / Postgres)]
     API --> M[(media/ photos)]
     API -.->|AI_MODE=gemini| G[Google Gemini]
     API -.->|AI_MODE=onnx| P[Phi-3.5 Vision local]
@@ -62,4 +62,5 @@ flowchart LR
 | Open data import (OpenStreetMap) | `POST /admin/imports` | F8 |
 | Open API for external apps | `/public/v1/*` | F5 |
 | AI assistant integration (MCP) | `clients/mcp_server.py` | F8 |
-| Persistence (SQLite via SQLAlchemy) | — | F9 |
+| Persistence (SQLite or Postgres via SQLAlchemy) | — | F9/F11 |
+| Docker (Postgres + API) | `docker compose up -d --build` | F11 |

@@ -23,7 +23,8 @@ uv run python main.py                                          # http://localhos
 - OSM import: `POST /api/v1/admin/imports {"source": "osm_file"}` (admin) → Tauron Arena stops etc.
 - MCP (Claude): backend running → `.mcp.json` server `rampa` (`uv run --extra mcp python -m clients.mcp_server`); tools `check_accessibility`, `search_accessible_places`.
 - Open API: `GET /public/v1/places` with header `X-Api-Key: demo-key`.
-- Storage: `REPO_MODE=sql` (default, SQLite `data/rampa.db`, survives restart) or `memory`; config in `.env` (see `.env.example`).
+- Storage: `REPO_MODE=sql|memory`, `DB_ENGINE=sqlite|postgres` (+ `POSTGRES_*`); config in `.env` (see `.env.example`).
+- Docker: `docker compose up -d --build` → Postgres + API on :8000 (`API_PORT=8001` if taken).
 - Demo login: `POST /api/v1/auth/demo {"username": "anna"}` → use `Authorization: Bearer demo-anna`.
 - Reset: `POST /api/v1/admin/demo/reset` with `Bearer demo-admin`.
 - Google mode: `.env` → `AUTH_MODE=google`, `GOOGLE_CLIENT_ID=…`, `ADMIN_EMAILS=…` (see `.env.example`).
@@ -52,6 +53,7 @@ uv run python main.py                                          # http://localhos
 | 8 | OSM import (offline snapshot) + MCP client of Open API | [plan](features/08-osm-mcp/plan.md) | [openapi](features/08-osm-mcp/openapi.yaml) | 75 min |
 | 9 | Persistence: SQLite + SQLAlchemy (`REPO_MODE`, `DATABASE_URL`) | [plan](features/09-sqlite/plan.md) | — | 90 min |
 | 10 | Gemini vision (`AI_MODE=gemini`, `GEMINI_*` config) | [plan](features/10-gemini-vision/plan.md) | F6 | 45 min |
+| 11 | Postgres + docker-compose (`DB_ENGINE`, `POSTGRES_*`) | [plan](features/11-postgres-docker/plan.md) | — | 60 min |
 
 - F0 blocks all.
 - After F0: **F1, F2, F3 in parallel** (demo auth stub ships in F0, Google added in F1).

@@ -7,8 +7,12 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | Variable | Default | Values / meaning |
 |---|---|---|
 | **Storage** | | |
-| `REPO_MODE` | `sql` | `sql` = SQLite via SQLAlchemy, survives restart · `memory` = in-process, lost on restart (tests use this) |
-| `DATABASE_URL` | `sqlite:///data/rampa.db` | SQLAlchemy URL; the SQLite file and its folder are created automatically |
+| `REPO_MODE` | `sql` | `sql` = database via SQLAlchemy, survives restart · `memory` = in-process, lost on restart (tests use this) |
+| `DB_ENGINE` | `sqlite` | `sqlite` (file, zero setup) · `postgres` (server, e.g. docker compose) |
+| `SQLITE_PATH` | `data/rampa.db` | SQLite file; it and its folder are created automatically |
+| `POSTGRES_HOST` / `POSTGRES_PORT` | `localhost` / `5432` | Postgres server (`db` inside docker compose) |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `rampa` / `rampa` / `rampa` | credentials (password is URL-escaped); **set a real password in `.env`** outside local dev |
+| `DATABASE_URL` | — | optional override: any SQLAlchemy URL, e.g. `postgresql+psycopg://u:p@h:5432/db`; wins over the settings above |
 | **Auth** | | |
 | `AUTH_MODE` | `demo` | `demo` = seeded accounts, `POST /auth/demo`, offline · `google` = Google Sign-In (`POST /auth/google`) |
 | `GOOGLE_CLIENT_ID` | — | OAuth "Web" client id from Google Cloud Console (required for `google`) |
@@ -40,6 +44,11 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 ## Typical profiles
 
 ```ini
+# Local Postgres (docker compose up -d db)
+REPO_MODE=sql
+DB_ENGINE=postgres
+POSTGRES_HOST=localhost
+
 # Stage demo (offline, repeatable)
 REPO_MODE=sql
 AUTH_MODE=demo
@@ -57,7 +66,7 @@ GOOGLE_CLIENT_ID=....apps.googleusercontent.com
 ADMIN_EMAILS=lead@team.pl
 ```
 
-Check the active modes with `GET /health` (`auth_mode`, `ai_mode`, `storage`).
+Check the active modes with `GET /health` (`auth_mode`, `ai_mode`, `storage`, `database`). Empty values such as `DEMO_NOW=` mean "not set".
 
 ## Optional dependency groups
 
@@ -65,5 +74,6 @@ Check the active modes with `GET /health` (`auth_mode`, `ai_mode`, `storage`).
 |---|---|---|
 | `ai` | `onnxruntime-genai` | `AI_MODE=onnx` |
 | `mcp` | `fastmcp` | `clients/mcp_server.py` |
+| `postgres` | `psycopg[binary]` | `DB_ENGINE=postgres` when running locally (the Docker image installs it) |
 
 Usage: `uv sync --extra ai`, or `uv run --extra mcp …`. A plain `uv run` syncs the default set and **removes** extras, so keep `--extra` on commands that need them.

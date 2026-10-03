@@ -199,14 +199,15 @@ Public display names are shortened to "Anna K." (privacy rule from the mock-ups)
 ## 6. Persistence (`REPO_MODE`)
 
 - **`memory`:** `InMemoryRepo`, plain dictionaries. Used by tests and ad-hoc runs; data is lost on restart.
-- **`sql`** (default): `SqlRepo`, a **write-behind cache** over SQLite via SQLAlchemy Core.
-  - On start: `create_all`, then load every row into memory, ordered by `seq` so insertion order and tie-breaks are preserved.
+- **`sql`** (default): `SqlRepo`, a **write-behind cache** over **SQLite or Postgres** via SQLAlchemy Core (same code; `DB_ENGINE`, `Settings.db_url`, Postgres via `psycopg`).
+  - On start: `create_all` (retried while a Postgres container is still booting), then load every row into memory, ordered by `seq` so insertion order and tie-breaks are preserved.
   - After every non-GET request, middleware calls `repo.commit()`. It diffs the current rows against a snapshot of the last commit and issues the needed `INSERT`, `UPDATE` and `DELETE` statements.
   - Datetimes are stored as ISO strings to keep time zones; lists and dicts are stored as JSON.
   - At bootstrap: an empty DB is seeded. A non-empty DB is loaded, and the id counters continue past the stored ids so new ids never collide.
   - Tables: `users`, `sessions`, `places`, `feature_states`, `observations`, `reports`, `photos`, `queue_items`.
 - **Why write-behind:** the `Repo` port is synchronous and the use cases mutate domain objects in place. This adds persistence without touching the domain or use cases.
-- **Limit:** a single process only (one uvicorn worker). Multiple workers or Postgres would need a fully SQL-backed repository; the port stays the same.
+- **Limit:** a single process only (one uvicorn worker), on both SQLite and Postgres. Multiple workers or replicas would need a fully SQL-backed repository; the port stays the same.
+- **Deployment:** `docker-compose.yml` = `postgres:17-alpine` (healthcheck, volume `pgdata`) + the API image (`Dockerfile`, uv, Python 3.13, extra `postgres`). Verified: the full `demo.http` and the SqlRepo test suite pass on Postgres.
 
 ## 7. Auth
 
