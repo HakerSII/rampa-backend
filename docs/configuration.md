@@ -26,6 +26,11 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | **Open API** | | |
 | `PUBLIC_API_KEYS` | `demo-key` | comma list of valid `X-Api-Key` values |
 | `PUBLIC_RATE_LIMIT_PER_MIN` | `60` | requests per minute per key (fixed window, in memory) |
+| **Rate limits (F43)** | | 60 s window, in memory, per process; `0` = off; exceeded → `429` + `Retry-After` |
+| `AI_RATE_LIMIT_PER_MIN` | `10` | `/api/v1/ai/*` per user (Bearer token; guests per IP) |
+| `AI_RATE_LIMIT_PER_IP_PER_MIN` | `30` | `/api/v1/ai/*` per IP (caps many anonymous accounts from one machine) |
+| `AUTH_RATE_LIMIT_PER_MIN` | `20` | login endpoints (`POST /auth/*` except logout) per IP |
+| `TRUSTED_PROXY_HOPS` | `0` | `0` = socket IP (X-Forwarded-For ignored, cannot be spoofed) · **Render: `1`** = the address Render's proxy appended to X-Forwarded-For |
 | **OSM** | | |
 | `OSM_FILE` | `data/osm_krakow_tauron.json` | snapshot used by `POST /admin/imports {"source":"osm_file"}` and as the Overpass fallback |
 | `GEOCODER` | `local` | `local` = place index only (offline, deterministic) · `nominatim` = local places first, then Nominatim hits in Kraków; failure → local |
@@ -38,7 +43,7 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | —, `587`, —, — | SMTP server (STARTTLS); **password is a secret** |
 | `MAIL_FROM` | `noreply@rampa.local` | sender address |
 | `EMAIL_LINK_URL` | — | front-end page taking `?token=`; empty → the mail contains only the code |
-| `AI_RECOMMENDER` | `rules` | `POST /ai/recommend` interpreter: `rules` (offline, PL+EN keywords) · `claude` (Claude API, forced tool call; facts never from the model). Failure → rules |
+| `AI_RECOMMENDER` | `rules` | `POST /ai/recommend` interpreter: `rules` (offline, PL+EN keywords) · `claude` (Claude API) · `gemini` (Gemini API, uses `GEMINI_API_KEY` / `GEMINI_MODEL`, shares the free quota with photos). Forced tool call with one shared schema; facts never come from the model. Failure → rules |
 | `ANTHROPIC_API_KEY` | — | **secret**; needed for `AI_RECOMMENDER=claude` |
 | `CLAUDE_MODEL` | `claude-sonnet-5-5` | model for the recommender (compare with `claude-opus-5-5` on the test queries) |
 | `ROUTER` | `straight` | `GET /routes/accessible` path: `straight` = straight-line heuristic (offline) · `osrm` = walking path from OSRM; failure → straight |
@@ -53,12 +58,15 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `GEMINI_MODEL` | `gemini-3.8-flash` | Gemini model name (Google retired `gemini-2.5-flash` for new users) |
 | `GEMINI_API_URL` | `https://generativelanguage.googleapis.com/v1beta` | API base URL |
 
-**MCP client** (`clients/mcp_server.py`, separate process; its env comes from `.mcp.json`):
+**MCP server** (`clients/mcp_server.py`, separate process with **its own env file `.mcpenv`** (template `.mcpenv.example`, gitignored); real env vars win: `.mcp.json`, compose, the Render service `rampa-mcp`; see [mcp.md](mcp.md)):
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `RAMPA_API_URL` | `http://localhost:8000` | backend base URL |
-| `RAMPA_API_KEY` | `demo-key` | one of `PUBLIC_API_KEYS` |
+| `RAMPA_API_KEY` | `demo-key` | one of `PUBLIC_API_KEYS` (use a dedicated key in production) |
+| `MCP_TRANSPORT` | `stdio` (`http` in `Dockerfile.mcp`) | `stdio` = local child process · `http` = Streamable HTTP at `/mcp` (F41) |
+| `PORT` | `8080` | HTTP port (Render sets it) |
+| `MCP_AUTH_TOKEN` | — | **secret**; when set, `/mcp` needs `Authorization: Bearer <token>`; empty for claude.ai connectors |
 
 ## Typical profiles
 

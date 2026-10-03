@@ -248,6 +248,35 @@ Authorization: Bearer {{admin}}
 ### F37a. Configured city (front end sets up the map: centre, box, areas, category groups)
 GET {{base}}/city
 
+### F42a. XSS: HTML in a comment is stripped → comment "alert(1)Stromy podjazd"; headers nosniff + CSP
+POST {{base}}/places/plc_mnk/observations
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"feature": "ramp", "value": "yes", "comment": "<script>alert(1)</script>Stromy podjazd"}
+
+### F42b. 400 VALIDATION_ERROR — javascript: link as the website
+PATCH {{base}}/owner/places/plc_mnk
+Authorization: Bearer {{ewa}}
+Content-Type: application/json
+
+{"contact": {"website": "javascript:alert(1)"}}
+
+### F42c. 400 VALIDATION_ERROR — question that is only HTML (empty after cleaning)
+POST {{base}}/places/plc_mnk/questions
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"text": "<img src=x onerror=alert(1)>"}
+
+### F43. Rate limits — response headers show nothing until a limit is hit. To see 429 + Retry-After, send this
+### request more than AI_RATE_LIMIT_PER_MIN (10) times within a minute with the same token.
+POST {{base}}/ai/recommend
+Authorization: Bearer {{ola}}
+Content-Type: application/json
+
+{"query": "kawiarnia w centrum"}
+
 ### F33a. E-mail login: request a code (demo + console mailer → dev_token in the response; mail in the log)
 # @name emailReq
 POST {{base}}/auth/email/request

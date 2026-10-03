@@ -1,0 +1,17 @@
+# rampa-mcp (F41) — env of the MCP service only (separate from the backend's .env).
+# Copy to .mcpenv (gitignored). On Render: paste these as the rampa-mcp service's environment variables
+# (Environment → Add from .env). Real env vars always win over this file. Guide: docs/mcp.md
+
+# backend Open API this MCP server calls (Render: https://<rampa-backend>.onrender.com; compose: http://api:8000)
+RAMPA_API_URL=http://localhost:8000
+# one of the backend's PUBLIC_API_KEYS (use a dedicated key in production)
+RAMPA_API_KEY=demo-key
+
+# stdio (local child process, .mcp.json) | http (Streamable HTTP at /mcp). Dockerfile.mcp and compose already set
+# http + PORT; keep these commented so a local .mcp.json (stdio) is not switched to http by this file.
+# MCP_TRANSPORT=http
+# PORT=8080
+
+# optional secret: when set, /mcp requires "Authorization: Bearer <token>" (/health stays open).
+# Leave empty for claude.ai / Claude Desktop custom connectors (no-auth or OAuth only).
+MCP_AUTH_TOKEN=

@@ -27,6 +27,7 @@ from app.domain import check as domain_check, osm as domain_osm, suggestions, tr
 from app.domain.geo import haversine_m, in_bbox, parse_bbox
 from app.domain import recommend as recommend_domain
 from app.domain.city import City
+from app.domain.text import clean_text, is_email, is_http_url, is_phone
 from app.domain.recommend import Intent, Recommendation
 from app.domain.route import RouteResult, plan_route
 from app.domain.text_parse import TextSuggestion, parse_text
@@ -1067,6 +1068,12 @@ class UseCases:
                 setattr(place, attr, value.strip()[:1000])
         if contact is not None:
             unknown = set(contact) - {"phone", "website", "email"}
+            checks = {"website": (is_http_url, "website must be an http(s):// URL"),
+                      "email": (is_email, "invalid e-mail"), "phone": (is_phone, "invalid phone number")}
+            for key, value in contact.items():
+                check = checks.get(key)
+                if check and str(value).strip() and not check[0](str(value)):
+                    raise ValidationFailed(check[1])
             if unknown:
                 raise ValidationFailed(f"unknown contact fields: {sorted(unknown)}")
             place.contact = {**place.contact, **{k: str(v).strip() for k, v in contact.items()}}
@@ -1560,7 +1567,7 @@ class UseCases:
             yield bytes(data)
 
         path, url = await self.storage.save(one_chunk(), f"{photo_id}.{ext}")
-        photo = Photo(photo_id, path, url, original_name=filename)
+        photo = Photo(photo_id, path, url, original_name=clean_text(filename)[:MAX_PLACE_NAME] or "upload")
         self.repo.add_photo(photo)
         return photo
 
@@ -1756,7 +1763,7 @@ class UseCases:
                          report_id: str | None = None, source: ObservationSource | None = None) -> Observation:
         source = source or self._source_for(user, place_id)
         obs = Observation(self.ids.new("obs"), place_id, feature, value, source, user.id, self.clock.now(),
-                          temporary=temporary, comment=comment, evidence_ids=list(photo_ids),
+                          temporary=temporary, comment=clean_text(comment or ""), evidence_ids=list(photo_ids),
                           report_id=report_id)
         self.repo.add_observation(obs)
         return obs

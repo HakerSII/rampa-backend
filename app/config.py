@@ -54,8 +54,8 @@ class Settings(BaseSettings):
     smtp_password: str = ""  # secret: only in .env / Render env
     mail_from: str = "noreply@rampa.local"
     email_link_url: str = ""  # front-end page that takes ?token=…; empty → code only
-    # F30 recommendations: rules (offline) | claude (needs ANTHROPIC_API_KEY); failure → rules
-    ai_recommender: Literal["rules", "claude"] = "rules"
+    # F30 recommendations: rules (offline) | claude (ANTHROPIC_API_KEY) | gemini (GEMINI_API_KEY); failure → rules
+    ai_recommender: Literal["rules", "claude", "gemini"] = "rules"
     anthropic_api_key: str = ""  # secret: only in .env / Render env
     claude_model: str = "claude-sonnet-5-5"
     router: Literal["straight", "osrm"] = "straight"  # F28: GET /route geometry
@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     http_user_agent: str = "RampaKrakowBezBarier/0.1 (HackYeah 2026)"  # OSM usage policy: identify the app
     public_api_keys: str = "demo-key"  # comma-separated X-Api-Key values for /public/v1
     public_rate_limit_per_min: int = 60
+    # F43 rate limits (per process, 60 s window; 0 = off): /api/v1/ai/* per user + per IP, login per IP
+    ai_rate_limit_per_min: int = 10
+    ai_rate_limit_per_ip_per_min: int = 30
+    auth_rate_limit_per_min: int = 20
+    trusted_proxy_hops: int = 0  # Render: 1 → client IP from X-Forwarded-For (rightmost hop)
 
     @field_validator("demo_now", mode="before")
     @classmethod

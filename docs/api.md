@@ -54,7 +54,7 @@ Every error has the same shape:
 | 404 | `NOT_FOUND` | unknown place/observation/report/queue item; demo or Google login disabled in the current mode |
 | 409 | `CONFLICT` | queue item already resolved |
 | 413 | `FILE_TOO_LARGE` | photo > 10 MB |
-| 429 | `RATE_LIMITED` | Open API limit exceeded; `Retry-After` header |
+| 429 | `RATE_LIMITED` | rate limit exceeded (Open API key, `/ai/*`, login, login e-mails); `Retry-After` header |
 
 ### Enums
 
@@ -71,6 +71,31 @@ Every error has the same shape:
 | Check answer | `yes`, `partial`, `no`, `unknown` |
 | Report `current_state` / `severity` / `nature` | `works·partially_works·not_working` / `critical·obstacle·minor` / `permanent·temporary·unknown` |
 | Role | `guest`, `user`, `owner`, `admin` |
+
+### Rate limits (F43)
+
+| Where | Key | Default | Setting |
+|---|---|---|---|
+| `/api/v1/ai/*` | user (Bearer token; guests: IP) | 10 / min | `AI_RATE_LIMIT_PER_MIN` |
+| `/api/v1/ai/*` | IP | 30 / min | `AI_RATE_LIMIT_PER_IP_PER_MIN` |
+| `POST /api/v1/auth/*` (not logout) | IP | 20 / min | `AUTH_RATE_LIMIT_PER_MIN` |
+| `/public/v1/*` | `X-Api-Key` | 60 / min | `PUBLIC_RATE_LIMIT_PER_MIN` |
+| `POST /auth/email/request` | e-mail address | 3 / 15 min | — |
+
+Exceeded → `429 {"error": {"code": "RATE_LIMITED", …}}` with a `Retry-After` header (seconds), which CORS exposes to the browser. Limits are per process: with several workers the effective limit is the limit × the number of workers. The client IP behind Render comes from `TRUSTED_PROXY_HOPS=1`.
+
+### Security of text and responses (F42)
+
+- **User text is plain text.** Every string in a JSON request body loses HTML tags, `<`, `>` and control characters before validation; newlines and tabs are kept. Example: `"<script>alert(1)</script>Stromy"` is stored as `"alert(1)Stromy"`. Text that is empty after cleaning fails like empty text (400). The same applies to upload file names and to the image description returned by the AI model.
+- **Links:** `contact.website` must be `http(s)://…`, so `javascript:` gives 400. `email` and `phone` are validated too.
+- **Headers on every response:**
+  - `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`;
+  - on the API: `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`;
+  - on `/media`: a sandboxed CSP;
+  - `/docs` (Swagger) keeps working.
+- **Front end:** this is defence in depth. Render user text as text (`textContent` or framework escaping), never with `innerHTML`, because data stored before F42 is not rewritten.
+- **SQL:** SQLAlchemy Core with bound parameters only. The single raw statement is the schema migration (`ALTER TABLE … ADD COLUMN`), built from the schema in code, never from a request.
+- **AI input:** see [5e](#5e-ai-recommendations). The model returns only enum filters, and facts come from the database.
 
 ## 2. Endpoint overview
 
@@ -481,7 +506,7 @@ Queue filters: `filter=all|conflict|abuse`, `status=open|escalated|resolved|all`
 
 `POST /api/v1/ai/recommend {"query": "restauracja w centrum, wejdę z wózkiem dziecięcym i psem", "profile"?: "wheelchair", "lat"?, "lon"?, "limit"?: 5}`. Guests are allowed.
 
-1. **Interpret** the query into `intent {profiles, features, categories, area}`. `AI_RECOMMENDER=rules` (default) uses offline PL+EN keywords. `claude` uses Claude with a forced tool call `set_filters`: the model sees only the query and returns only filters. If the model fails, the rules take over. A `profile` parameter is merged into the intent.
+1. **Interpret** the query into `intent {profiles, features, categories, area}`. `AI_RECOMMENDER=rules` (default) uses offline PL+EN keywords. `claude` / `gemini` use the model with a forced tool call `set_filters`. Both providers get the same tool schema and prompt, defined once in `app/domain/recommend.py` (F40 A). The model sees only the query and returns only filters. If the model fails, the rules take over. A `profile` parameter is merged into the intent.
 2. **Rank** places from the database: `check` for each profile plus the requested features. Order: `yes` > `partial` > `unknown` > `no` (last), ties by distance (from `lat/lon`, or the area centre).
 3. **Explain** each item:
    - `reasons`: each relevant feature with its `state`, `source` and `last_verified`, taken from the DB;
@@ -691,7 +716,9 @@ No or wrong key → 401. Over the limit → 429 + `Retry-After`. An app Bearer t
 
 ## 9. MCP tools (for AI assistants)
 
-Served by `clients/mcp_server.py` over stdio; it calls the Open API. Setup: [operations.md §5](operations.md#5-mcp-in-claude).
+Served by `clients/mcp_server.py`, which calls the Open API. Locally it runs over **stdio**. Remote (F41) it runs over **Streamable HTTP** at `https://<mcp-service>/mcp` (JSON-RPC 2.0: `initialize`, `tools/list`, `tools/call`), plus `GET /health` and an optional `Authorization: Bearer <MCP_AUTH_TOKEN>`.
+
+The full guide (run, deploy on Render, connect Claude, Gemini CLI or Grok) is [mcp.md](mcp.md). Raw calls are in [`requests/mcp.http`](../requests/mcp.http).
 
 | Tool | Input | Output |
 |---|---|---|

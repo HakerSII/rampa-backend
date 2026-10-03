@@ -7,3 +7,5 @@ media/
 models/
 data/*.db
 data/*.db-*
+# MCP service env (secret token) — template is .mcpenv.example
+.mcpenv

@@ -1,0 +1,56 @@
+### =====================================================================
+### Kraków bez barier — remote MCP (F41) e2e: raw JSON-RPC over Streamable HTTP (VS Code REST Client)
+###
+### 1. Backend:  uv run python main.py                                              (http://localhost:8000)
+### 2. MCP:      MCP_TRANSPORT=http PORT=8080 uv run --extra mcp python -m clients.mcp_server
+###    or Render: set @mcp to https://<your-mcp-service>.onrender.com/mcp
+### 3. Send top → bottom. Responses are JSON-RPC (may arrive as text/event-stream "data:" lines).
+### MCP_AUTH_TOKEN set on the server? → uncomment the Authorization lines.
+### =====================================================================
+
+@mcp = http://localhost:8080/mcp
+@health = http://localhost:8080/health
+# @token = change-me
+
+### M0. Health (always open, used by Render)
+GET {{health}}
+
+### M1. initialize → serverInfo.name "Kraków bez barier"
+POST {{mcp}}
+Content-Type: application/json
+Accept: application/json, text/event-stream
+# Authorization: Bearer {{token}}
+
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "rest-client", "version": "1"}}}
+
+### M2. tools/list → check_accessibility, search_accessible_places
+POST {{mcp}}
+Content-Type: application/json
+Accept: application/json, text/event-stream
+# Authorization: Bearer {{token}}
+
+{"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
+
+### M3. tools/call check_accessibility — MNK for a wheelchair → answer "yes"
+POST {{mcp}}
+Content-Type: application/json
+Accept: application/json, text/event-stream
+# Authorization: Bearer {{token}}
+
+{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "check_accessibility", "arguments": {"place_name": "Muzeum Narodowe", "profile": "wheelchair"}}}
+
+### M4. tools/call search_accessible_places — step-free entrance → MNK, ICE
+POST {{mcp}}
+Content-Type: application/json
+Accept: application/json, text/event-stream
+# Authorization: Bearer {{token}}
+
+{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "search_accessible_places", "arguments": {"features": ["step_free_entrance"]}}}
+
+### M5. Unknown place → "Nie znaleziono" (tool answers, no error)
+POST {{mcp}}
+Content-Type: application/json
+Accept: application/json, text/event-stream
+# Authorization: Bearer {{token}}
+
+{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "check_accessibility", "arguments": {"place_name": "Smocza Jama"}}}
