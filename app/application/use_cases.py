@@ -633,7 +633,7 @@ class UseCases:
                    if r.place_id in ids and r.status == "submitted" and r.created_at >= since]
         updates = [o for p in places for o in self.repo.list_observations(p.id)
                    if o.author_id == user.id and o.source == ObservationSource.VERIFIED_OWNER and o.created_at >= since]
-        conflicts = [q for q in self.repo.list_queue_items() if q.place_id in ids and q.status == QueueStatus.OPEN]
+        conflicts = [q for q in self.repo.list_queue_items() if q.place_id in ids and q.open_conflict]
         avg = round(sum(confidences) / len(confidences), 2) if confidences else 0.0
         return OwnerStats(len(places), avg, len(reports), len(updates), len(conflicts))
 
@@ -697,7 +697,7 @@ class UseCases:
         for o in observations:
             by_source[str(o.source)] = by_source.get(str(o.source), 0) + 1
         conflicts = sum(1 for q in self.repo.list_queue_items()
-                        if q.place_id == place_id and q.status == QueueStatus.OPEN)
+                        if q.place_id == place_id and q.open_conflict)
         v = self.verification_for(place_id)
         return OwnerPlaceStats(len(observations), by_source, sum(o.up_votes for o in observations),
                                sum(o.down_votes for o in observations), conflicts, v.last_verified, v.confidence)
@@ -745,7 +745,7 @@ class UseCases:
                 reminders.append(Reminder(place.id, "stale_data",
                                           f"Sprawdź aktualność danych — {place.name}", "normal"))
             for q in self.repo.list_queue_items():
-                if q.place_id == place.id and q.status == QueueStatus.OPEN:
+                if q.place_id == place.id and q.open_conflict:
                     reminders.append(Reminder(place.id, "conflict",
                                               f"Wyjaśnij sprzeczne zgłoszenia: {LABELS_PL[q.feature]} — {place.name}",
                                               "high", q.feature))
@@ -984,10 +984,10 @@ class UseCases:
     def list_queue(self, admin: User | None, filter: str = "all", status: str = "open") -> list[QueueItem]:
         self._require_admin(admin)
         items = self.repo.list_queue_items()
-        if filter not in ("all", "conflict") or status not in ("open", "resolved", "all"):
-            raise ValidationFailed("filter must be all|conflict, status open|resolved|all")
-        if filter == "conflict":
-            items = [q for q in items if q.type == "conflict"]
+        if filter not in ("all", "conflict", "abuse") or status not in ("open", "escalated", "resolved", "all"):
+            raise ValidationFailed("filter must be all|conflict|abuse, status open|escalated|resolved|all")
+        if filter != "all":
+            items = [q for q in items if q.type == filter]
         if status != "all":
             items = [q for q in items if q.status == status]
         return items
@@ -1001,12 +1001,23 @@ class UseCases:
 
     def decide(self, admin: User | None, item_id: str, action: str,
                winning_observation_id: str | None = None, comment: str = "") -> FeatureStateRecord:
-        """confirm: winner kept + admin observation, opposite values REJECTED; reject: all REJECTED.
+        """confirm: winner kept + admin observation, opposite values REJECTED; reject: all REJECTED;
+        escalate: handed to a coordinator, data unchanged, decidable later.
+        Abuse items: confirm → observation FLAGGED; reject → report dismissed.
         Observations are never deleted — only their validation changes."""
         item = self.get_queue_item(admin, item_id)
         action_v = _enum(DecisionAction, action, "action")
-        if item.status != QueueStatus.OPEN:
+        if not item.pending:
             raise ConflictError(f"queue item already resolved: {item_id}")
+        if action_v == DecisionAction.ESCALATE:
+            if item.status == QueueStatus.ESCALATED:
+                raise ConflictError(f"queue item already escalated: {item_id}")
+            item.status, item.decision = QueueStatus.ESCALATED, "escalated"
+            if comment.strip():
+                self.add_queue_comment(admin, item_id, comment)
+            return self.recompute(item.place_id, item.feature)
+        if item.type == "abuse":
+            return self._decide_abuse(item, action_v)
         observations = [self._get_observation(i) for i in item.observation_ids]
 
         if action_v == DecisionAction.CONFIRM:
@@ -1023,6 +1034,34 @@ class UseCases:
                 o.validation = ValidationStatus.REJECTED
             item.status, item.decision, item.resolved_at = QueueStatus.RESOLVED, "rejected", self.clock.now()
         return self.recompute(item.place_id, item.feature)
+
+    def _decide_abuse(self, item: QueueItem, action: DecisionAction) -> FeatureStateRecord:
+        obs = self._get_observation(item.observation_ids[0])
+        if action == DecisionAction.CONFIRM:
+            reasons = "; ".join(c["text"] for c in item.comments)
+            obs.validation, obs.flag_reason = ValidationStatus.FLAGGED, f"Zgłoszenia nadużycia: {reasons}"[:200]
+        item.status, item.resolved_at = QueueStatus.RESOLVED, self.clock.now()
+        item.decision = "approved" if action == DecisionAction.CONFIRM else "rejected"
+        return self.recompute(item.place_id, item.feature)
+
+    def report_abuse(self, user: User | None, observation_id: str, reason: str) -> QueueItem:
+        """F26: any user reports spam / false data → moderation queue (type abuse). Once per user."""
+        self._require_user(user)
+        obs = self._get_observation(observation_id)
+        reason = (reason or "").strip()
+        if not 1 <= len(reason) <= 200:
+            raise ValidationFailed("reason must have 1..200 characters")
+        if obs.author_id == user.id:
+            raise ValidationFailed("cannot report your own observation")
+        items = [q for q in self.repo.list_queue_items() if q.type == "abuse" and observation_id in q.observation_ids]
+        if any(c["author_id"] == user.id for q in items for c in q.comments):
+            raise ConflictError("you already reported this observation")
+        item = next((q for q in items if q.pending), None)
+        if item is None:
+            item = QueueItem(self.ids.new("q"), obs.place_id, obs.feature, self.clock.now(), [obs.id], type="abuse")
+            self.repo.add_queue_item(item)
+        item.comments.append({"author_id": user.id, "text": reason, "created_at": self.clock.now().isoformat()})
+        return item
 
     # ------------------------------------------------------------------ observations (F3)
     def recompute(self, place_id: str, feature: FeatureKey) -> FeatureStateRecord:

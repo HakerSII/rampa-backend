@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from app.domain.enums import QueueStatus, StateValue, ValidationStatus
+from app.domain.enums import StateValue, ValidationStatus
 from app.domain.model import FeatureStateRecord, Observation, QueueItem, Report
 
 LOW_CONFIDENCE = 0.5
@@ -40,8 +40,8 @@ def compute_stats(*, reports: list[Report], observations: list[Observation], que
                   states: list[FeatureStateRecord], places: int, now: datetime) -> AdminStats:
     rep_t, rep_y = _per_day((r.created_at for r in reports), now)
     obs_t, obs_y = _per_day((o.created_at for o in observations), now)
-    q_t, q_y = _per_day((q.created_at for q in queue), now)
-    open_conflicts = sum(1 for q in queue if q.status == QueueStatus.OPEN)
+    q_t, q_y = _per_day((q.created_at for q in queue if q.type == "conflict"), now)
+    open_conflicts = sum(1 for q in queue if q.open_conflict)
     low = sum(1 for s in states if s.state != StateValue.UNKNOWN and s.confidence < LOW_CONFIDENCE)
     return AdminStats(
         new_reports_today=StatTile(rep_t, _change(rep_t, rep_y)),

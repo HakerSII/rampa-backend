@@ -1871,6 +1871,75 @@
         }
       }
     },
+    "/api/v1/observations/{observation_id}/abuse": {
+      "post": {
+        "tags": [
+          "observations"
+        ],
+        "summary": "Report Abuse",
+        "description": "F26: report spam / false data → admin moderation queue (type abuse).",
+        "operationId": "report_abuse_api_v1_observations__observation_id__abuse_post",
+        "parameters": [
+          {
+            "name": "observation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Observation Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbuseIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueItemOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/observations/{observation_id}/votes/me": {
       "delete": {
         "tags": [
@@ -4325,6 +4394,19 @@
   },
   "components": {
     "schemas": {
+      "AbuseIn": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "AbuseIn"
+      },
       "AccessibilityOut": {
         "properties": {
           "place_id": {

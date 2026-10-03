@@ -352,6 +352,65 @@ Content-Type: application/json
 
 {"reason": "spam"}
 
+### 7m1. F26: another false "no ramp" on Camelot (Marek) …
+# @name fake
+POST {{base}}/places/plc_camelot/observations
+Authorization: Bearer {{marek}}
+Content-Type: application/json
+
+{"feature": "ramp", "value": "no", "comment": "brak"}
+
+### 7m2. … Anna reports it as abuse → 201, queue item type abuse
+POST {{base}}/observations/{{fake.response.body.$.id}}/abuse
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"reason": "Byłam wczoraj, podjazd jest"}
+
+### 7m3. … Jan reports it too → joins the same item (2 reasons)
+POST {{base}}/observations/{{fake.response.body.$.id}}/abuse
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"reason": "Fałszywe zgłoszenie"}
+
+### 7m4. Anna again → 409 CONFLICT (once per user)
+POST {{base}}/observations/{{fake.response.body.$.id}}/abuse
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"reason": "jeszcze raz"}
+
+### 7m5. Marek reports his own observation → 400
+POST {{base}}/observations/{{fake.response.body.$.id}}/abuse
+Authorization: Bearer {{marek}}
+Content-Type: application/json
+
+{"reason": "own"}
+
+### 7m6. Admin: abuse queue (counts all / conflict / abuse)
+# @name abuseQ
+GET {{base}}/admin/queue?filter=abuse
+Authorization: Bearer {{admin}}
+
+### 7m7. Admin escalates it to a coordinator → status escalated, data unchanged
+POST {{base}}/admin/queue/{{abuseQ.response.body.$.items[0].id}}/decision
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"action": "escalate", "comment": "Koordynator sprawdzi na miejscu"}
+
+### 7m8. Escalated items
+GET {{base}}/admin/queue?status=escalated
+Authorization: Bearer {{admin}}
+
+### 7m9. Coordinator confirms abuse → approved, observation FLAGGED, ramp yes
+POST {{base}}/admin/queue/{{abuseQ.response.body.$.items[0].id}}/decision
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"action": "confirm"}
+
 ### 7n. Jan applies for ownership of ICE ("Jestem właścicielem")
 # @name ownReq
 POST {{base}}/owner/ownership-requests

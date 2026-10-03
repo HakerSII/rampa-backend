@@ -142,6 +142,15 @@ class QueueItem:
     resolved_at: datetime | None = None
     comments: list[dict] = field(default_factory=list)  # {author_id, text, created_at (ISO)}
 
+    @property
+    def pending(self) -> bool:
+        """open or escalated — still waiting for a decision"""
+        return self.status != QueueStatus.RESOLVED
+
+    @property
+    def open_conflict(self) -> bool:
+        return self.type == "conflict" and self.pending
+
 
 @dataclass(slots=True)
 class OwnershipRequest:

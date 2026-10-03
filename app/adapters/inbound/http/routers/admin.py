@@ -26,7 +26,8 @@ router = APIRouter(tags=["admin"])
 async def list_queue(uc: UC, admin: AdminUser, filter: str = "all", status: str = "open"):
     items = uc.list_queue(admin, filter, status)
     open_items = uc.list_queue(admin, "all", "open")
-    counts = {"all": len(open_items), "conflict": sum(q.type == "conflict" for q in open_items)}
+    counts = {"all": len(open_items), "conflict": sum(q.type == "conflict" for q in open_items),
+              "abuse": sum(q.type == "abuse" for q in open_items)}
     return QueuePage(items=[queue_item_out(uc, q) for q in items], total=len(items), counts=counts)
 
 

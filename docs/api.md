@@ -145,6 +145,7 @@ Every error has the same shape:
 | GET | `/api/v1/owner/places/import/template` | owner | CSV template |
 | POST | `/api/v1/owner/places/import` | owner | CSV import |
 | GET | `/api/v1/observations` | — | Map layer: observations across places (one request) |
+| POST | `/api/v1/observations/{id}/abuse` | user | Report spam / false data → moderation queue (type abuse) |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -418,6 +419,18 @@ Body `{ "value": 1 }` or `{ "value": -1 }`. Voting again replaces the previous v
 - `limit` is 1–500.
 
 One request replaces per-place `GET /places/{id}/observations` loops in the map front end.
+
+## 5d. Abuse reports and escalation
+
+`POST /api/v1/observations/{id}/abuse {"reason": "…"}` (logged in): report an observation as spam or false data.
+
+- Not allowed on your own observation (400); once per user (409).
+- Reports from several users join one pending queue item with `type: abuse`; the reasons are kept as comments.
+- Admin `confirm` → the observation becomes FLAGGED (excluded from trust, history kept); `reject` → report dismissed.
+
+Any queue item can be escalated: `POST /admin/queue/{id}/decision {"action": "escalate"}` → `status: escalated`. Data is unchanged and the item can still be confirmed or rejected later. A new contradicting observation extends an escalated conflict instead of opening a second one.
+
+Queue filters: `filter=all|conflict|abuse`, `status=open|escalated|resolved|all`; `counts` has `all`, `conflict`, `abuse`. Dashboard conflicts, owner stats and reminders count only `type: conflict`.
 
 ## 6. Owner (role `owner`)
 

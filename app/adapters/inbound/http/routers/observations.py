@@ -2,6 +2,9 @@ from fastapi import APIRouter, Response, UploadFile
 
 from app.adapters.inbound.http.deps import UC, CurrentUser, OptionalUser
 from app.adapters.inbound.http.schemas import (
+    AbuseIn,
+    QueueItemOut,
+    queue_item_out,
     Location,
     MapObservationOut,
     MapObservations,
@@ -91,6 +94,13 @@ async def add_observation(place_id: str, body: ObservationIn, uc: UC, user: Curr
 async def vote(observation_id: str, body: VoteIn, uc: UC, user: CurrentUser):
     obs, state = uc.vote(user, observation_id, body.value)
     return VoteResultOut(observation=observation_out(uc, obs, user), feature_state=feature_state_out(state))
+
+
+@router.post("/observations/{observation_id}/abuse", status_code=201, response_model=QueueItemOut,
+             tags=["observations"])
+async def report_abuse(observation_id: str, body: AbuseIn, uc: UC, user: CurrentUser):
+    """F26: report spam / false data → admin moderation queue (type abuse)."""
+    return queue_item_out(uc, uc.report_abuse(user, observation_id, body.reason))
 
 
 @router.delete("/observations/{observation_id}/votes/me", status_code=204, tags=["observations"])

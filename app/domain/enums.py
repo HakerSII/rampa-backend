@@ -133,12 +133,14 @@ class Nature(StrEnum):
 
 class QueueStatus(StrEnum):
     OPEN = "open"
+    ESCALATED = "escalated"  # handed to a coordinator; still pending
     RESOLVED = "resolved"
 
 
 class DecisionAction(StrEnum):
     CONFIRM = "confirm"
     REJECT = "reject"
+    ESCALATE = "escalate"
 
 
 FEATURE_GROUP: dict[FeatureKey, FeatureGroupKey] = {
