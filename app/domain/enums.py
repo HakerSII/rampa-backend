@@ -30,6 +30,7 @@ class ObservationValue(StrEnum):
 
 class ObservationSource(StrEnum):
     COMMUNITY = "community"
+    OPEN_DATA = "open_data"
     VERIFIED_OWNER = "verified_owner"
     ADMIN = "admin"
 

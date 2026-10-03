@@ -93,4 +93,4 @@ components:
                 element: { $ref: "#/components/schemas/FeatureKey" }
                 current_state: { type: string, enum: [works, not_working] }
                 severity: { type: string, enum: [critical, obstacle, minor] }
-        model: { type: string, enum: [phi-3.5-vision-onnx, mock] }
+        model: { type: string, enum: [phi-3.5-vision-onnx, gemini, mock] }

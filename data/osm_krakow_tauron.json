@@ -1,0 +1,146 @@
+[
+  {
+    "name": "Brak nazwy",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "toilets",
+    "lat": 50.0667695,
+    "lon": 19.9971775
+  },
+  {
+    "name": "Optyka",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "attraction",
+    "lat": 50.0676794,
+    "lon": 19.9972861
+  },
+  {
+    "name": "Brak nazwy",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "inne",
+    "lat": 50.06588,
+    "lon": 19.9875053
+  },
+  {
+    "name": "TAURON Arena Kraków al. Pokoju 05",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "inne",
+    "lat": 50.0641959,
+    "lon": 19.9903728
+  },
+  {
+    "name": "Arena Smaków",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "cafe",
+    "lat": 50.0700547,
+    "lon": 19.9870849
+  },
+  {
+    "name": "Boss Barber",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "hairdresser",
+    "lat": 50.0697882,
+    "lon": 19.987554
+  },
+  {
+    "name": "Semaco",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "inne",
+    "lat": 50.0699931,
+    "lon": 19.9871746
+  },
+  {
+    "name": "Brak nazwy",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "inne",
+    "lat": 50.0691687,
+    "lon": 19.9868878
+  },
+  {
+    "name": "TAURON Arena Kraków al. Pokoju 03",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "inne",
+    "lat": 50.064905,
+    "lon": 19.9894082
+  },
+  {
+    "name": "Ogród Doświadczeń im. Stanisława Lema",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "theme_park",
+    "lat": 50.0681673,
+    "lon": 19.9965944
+  },
+  {
+    "name": "Brak nazwy",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "inne",
+    "lat": 50.0639408,
+    "lon": 19.988973
+  },
+  {
+    "name": "TAURON Arena Kraków al. Pokoju 01",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "inne",
+    "lat": 50.0641019,
+    "lon": 19.9886659
+  },
+  {
+    "name": "Mała Hala",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "stadium",
+    "lat": 50.0683792,
+    "lon": 19.9924273
+  },
+  {
+    "name": "Brak nazwy",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "parking",
+    "lat": 50.0684613,
+    "lon": 19.9905142
+  },
+  {
+    "name": "Brak nazwy",
+    "wheelchair": "limited",
+    "toilet": "brak danych",
+    "category": "inne",
+    "lat": 50.0686662,
+    "lon": 19.9937038
+  },
+  {
+    "name": "Decathlon",
+    "wheelchair": "yes",
+    "toilet": "brak danych",
+    "category": "sports",
+    "lat": 50.0658298,
+    "lon": 19.986954
+  },
+  {
+    "name": "Lem-birynt",
+    "wheelchair": "limited",
+    "toilet": "brak danych",
+    "category": "attraction",
+    "lat": 50.0686013,
+    "lon": 19.9956543
+  },
+  {
+    "name": "Brak nazwy",
+    "wheelchair": "limited",
+    "toilet": "brak danych",
+    "category": "inne",
+    "lat": 50.0716356,
+    "lon": 19.9885587
+  }
+]

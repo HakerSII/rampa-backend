@@ -1,0 +1,68 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F8 OSM import
+  version: 0.1.0-mvp
+  description: >
+    Admin import of OpenStreetMap accessibility points as open_data observations
+    (trust 0.6). Idempotent. Subset of ../../../openapi.yaml (POST /admin/imports).
+    The MCP client (clients/) uses the F5 Open API, no own endpoints.
+servers:
+  - url: http://localhost:8000/api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: admin
+paths:
+  /admin/imports:
+    post:
+      tags: [admin]
+      summary: Import accessibility data (MVP source osm_file = offline snapshot)
+      operationId: runImport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source]
+              properties:
+                source: { type: string, enum: [osm_file] }
+      responses:
+        "200":
+          description: Import done
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImportResult" }
+        "400":
+          description: VALIDATION_ERROR (unknown source)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "401":
+          description: UNAUTHORIZED
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "403":
+          description: FORBIDDEN (admin only)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, enum: [VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN] }
+            message: { type: string }
+    ImportResult:
+      type: object
+      properties:
+        source: { type: string }
+        points: { type: integer, description: Points read from source }
+        places_created: { type: integer }
+        places_matched: { type: integer }
+        observations: { type: integer, description: New open_data observations }
+        skipped_unnamed: { type: integer }
+        skipped_no_data: { type: integer }

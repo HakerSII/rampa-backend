@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 from datetime import datetime, timezone
 
@@ -27,6 +28,15 @@ class InMemoryRepo:
         self.reports: dict[str, Report] = {}
         self.photos: dict[str, Photo] = {}
         self.queue: dict[str, QueueItem] = {}
+
+    def commit(self) -> None:
+        """Nothing to persist."""
+
+    def is_empty(self) -> bool:
+        return not self.users
+
+    def all_ids(self) -> list[str]:
+        return [*self.users, *self.places, *self.observations, *self.reports, *self.photos, *self.queue]
 
     # users / sessions
     def add_user(self, user: User) -> None:
@@ -137,3 +147,8 @@ class SeqIdGenerator:
     def new(self, prefix: str) -> str:
         self._counters[prefix] += 1
         return f"{prefix}_{self._counters[prefix]}"
+
+    def observe(self, existing_id: str) -> None:
+        if m := re.fullmatch(r"(.+)_(\d+)", existing_id):
+            prefix, n = m.group(1), int(m.group(2))
+            self._counters[prefix] = max(self._counters[prefix], n)

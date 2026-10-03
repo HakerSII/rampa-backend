@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Protocol
 
 from app.domain.enums import FeatureKey
+from app.domain.osm import OsmPoint
 from app.domain.model import (
     FeatureStateRecord,
     GoogleIdentity,
@@ -21,6 +22,11 @@ from app.domain.model import (
 
 class Repo(Protocol):
     def clear(self) -> None: ...
+    def commit(self) -> None:
+        """Persist changes (no-op in memory). Called after each write request."""
+        ...
+    def is_empty(self) -> bool: ...
+    def all_ids(self) -> list[str]: ...
 
     # users / sessions
     def add_user(self, user: User) -> None: ...
@@ -62,6 +68,9 @@ class Clock(Protocol):
 class IdGenerator(Protocol):
     def new(self, prefix: str) -> str: ...
     def reset(self) -> None: ...
+    def observe(self, existing_id: str) -> None:
+        """Advance counters past an id loaded from storage."""
+        ...
 
 
 class FileStorage(Protocol):
@@ -74,6 +83,10 @@ class VisionAnalyzer(Protocol):
     async def analyze(self, image_path: str, original_name: str) -> ImageAnalysis:
         """Raise on failure; FallbackVisionAnalyzer turns failures into the mock answer."""
         ...
+
+
+class OsmSource(Protocol):
+    async def fetch(self) -> list[OsmPoint]: ...
 
 
 class IdentityVerifier(Protocol):

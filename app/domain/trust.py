@@ -5,6 +5,7 @@ from app.domain.model import FeatureStateRecord, Observation
 SOURCE_WEIGHT = {
     ObservationSource.ADMIN: 1.0,
     ObservationSource.VERIFIED_OWNER: 0.85,
+    ObservationSource.OPEN_DATA: 0.6,
     ObservationSource.COMMUNITY: 0.5,
 }
 EVIDENCE_BONUS = 0.1

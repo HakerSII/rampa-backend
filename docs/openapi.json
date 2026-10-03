@@ -1,0 +1,3423 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Kraków bez barier — MVP",
+    "version": "0.1.0-mvp"
+  },
+  "paths": {
+    "/api/v1/auth/demo": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login Demo",
+        "operationId": "login_demo_api_v1_auth_demo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoLoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/google": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login Google",
+        "operationId": "login_google_api_v1_auth_google_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleLoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_api_v1_me_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/places": {
+      "get": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Search Places",
+        "operationId": "search_places_api_v1_places_get",
+        "parameters": [
+          {
+            "name": "features",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Features"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlacePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/places/{place_id}": {
+      "get": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Get Place",
+        "operationId": "get_place_api_v1_places__place_id__get",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/places/{place_id}/accessibility": {
+      "get": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Get Accessibility",
+        "operationId": "get_accessibility_api_v1_places__place_id__accessibility_get",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessibilityOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/places/{place_id}/check": {
+      "get": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Check Place",
+        "operationId": "check_place_api_v1_places__place_id__check_get",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "profile",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/NeedsProfile"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckResultOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/accessibility/features": {
+      "get": {
+        "tags": [
+          "dictionaries"
+        ],
+        "summary": "List Features",
+        "operationId": "list_features_api_v1_accessibility_features_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeatureDictGroup"
+                  },
+                  "type": "array",
+                  "title": "Response List Features Api V1 Accessibility Features Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/uploads": {
+      "post": {
+        "tags": [
+          "media"
+        ],
+        "summary": "Upload Photo",
+        "operationId": "upload_photo_api_v1_uploads_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_photo_api_v1_uploads_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports": {
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Create Report",
+        "operationId": "create_report_api_v1_reports_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/{report_id}": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Get Report",
+        "operationId": "get_report_api_v1_reports__report_id__get",
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Report Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/places/{place_id}/observations": {
+      "get": {
+        "tags": [
+          "observations"
+        ],
+        "summary": "List Observations",
+        "operationId": "list_observations_api_v1_places__place_id__observations_get",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "feature",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/FeatureKey"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Feature"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Active"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservationList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "observations"
+        ],
+        "summary": "Add Observation",
+        "operationId": "add_observation_api_v1_places__place_id__observations_post",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObservationIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/observations/{observation_id}/votes": {
+      "post": {
+        "tags": [
+          "observations"
+        ],
+        "summary": "Vote",
+        "operationId": "vote_api_v1_observations__observation_id__votes_post",
+        "parameters": [
+          {
+            "name": "observation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Observation Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoteIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoteResultOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/observations/{observation_id}/votes/me": {
+      "delete": {
+        "tags": [
+          "observations"
+        ],
+        "summary": "Remove Vote",
+        "operationId": "remove_vote_api_v1_observations__observation_id__votes_me_delete",
+        "parameters": [
+          {
+            "name": "observation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Observation Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/image-tags": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Image Tags",
+        "operationId": "image_tags_api_v1_ai_image_tags_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageTagsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageTagsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/places": {
+      "get": {
+        "tags": [
+          "owner"
+        ],
+        "summary": "List Owner Places",
+        "operationId": "list_owner_places_api_v1_owner_places_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerPlaces"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/places/{place_id}/observations": {
+      "post": {
+        "tags": [
+          "owner"
+        ],
+        "summary": "Add Owner Observations",
+        "operationId": "add_owner_observations_api_v1_owner_places__place_id__observations_post",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerObservationsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservationList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/reports": {
+      "get": {
+        "tags": [
+          "owner"
+        ],
+        "summary": "List Owner Reports",
+        "operationId": "list_owner_reports_api_v1_owner_reports_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerReports"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/places/{place_id}/owner": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Assign Owner",
+        "operationId": "assign_owner_api_v1_admin_places__place_id__owner_post",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignOwnerIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignOwnerOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/queue": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Queue",
+        "operationId": "list_queue_api_v1_admin_queue_get",
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "all",
+              "title": "Filter"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "open",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueuePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/queue/{item_id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Queue Item",
+        "operationId": "get_queue_item_api_v1_admin_queue__item_id__get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/queue/{item_id}/decision": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Decide",
+        "operationId": "decide_api_v1_admin_queue__item_id__decision_post",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/demo/reset": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Reset Demo",
+        "operationId": "reset_demo_api_v1_admin_demo_reset_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/imports": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Run Import",
+        "operationId": "run_import_api_v1_admin_imports_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/v1/places": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Search Places",
+        "operationId": "search_places_public_v1_places_get",
+        "parameters": [
+          {
+            "name": "features",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Features"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPlacePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/v1/places/{place_id}": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Get Place",
+        "operationId": "get_place_public_v1_places__place_id__get",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPlace"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/v1/places/{place_id}/accessibility": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Get Accessibility",
+        "description": "yes → true, no → false, unknown → omitted.",
+        "operationId": "get_accessibility_public_v1_places__place_id__accessibility_get",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicAccessibility"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/v1/places/{place_id}/check": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Check Place",
+        "operationId": "check_place_public_v1_places__place_id__check_get",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "profile",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/NeedsProfile"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicCheck"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AccessibilityOut": {
+        "properties": {
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureGroupOut"
+            },
+            "type": "array",
+            "title": "Groups"
+          }
+        },
+        "type": "object",
+        "required": [
+          "place_id",
+          "groups"
+        ],
+        "title": "AccessibilityOut"
+      },
+      "ActiveIssueOut": {
+        "properties": {
+          "observation_id": {
+            "type": "string",
+            "title": "Observation Id"
+          },
+          "feature": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "temporary": {
+            "type": "boolean",
+            "title": "Temporary"
+          },
+          "comment": {
+            "type": "string",
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "observation_id",
+          "feature",
+          "temporary",
+          "comment"
+        ],
+        "title": "ActiveIssueOut"
+      },
+      "AssignOwnerIn": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "AssignOwnerIn"
+      },
+      "AssignOwnerOut": {
+        "properties": {
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/UserOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "place_id",
+          "owner"
+        ],
+        "title": "AssignOwnerOut"
+      },
+      "AuthorOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "AuthorOut"
+      },
+      "Body_upload_photo_api_v1_uploads_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_photo_api_v1_uploads_post"
+      },
+      "Category": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "Category"
+      },
+      "CheckAnswer": {
+        "type": "string",
+        "enum": [
+          "yes",
+          "partial",
+          "no",
+          "unknown"
+        ],
+        "title": "CheckAnswer"
+      },
+      "CheckReasonOut": {
+        "properties": {
+          "feature": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "state": {
+            "$ref": "#/components/schemas/StateValue"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature",
+          "state"
+        ],
+        "title": "CheckReasonOut"
+      },
+      "CheckResultOut": {
+        "properties": {
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/NeedsProfile"
+          },
+          "answer": {
+            "$ref": "#/components/schemas/CheckAnswer"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/CheckReasonOut"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "active_issues": {
+            "items": {
+              "$ref": "#/components/schemas/ActiveIssueOut"
+            },
+            "type": "array",
+            "title": "Active Issues"
+          },
+          "advice": {
+            "type": "string",
+            "title": "Advice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "place_id",
+          "profile",
+          "answer",
+          "confidence",
+          "reasons",
+          "active_issues",
+          "advice"
+        ],
+        "title": "CheckResultOut"
+      },
+      "CurrentState": {
+        "type": "string",
+        "enum": [
+          "works",
+          "not_working"
+        ],
+        "title": "CurrentState"
+      },
+      "DecisionIn": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "winning_observation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winning Observation Id"
+          },
+          "comment": {
+            "type": "string",
+            "title": "Comment",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "DecisionIn"
+      },
+      "DecisionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "feature_state": {
+            "$ref": "#/components/schemas/FeatureStateOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "feature_state"
+        ],
+        "title": "DecisionOut"
+      },
+      "DemoLoginIn": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username"
+        ],
+        "title": "DemoLoginIn"
+      },
+      "FeatureDictGroup": {
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/FeatureGroupKey"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureDictItem"
+            },
+            "type": "array",
+            "title": "Features"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "features"
+        ],
+        "title": "FeatureDictGroup"
+      },
+      "FeatureDictItem": {
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "FeatureDictItem"
+      },
+      "FeatureGroupKey": {
+        "type": "string",
+        "enum": [
+          "entrance",
+          "inside",
+          "toilet",
+          "hearing"
+        ],
+        "title": "FeatureGroupKey"
+      },
+      "FeatureGroupOut": {
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/FeatureGroupKey"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureStateOut"
+            },
+            "type": "array",
+            "title": "Features"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "features"
+        ],
+        "title": "FeatureGroupOut"
+      },
+      "FeatureKey": {
+        "type": "string",
+        "enum": [
+          "step_free_entrance",
+          "ramp",
+          "elevator",
+          "accessible_toilet",
+          "induction_loop"
+        ],
+        "title": "FeatureKey"
+      },
+      "FeatureStateOut": {
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "state": {
+            "$ref": "#/components/schemas/StateValue"
+          },
+          "temporary": {
+            "type": "boolean",
+            "title": "Temporary"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "last_verified": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Verified"
+          },
+          "sources_count": {
+            "type": "integer",
+            "title": "Sources Count"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/ValidationStatus"
+          },
+          "active_observation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Observation Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "state",
+          "temporary",
+          "confidence",
+          "last_verified",
+          "sources_count",
+          "validation",
+          "active_observation_id"
+        ],
+        "title": "FeatureStateOut"
+      },
+      "GoogleLoginIn": {
+        "properties": {
+          "id_token": {
+            "type": "string",
+            "title": "Id Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_token"
+        ],
+        "title": "GoogleLoginIn"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ImageAnalysisOut": {
+        "properties": {
+          "real_place": {
+            "type": "boolean",
+            "title": "Real Place"
+          },
+          "barrier_detected": {
+            "type": "boolean",
+            "title": "Barrier Detected"
+          },
+          "barrier_type": {
+            "type": "string",
+            "title": "Barrier Type"
+          },
+          "affected_disabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Affected Disabilities"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "real_place",
+          "barrier_detected",
+          "barrier_type",
+          "affected_disabilities",
+          "description",
+          "confidence"
+        ],
+        "title": "ImageAnalysisOut"
+      },
+      "ImageTagsIn": {
+        "properties": {
+          "photo_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Photo Ids"
+          },
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "photo_ids"
+        ],
+        "title": "ImageTagsIn"
+      },
+      "ImageTagsOut": {
+        "properties": {
+          "analysis": {
+            "$ref": "#/components/schemas/ImageAnalysisOut"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagOut"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "detected": {
+            "type": "string",
+            "title": "Detected"
+          },
+          "suggested": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestedOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "analysis",
+          "tags",
+          "detected",
+          "suggested",
+          "model"
+        ],
+        "title": "ImageTagsOut"
+      },
+      "ImportIn": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source"
+        ],
+        "title": "ImportIn"
+      },
+      "ImportOut": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points"
+          },
+          "places_created": {
+            "type": "integer",
+            "title": "Places Created"
+          },
+          "places_matched": {
+            "type": "integer",
+            "title": "Places Matched"
+          },
+          "observations": {
+            "type": "integer",
+            "title": "Observations"
+          },
+          "skipped_unnamed": {
+            "type": "integer",
+            "title": "Skipped Unnamed"
+          },
+          "skipped_no_data": {
+            "type": "integer",
+            "title": "Skipped No Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "points",
+          "places_created",
+          "places_matched",
+          "observations",
+          "skipped_unnamed",
+          "skipped_no_data"
+        ],
+        "title": "ImportOut"
+      },
+      "Location": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "title": "Location"
+      },
+      "LoginResult": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "user"
+        ],
+        "title": "LoginResult"
+      },
+      "NeedsProfile": {
+        "type": "string",
+        "enum": [
+          "wheelchair"
+        ],
+        "title": "NeedsProfile"
+      },
+      "ObservationIn": {
+        "properties": {
+          "feature": {
+            "type": "string",
+            "title": "Feature"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "temporary": {
+            "type": "boolean",
+            "title": "Temporary",
+            "default": false
+          },
+          "comment": {
+            "type": "string",
+            "title": "Comment",
+            "default": ""
+          },
+          "photo_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Photo Ids",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature",
+          "value"
+        ],
+        "title": "ObservationIn"
+      },
+      "ObservationList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ObservationOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ObservationList"
+      },
+      "ObservationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "feature": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ObservationValue"
+          },
+          "temporary": {
+            "type": "boolean",
+            "title": "Temporary"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ObservationSource"
+          },
+          "author": {
+            "$ref": "#/components/schemas/AuthorOut"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "comment": {
+            "type": "string",
+            "title": "Comment"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoOut"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "votes": {
+            "$ref": "#/components/schemas/VotesOut"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/ValidationOut"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "place_id",
+          "feature",
+          "value",
+          "temporary",
+          "source",
+          "author",
+          "report_id",
+          "comment",
+          "evidence",
+          "votes",
+          "validation",
+          "confidence",
+          "created_at"
+        ],
+        "title": "ObservationOut"
+      },
+      "ObservationSource": {
+        "type": "string",
+        "enum": [
+          "community",
+          "open_data",
+          "verified_owner",
+          "admin"
+        ],
+        "title": "ObservationSource"
+      },
+      "ObservationValue": {
+        "type": "string",
+        "enum": [
+          "yes",
+          "no"
+        ],
+        "title": "ObservationValue"
+      },
+      "OwnerObservationsIn": {
+        "properties": {
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/ObservationIn"
+            },
+            "type": "array",
+            "title": "Observations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "observations"
+        ],
+        "title": "OwnerObservationsIn"
+      },
+      "OwnerPlaces": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "OwnerPlaces"
+      },
+      "OwnerReports": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReportOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "OwnerReports"
+      },
+      "PhotoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "url"
+        ],
+        "title": "PhotoOut"
+      },
+      "PlaceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "accessibility_summary": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureKey"
+            },
+            "type": "array",
+            "title": "Accessibility Summary"
+          },
+          "short_description": {
+            "type": "string",
+            "title": "Short Description"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "category",
+          "location",
+          "accessibility_summary",
+          "short_description",
+          "address"
+        ],
+        "title": "PlaceOut"
+      },
+      "PlacePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page",
+            "default": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "page_size",
+          "total"
+        ],
+        "title": "PlacePage"
+      },
+      "PlaceSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "accessibility_summary": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureKey"
+            },
+            "type": "array",
+            "title": "Accessibility Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "category",
+          "location",
+          "accessibility_summary"
+        ],
+        "title": "PlaceSummary"
+      },
+      "PublicAccessibility": {
+        "properties": {
+          "place": {
+            "$ref": "#/components/schemas/PublicPlaceRef"
+          },
+          "accessibility": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PublicFeature"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/FeatureKey"
+            },
+            "type": "object",
+            "title": "Accessibility"
+          }
+        },
+        "type": "object",
+        "required": [
+          "place",
+          "accessibility"
+        ],
+        "title": "PublicAccessibility"
+      },
+      "PublicCheck": {
+        "properties": {
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/NeedsProfile"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "advice": {
+            "type": "string",
+            "title": "Advice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "place_id",
+          "profile",
+          "answer",
+          "confidence",
+          "advice"
+        ],
+        "title": "PublicCheck"
+      },
+      "PublicFeature": {
+        "properties": {
+          "value": {
+            "type": "boolean",
+            "title": "Value"
+          },
+          "temporary": {
+            "type": "boolean",
+            "title": "Temporary"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "last_verified": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "temporary",
+          "confidence",
+          "last_verified"
+        ],
+        "title": "PublicFeature"
+      },
+      "PublicPlace": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "accessibility_summary": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureKey"
+            },
+            "type": "array",
+            "title": "Accessibility Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "category",
+          "address",
+          "location",
+          "accessibility_summary"
+        ],
+        "title": "PublicPlace"
+      },
+      "PublicPlacePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PublicPlace"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "PublicPlacePage"
+      },
+      "PublicPlaceRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "PublicPlaceRef"
+      },
+      "QueueDetailOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "place": {
+            "$ref": "#/components/schemas/QueuePlace"
+          },
+          "feature": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "observation_count": {
+            "type": "integer",
+            "title": "Observation Count"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/ObservationOut"
+            },
+            "type": "array",
+            "title": "Observations"
+          },
+          "feature_state": {
+            "$ref": "#/components/schemas/FeatureStateOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "status",
+          "label",
+          "place",
+          "feature",
+          "observation_count",
+          "created_at",
+          "summary",
+          "observations",
+          "feature_state"
+        ],
+        "title": "QueueDetailOut"
+      },
+      "QueueItemOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "place": {
+            "$ref": "#/components/schemas/QueuePlace"
+          },
+          "feature": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "observation_count": {
+            "type": "integer",
+            "title": "Observation Count"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "status",
+          "label",
+          "place",
+          "feature",
+          "observation_count",
+          "created_at"
+        ],
+        "title": "QueueItemOut"
+      },
+      "QueuePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QueueItemOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "counts"
+        ],
+        "title": "QueuePage"
+      },
+      "QueuePlace": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "QueuePlace"
+      },
+      "ReportIn": {
+        "properties": {
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "element": {
+            "type": "string",
+            "title": "Element"
+          },
+          "current_state": {
+            "type": "string",
+            "title": "Current State"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "nature": {
+            "type": "string",
+            "title": "Nature"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "photo_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Photo Ids",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "place_id",
+          "element",
+          "current_state",
+          "severity",
+          "nature",
+          "description"
+        ],
+        "title": "ReportIn"
+      },
+      "ReportOut": {
+        "properties": {
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "element": {
+            "type": "string",
+            "title": "Element"
+          },
+          "current_state": {
+            "type": "string",
+            "title": "Current State"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "nature": {
+            "type": "string",
+            "title": "Nature"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "photo_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Photo Ids",
+            "default": []
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "author": {
+            "$ref": "#/components/schemas/AuthorOut"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "observation_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Observation Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "place_id",
+          "element",
+          "current_state",
+          "severity",
+          "nature",
+          "description",
+          "id",
+          "status",
+          "author",
+          "created_at",
+          "observation_ids"
+        ],
+        "title": "ReportOut"
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "guest",
+          "user",
+          "owner",
+          "admin"
+        ],
+        "title": "Role"
+      },
+      "Severity": {
+        "type": "string",
+        "enum": [
+          "critical",
+          "obstacle",
+          "minor"
+        ],
+        "title": "Severity"
+      },
+      "StateValue": {
+        "type": "string",
+        "enum": [
+          "yes",
+          "no",
+          "unknown"
+        ],
+        "title": "StateValue"
+      },
+      "SuggestedOut": {
+        "properties": {
+          "element": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "current_state": {
+            "$ref": "#/components/schemas/CurrentState"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "element",
+          "current_state",
+          "severity"
+        ],
+        "title": "SuggestedOut"
+      },
+      "TagOut": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "feature": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeatureKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "feature",
+          "confidence"
+        ],
+        "title": "TagOut"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "role"
+        ],
+        "title": "UserOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ValidationOut": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/ValidationStatus"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ValidationOut"
+      },
+      "ValidationStatus": {
+        "type": "string",
+        "enum": [
+          "VALID",
+          "CONFLICT",
+          "REJECTED"
+        ],
+        "title": "ValidationStatus"
+      },
+      "VoteIn": {
+        "properties": {
+          "value": {
+            "type": "integer",
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "title": "VoteIn"
+      },
+      "VoteResultOut": {
+        "properties": {
+          "observation": {
+            "$ref": "#/components/schemas/ObservationOut"
+          },
+          "feature_state": {
+            "$ref": "#/components/schemas/FeatureStateOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "observation",
+          "feature_state"
+        ],
+        "title": "VoteResultOut"
+      },
+      "VotesOut": {
+        "properties": {
+          "up": {
+            "type": "integer",
+            "title": "Up"
+          },
+          "down": {
+            "type": "integer",
+            "title": "Down"
+          },
+          "my_vote": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Vote"
+          }
+        },
+        "type": "object",
+        "required": [
+          "up",
+          "down",
+          "my_vote"
+        ],
+        "title": "VotesOut"
+      }
+    }
+  }
+}

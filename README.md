@@ -1,5 +1,7 @@
 # Mini MVP — trimmed plan, split by feature
 
+> **Documentation:** [docs/](docs/README.md) — [architecture](docs/architecture.md) · [API reference](docs/api.md) · [configuration](docs/configuration.md) · [operations](docs/operations.md) · [openapi.json](docs/openapi.json)
+
 Full contract: [../openapi.yaml](../openapi.yaml) · full plan: [../plan_fastapi.md](../plan_fastapi.md) · API notes: [../api.md](../api.md) · status: [STATUS.md](STATUS.md)
 
 - Effort: ~5.5–7 h solo, ~3–3.5 h for 2–3 devs in parallel after F0.
@@ -17,8 +19,11 @@ uv run python main.py                                          # http://localhos
 ```
 
 - E2E by hand: open `requests/demo.http` (VS Code REST Client) → "Send Request" top → bottom.
-- AI: `POST /api/v1/ai/image-tags {"photo_ids": [...]}` — `AI_MODE=mock` (default) or `onnx` (`uv sync --extra ai`, model in `models/`; any failure → mock).
+- AI: `POST /api/v1/ai/image-tags {"photo_ids": [...]}` — `AI_MODE=mock` (default) | `onnx` (`uv sync --extra ai`, model in `models/`) | `gemini` (`GEMINI_API_KEY` in `.env`, `GEMINI_MODEL`); any failure → mock.
+- OSM import: `POST /api/v1/admin/imports {"source": "osm_file"}` (admin) → Tauron Arena stops etc.
+- MCP (Claude): backend running → `.mcp.json` server `rampa` (`uv run --extra mcp python -m clients.mcp_server`); tools `check_accessibility`, `search_accessible_places`.
 - Open API: `GET /public/v1/places` with header `X-Api-Key: demo-key`.
+- Storage: `REPO_MODE=sql` (default, SQLite `data/rampa.db`, survives restart) or `memory`; config in `.env` (see `.env.example`).
 - Demo login: `POST /api/v1/auth/demo {"username": "anna"}` → use `Authorization: Bearer demo-anna`.
 - Reset: `POST /api/v1/admin/demo/reset` with `Bearer demo-admin`.
 - Google mode: `.env` → `AUTH_MODE=google`, `GOOGLE_CLIENT_ID=…`, `ADMIN_EMAILS=…` (see `.env.example`).
@@ -44,6 +49,9 @@ uv run python main.py                                          # http://localhos
 | 5 | Open API (`/public/v1`, X-Api-Key, rate limit) | [plan](features/05-open-api/plan.md) | [openapi](features/05-open-api/openapi.yaml) | 45 min |
 | 6 | AI photo suggestions (mock / Phi-3.5 ONNX + fallback) | [plan](features/06-ai-image-tags/plan.md) | [openapi](features/06-ai-image-tags/openapi.yaml) | 60 min |
 | 7 | Owner role + verified_owner observations | [plan](features/07-owner/plan.md) | [openapi](features/07-owner/openapi.yaml) | 60 min |
+| 8 | OSM import (offline snapshot) + MCP client of Open API | [plan](features/08-osm-mcp/plan.md) | [openapi](features/08-osm-mcp/openapi.yaml) | 75 min |
+| 9 | Persistence: SQLite + SQLAlchemy (`REPO_MODE`, `DATABASE_URL`) | [plan](features/09-sqlite/plan.md) | — | 90 min |
+| 10 | Gemini vision (`AI_MODE=gemini`, `GEMINI_*` config) | [plan](features/10-gemini-vision/plan.md) | F6 | 45 min |
 
 - F0 blocks all.
 - After F0: **F1, F2, F3 in parallel** (demo auth stub ships in F0, Google added in F1).
@@ -75,15 +83,15 @@ Place `plc_mnk` (National Museum), feature `elevator`, seeded `yes` (observation
 |---|---|
 | Owner panel extras (stats, reminders, CSV), ownership requests, role `api_client` | F7 adds `owner` (admin assigns); main demo still uses 2nd `user`, owner variant in demo.http |
 | AI `/ai/parse-text` | not needed for demo; image tags done in F6 |
-| OSM import, `/geocode` | places from seed only |
+| Live Overpass import, `/geocode` | F8 imports offline OSM snapshot; live adapter later |
 | Open API (`/public/v1/*`) | later, same use cases |
-| MCP server | `mcp_server.py` untouched |
+| In-process MCP | MCP is a client of the Open API (`clients/`), see F8 |
 | Route A→B | not in mockups |
 | Report drafts (`PATCH /reports/{id}`, `/submit`) | `POST /reports` → `status=submitted` immediately |
 | `action=escalate` | `confirm` / `reject` only |
 | Feature state `partial`, `current_state=partially_works` | states `yes/no/unknown`. **`check` answer may still be `partial`** (full-enum value) |
 | Favorites, history/audit, admin stats, merge, flagging, gallery, activity | not on demo path |
-| SQLAlchemy / persistent DB | in-memory only; seed on startup + reset endpoint |
+| Postgres, multi-worker | F9: SQLite (single process); seed only into empty DB; reset endpoint wipes |
 | Trust age decay | simplified formula (F3); 30-day conflict window kept |
 | Domain events + dispatcher | use case creates `QueueItem` directly on conflict |
 
@@ -163,5 +171,5 @@ Photo(id, path, url)
 1. ~~Open API (`/public/v1/*`)~~ → done as F5.
 2. ~~`POST /ai/image-tags` with mock~~ → done as F6 (real Phi-3.5: `uv sync --extra ai`, `AI_MODE=onnx`).
 3. ~~`owner` role + `verified_owner` observations~~ → done as F7 (demo.http section "F7 Owner scenario").
-4. OSM import / MCP integration: see [../plan_fastapi.md](../plan_fastapi.md) (phases 4–5).
-5. SQLAlchemy instead of in-memory: `Repo` port stays, add adapter (full plan T0.6).
+4. ~~OSM import / MCP integration~~ → done as F8 (live Overpass adapter still open).
+5. ~~SQLAlchemy instead of in-memory~~ → done as F9 (SQLite write-behind; Postgres / multi-worker = fully SQL-backed repo later).

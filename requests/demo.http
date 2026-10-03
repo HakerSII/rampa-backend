@@ -18,7 +18,11 @@
 @apiKey = demo-key
 
 ### ---------------------------------------------------------------------
-### 0. Reset demo data (admin) → 204
+### Health → storage: sql (SQLite, survives restart) | memory; auth_mode; ai_mode
+GET http://localhost:8000/health
+
+### ---------------------------------------------------------------------
+### 0. Reset demo data (admin) → 204 (also wipes the SQLite DB back to seed)
 POST {{base}}/admin/demo/reset
 Authorization: Bearer {{admin}}
 
@@ -65,7 +69,8 @@ Content-Type: image/png
 ------DemoBoundary--
 
 ### 4a-AI. AI suggestions for the photo → tags winda/awaria, suggested elevator / not_working / critical
-### (AI_MODE=mock: deterministic; onnx: Phi-3.5 Vision, falls back to mock on error/timeout)
+### (AI_MODE=mock: deterministic; onnx: Phi-3.5 Vision; gemini: Google Gemini API → "model": "gemini";
+###  any error/timeout/no key → mock. Check active mode: GET /health → ai_mode)
 POST {{base}}/ai/image-tags
 Authorization: Bearer {{anna}}
 Content-Type: application/json
@@ -311,6 +316,53 @@ Authorization: Bearer {{ewa}}
 Content-Type: application/json
 
 {"observations": []}
+
+### =====================================================================
+### F8 OSM import — OpenStreetMap snapshot (data/osm_krakow_tauron.json) → open_data (0.6)
+### MCP: Claude tool check_accessibility asks the Open API (see README → MCP)
+### =====================================================================
+
+### I1. Before import: "Tauron" unknown → items []
+GET {{public}}/places?q=tauron
+X-Api-Key: {{apiKey}}
+
+### I2. Admin imports OSM → 18 points, 10 places created, 7 unnamed skipped
+POST {{base}}/admin/imports
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"source": "osm_file"}
+
+### I3. Now Tauron Arena stops are on the map (3 places)
+# @name tauron
+GET {{base}}/places?q=tauron
+
+### I4. Can I get in by wheelchair? → yes (OSM wheelchair=yes, confidence 0.6)
+GET {{base}}/places/{{tauron.response.body.$.items[0].id}}/check?profile=wheelchair
+
+### I5. Observations show source open_data, author OpenStreetMap
+GET {{base}}/places/{{tauron.response.body.$.items[0].id}}/observations
+
+### I6. Import again → idempotent: places_created 0, observations 0
+POST {{base}}/admin/imports
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"source": "osm_file"}
+
+### 403 FORBIDDEN — non-admin import
+POST {{base}}/admin/imports
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"source": "osm_file"}
+
+### 400 VALIDATION_ERROR — unknown import source
+POST {{base}}/admin/imports
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"source": "overpass_live"}
 
 ### =====================================================================
 ### Error paths (expected status in title)

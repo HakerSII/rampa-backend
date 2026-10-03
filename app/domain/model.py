@@ -62,6 +62,7 @@ class Place:
     short_description: str = ""
     address: str = ""
     owner_id: str | None = None
+    external_id: str | None = None  # e.g. osm:<lat>,<lon>
 
 
 @dataclass(slots=True)

@@ -5,11 +5,11 @@
 
 ## Current
 
-- **Task:** — F7 done; next: README §6.4 (OSM import / MCP) or §6.5 (SQLAlchemy)
+- **Task:** F11 Postgres + docker-compose (green, unverified on PG)
 - **Who:** Claude
-- **State:** done
-- **Next step:** pick: OSM import (offline file adapter) or MCP check_accessibility via use cases
-- **Last pytest:** `uv run pytest` → 150 passed
+- **State:** todo
+- **Next step:** run: docker compose up -d --build; TEST_POSTGRES_URL=postgresql+psycopg://rampa:rampa@localhost:5432/rampa uv run --extra postgres pytest tests/adapters; then F11 docs
+- **Last pytest:** `uv run pytest` → 205 passed, 7 skipped (PG)
 - **Branch:** `feat/mvp-backend`
 
 ## Run
@@ -40,9 +40,23 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F5.1–F5.4 | Open API: key, rate limit, flat format | Claude | done | e2e P1–P5 + 2×401 in demo.http |
 | F6.1–F6.5 | AI image tags: mock + ONNX Phi-3.5 + fallback | Claude | done | real ONNX inference untested here (manual: uv sync --extra ai) |
 | F7.1–F7.4 | Owner role + verified_owner observations | Claude | done | e2e owner scenario O0–O11 + 3×403 + 400 |
+| F8.1–F8.5 | OSM import (file) + MCP client of Open API | Claude | done | MCP stdio smoke OK (tools/list + call Tauron → yes) |
+| F9.1–F9.5 | Persistence: SQLite + SQLAlchemy (write-behind SqlRepo) | Claude | done | demo flow also green on SQL; live restart keeps data |
+| F10.1–F10.4 | Gemini vision adapter (AI_MODE=gemini, config-driven) | Claude | done | live Gemini OK (gemini-3.8-flash): stairs → critical; 503s retried |
+| F11.1–F11.5 | Postgres + docker-compose, DB choice via env/config | Claude | green | Postgres runtime NOT verified (docker up not run); docs for F11 pending |
 
 ## Log (newest first)
 
+- 2026-10-03 · F11 · green · DB_ENGINE/POSTGRES_* config, db_url, SqlRepo retry, Dockerfile, .dockerignore, compose; compose config valid; PG run pending
+- 2026-10-03 · F11 · red · config/compose/PG-parametrized repo tests
+- 2026-10-03 · DOCS · docs/ (README, architecture, api, configuration, operations, openapi.json) + export script + docs tests; 198 passed
+- 2026-10-03 · F10 · live · key in .env (gitignored), model gemini-3.8-flash, retry 429/5xx, prompt vocab, physical/mobility → critical; 192 passed
+- 2026-10-03 · F10 · done · Gemini REST adapter (httpx, key in header), config GEMINI_*, fallback to mock; 188 passed
+- 2026-10-03 · F10 · red · Gemini adapter tests (MockTransport)
+- 2026-10-03 · F9 · done · SQLite + SQLAlchemy write-behind SqlRepo, commit middleware, REPO_MODE/DATABASE_URL, .env.example synced with config.py; 179 passed
+- 2026-10-03 · F9 · red · plan, SqlRepo + persistence tests
+- 2026-10-03 · F8 · done · OSM import (file, idempotent, 50 m match), open_data 0.6, MCP client tools via Open API; 170 passed
+- 2026-10-03 · F8 · red · plan, contract, OSM mapping/import/MCP tool tests
 - 2026-10-03 · F7 · done · owner role, verified_owner 0.85, owner panel endpoints, admin assigns owner; fixed seed shared-state bug; 150 passed
 - 2026-10-03 · F7 · red · plan, contract, owner tests
 - 2026-10-03 · F6 · done · AI image tags: mock + Phi-3.5 ONNX adapter + fallback, e2e AI step + 2×400; 126 passed
