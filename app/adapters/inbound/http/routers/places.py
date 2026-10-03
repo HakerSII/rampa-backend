@@ -1,14 +1,16 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 
-from app.adapters.inbound.http.deps import UC
+from app.adapters.inbound.http.deps import UC, CurrentUser
 from app.adapters.inbound.http.schemas import (
     AccessibilityOut,
     CheckResultOut,
     FeatureDictGroup,
     PlaceOut,
     PlacePage,
+    ResolvedPlaceOut,
+    ResolvePlaceIn,
     accessibility_out,
     check_out,
     feature_dictionary,
@@ -37,6 +39,15 @@ async def search_places(uc: UC, features: Annotated[str | None, Query()] = None,
     places = uc.search_places(parse_features(features), category, q)
     items = [place_summary(p, uc.yes_features(p.id)) for p in places]
     return PlacePage(items=items, page_size=max(len(items), 1), total=len(items))
+
+
+@router.post("/places/resolve", response_model=ResolvedPlaceOut, tags=["places"],
+             responses={201: {"model": ResolvedPlaceOut, "description": "Created"}})
+async def resolve_place(body: ResolvePlaceIn, uc: UC, user: CurrentUser, response: Response):
+    """Map pin → place: the same name within 50 m is matched (200), otherwise created (201)."""
+    place, created = uc.resolve_place(user, **body.model_dump())
+    response.status_code = 201 if created else 200
+    return ResolvedPlaceOut(place=place_out(place, uc.yes_features(place.id)), created=created)
 
 
 @router.get("/places/{place_id}", response_model=PlaceOut, tags=["places"])

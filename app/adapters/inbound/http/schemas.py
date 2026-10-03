@@ -31,6 +31,10 @@ class LoginResult(BaseModel):
     user: UserOut
 
 
+class AnonymousLoginIn(BaseModel):
+    display_name: str | None = None
+
+
 class DemoLoginIn(BaseModel):
     username: str
 
@@ -64,6 +68,19 @@ class PlacePage(BaseModel):
     page: int = 1
     page_size: int
     total: int
+
+
+class ResolvePlaceIn(BaseModel):
+    name: str
+    lat: float
+    lon: float
+    category: str = "other"
+    address: str = ""
+
+
+class ResolvedPlaceOut(BaseModel):
+    place: PlaceOut
+    created: bool
 
 
 class FeatureStateOut(BaseModel):
@@ -122,7 +139,8 @@ class CheckResultOut(BaseModel):
     advice: str
 
 
-CATEGORY_LABELS = {"museum": "Muzeum", "cafe": "Kawiarnia", "culture": "Kultura", "office": "Urząd"}
+CATEGORY_LABELS = {"museum": "Muzeum", "cafe": "Kawiarnia", "culture": "Kultura", "office": "Urząd",
+                   "other": "Inne"}
 
 
 def place_summary(place: Place, yes_features: list[FeatureKey]) -> PlaceSummary:

@@ -2,13 +2,20 @@ from fastapi import APIRouter, Response
 from pydantic import BaseModel
 
 from app.adapters.inbound.http.deps import UC, CurrentUser, Token
-from app.adapters.inbound.http.schemas import DemoLoginIn, LoginResult, UserOut, user_out
+from app.adapters.inbound.http.schemas import AnonymousLoginIn, DemoLoginIn, LoginResult, UserOut, user_out
 
 router = APIRouter(tags=["auth"])
 
 
 class GoogleLoginIn(BaseModel):
     id_token: str
+
+
+@router.post("/auth/anonymous", status_code=201, response_model=LoginResult)
+async def login_anonymous(body: AnonymousLoginIn, uc: UC):
+    """Device identity for the map front end: a new user per call, long-lived token."""
+    token, user = uc.login_anonymous(body.display_name)
+    return LoginResult(token=token, user=user_out(user))
 
 
 @router.post("/auth/demo", response_model=LoginResult)

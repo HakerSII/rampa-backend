@@ -5,12 +5,12 @@
 
 ## Current
 
-- **Task:** F11 Postgres + docker-compose (green, unverified on PG)
+- **Task:** F12 front-end bridge (anonymous identity + pin → place) — green, not committed
 - **Who:** Claude
-- **State:** todo
-- **Next step:** run: docker compose up -d --build; TEST_POSTGRES_URL=postgresql+psycopg://rampa:rampa@localhost:5432/rampa uv run --extra postgres pytest tests/adapters; then F11 docs
-- **Last pytest:** `uv run pytest` → 205 passed, 7 skipped (PG)
-- **Branch:** `feat/mvp-backend`
+- **State:** green
+- **Next step:** commit F12; then the front end (`Yannie-draft-acihy`): `api.js` with type/severity mapping, token in `localStorage`, `POST /places/resolve` → `POST /reports`, votes on `observation_ids[0]`. Still open from F11: docker compose up + PG tests + F11 docs
+- **Last pytest:** `uv run pytest` → 229 passed, 7 skipped (PG); bridge tests also green with `REPO_MODE=sql`
+- **Branch:** `main`
 
 ## Run
 
@@ -44,9 +44,13 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F9.1–F9.5 | Persistence: SQLite + SQLAlchemy (write-behind SqlRepo) | Claude | done | demo flow also green on SQL; live restart keeps data |
 | F10.1–F10.4 | Gemini vision adapter (AI_MODE=gemini, config-driven) | Claude | done | live Gemini OK (gemini-3.8-flash): stairs → critical; 503s retried |
 | F11.1–F11.5 | Postgres + docker-compose, DB choice via env/config | Claude | green | Postgres runtime NOT verified (docker up not run); docs for F11 pending |
+| F12.1–F12.4 | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | Claude | green | 24 tests (use cases + HTTP two-device flow); contract 9 specs; docs + demo.http B1–B7 |
 
 ## Log (newest first)
 
+- 2026-10-03 · F12 · live · two-device flow verified over HTTP (uvicorn :8002); fix: Starlette 400 (undecodable body) mapped to NOT_A_REAL_PLACE instead of VALIDATION_ERROR; 230 passed
+- 2026-10-03 · F12 · green · login_anonymous (ANONYMOUS_AUTH, ANONYMOUS_TTL_DAYS=365), resolve_place (name ≤50 m = same place, shared _find_place with OSM import), routers, contract, docs, demo.http; 229 passed
+- 2026-10-03 · F12 · red · tests: anonymous identity, resolve, two-device HTTP flow
 - 2026-10-03 · F11 · green · DB_ENGINE/POSTGRES_* config, db_url, SqlRepo retry, Dockerfile, .dockerignore, compose; compose config valid; PG run pending
 - 2026-10-03 · F11 · red · config/compose/PG-parametrized repo tests
 - 2026-10-03 · DOCS · docs/ (README, architecture, api, configuration, operations, openapi.json) + export script + docs tests; 198 passed

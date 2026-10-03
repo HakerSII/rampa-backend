@@ -1,0 +1,127 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F12 Front-end bridge
+  version: 0.1.0-mvp
+  description: >
+    What the map front end (Bez Przeszkód Kraków) needs that the place-centric API
+    did not have: an identity per device without Google, and a way to turn a map pin
+    plus a name into a place to report on.
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: auth
+  - name: places
+paths:
+  /auth/anonymous:
+    post:
+      tags: [auth]
+      summary: Device identity (no account) — a new user per call, long-lived token
+      operationId: loginAnonymous
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name: { type: string, maxLength: 60, examples: ["Gość"] }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, user]
+                properties:
+                  token: { type: string }
+                  user: { $ref: "#/components/schemas/User" }
+        "404":
+          description: NOT_FOUND (ANONYMOUS_AUTH=false)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  /places/resolve:
+    post:
+      tags: [places]
+      summary: Map pin + name → place (matched within 50 m, else created)
+      operationId: resolvePlace
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, lat, lon]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 120, examples: ["Rondo Mogilskie"] }
+                lat: { type: number, examples: [50.0656] }
+                lon: { type: number, examples: [19.9585] }
+                category: { type: string, default: other }
+                address: { type: string, maxLength: 120 }
+      responses:
+        "200":
+          description: Matched an existing place
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResolvedPlace" }
+        "201":
+          description: Created a new place
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResolvedPlace" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  responses:
+    ValidationError:
+      description: VALIDATION_ERROR
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unauthorized:
+      description: UNAUTHORIZED
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, enum: [VALIDATION_ERROR, UNAUTHORIZED, NOT_FOUND] }
+            message: { type: string }
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        display_name: { type: string }
+        email: { type: [string, "null"] }
+        role: { type: string, enum: [user, owner, admin] }
+    Place:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        category:
+          type: object
+          properties:
+            key: { type: string }
+            label: { type: string }
+        location:
+          type: object
+          properties:
+            lat: { type: number }
+            lon: { type: number }
+        short_description: { type: string }
+        address: { type: string }
+        accessibility_summary: { type: array, items: { type: string } }
+    ResolvedPlace:
+      type: object
+      required: [place, created]
+      properties:
+        place: { $ref: "#/components/schemas/Place" }
+        created: { type: boolean }

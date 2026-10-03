@@ -5,6 +5,48 @@
     "version": "0.1.0-mvp"
   },
   "paths": {
+    "/api/v1/auth/anonymous": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login Anonymous",
+        "description": "Device identity for the map front end: a new user per call, long-lived token.",
+        "operationId": "login_anonymous_api_v1_auth_anonymous_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnonymousLoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/demo": {
       "post": {
         "tags": [
@@ -242,6 +284,76 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PlacePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/places/resolve": {
+      "post": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Resolve Place",
+        "description": "Map pin → place: the same name within 50 m is matched (200), otherwise created (201).",
+        "operationId": "resolve_place_api_v1_places_resolve_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolvePlaceIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvedPlaceOut"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvedPlaceOut"
                 }
               }
             }
@@ -1802,6 +1914,23 @@
         ],
         "title": "ActiveIssueOut"
       },
+      "AnonymousLoginIn": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "title": "AnonymousLoginIn"
+      },
       "AssignOwnerIn": {
         "properties": {
           "user_id": {
@@ -3182,6 +3311,56 @@
           "observation_ids"
         ],
         "title": "ReportOut"
+      },
+      "ResolvePlaceIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "default": "other"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "lat",
+          "lon"
+        ],
+        "title": "ResolvePlaceIn"
+      },
+      "ResolvedPlaceOut": {
+        "properties": {
+          "place": {
+            "$ref": "#/components/schemas/PlaceOut"
+          },
+          "created": {
+            "type": "boolean",
+            "title": "Created"
+          }
+        },
+        "type": "object",
+        "required": [
+          "place",
+          "created"
+        ],
+        "title": "ResolvedPlaceOut"
       },
       "Role": {
         "type": "string",

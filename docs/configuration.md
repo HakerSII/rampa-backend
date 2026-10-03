@@ -14,6 +14,8 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `GOOGLE_CLIENT_ID` | — | OAuth "Web" client id from Google Cloud Console (required for `google`) |
 | `ADMIN_EMAILS` | — | comma list; these Google accounts get `admin` |
 | `SESSION_TTL_HOURS` | `24` | Google session lifetime (demo tokens don't expire) |
+| `ANONYMOUS_AUTH` | `true` | enables `POST /auth/anonymous` (identity per device for the map front end, any auth mode) |
+| `ANONYMOUS_TTL_DAYS` | `365` | anonymous session lifetime; the device keeps its votes and reports this long |
 | **Demo and files** | | |
 | `MEDIA_DIR` | `media` | where uploaded photos are stored (served at `/media`) |
 | `DEMO_NOW` | — | fixed "now" (ISO, e.g. `2026-10-03T12:00:00+02:00`) → deterministic times on stage |

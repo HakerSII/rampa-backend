@@ -58,6 +58,9 @@ MAX_PHOTO_BYTES = 10 * 1024 * 1024
 MAX_PHOTOS = 5
 MAX_OWNER_BATCH = 10
 MAX_DESCRIPTION = 1000
+MAX_PLACE_NAME = 120
+MAX_DISPLAY_NAME = 60
+ANONYMOUS_NAME = "Anonim"
 IMAGE_SIGNATURES = {b"\x89PNG\r\n\x1a\n": "png", b"\xff\xd8\xff": "jpg"}
 
 
@@ -92,6 +95,7 @@ class UseCases:
     def __init__(self, repo: Repo, clock: Clock, ids: IdGenerator, storage: FileStorage,
                  verifier: IdentityVerifier | None, *, auth_mode: str = "demo",
                  admin_emails: list[str] | None = None, session_ttl_hours: int = 24,
+                 anonymous_auth: bool = True, anonymous_ttl_days: int = 365,
                  vision: VisionAnalyzer | None = None, osm: OsmSource | None = None):
         self.repo = repo
         self.clock = clock
@@ -101,6 +105,8 @@ class UseCases:
         self.auth_mode = auth_mode
         self.admin_emails = admin_emails or []
         self.session_ttl = timedelta(hours=session_ttl_hours)
+        self.anonymous_auth = anonymous_auth
+        self.anonymous_ttl = timedelta(days=anonymous_ttl_days)
         self.vision = vision
         self.osm = osm
 
@@ -139,6 +145,17 @@ class UseCases:
             user.email, user.display_name, user.role = identity.email, identity.name or user.display_name, role
         return self._new_session(user), user
 
+    def login_anonymous(self, display_name: str | None = None) -> tuple[str, User]:
+        """Device identity for the map front end (F12): a fresh `user` with a long-lived session.
+        Works in every auth mode, so votes are per device even without Google. One call = one user;
+        the front end stores the token and reuses it."""
+        if not self.anonymous_auth:
+            raise NotFound("anonymous login disabled (ANONYMOUS_AUTH=false)")
+        name = (display_name or "").strip()[:MAX_DISPLAY_NAME] or ANONYMOUS_NAME
+        user = User(self.ids.new("usr"), name, Role.USER)
+        self.repo.add_user(user)
+        return self._new_session(user, self.anonymous_ttl), user
+
     def logout(self, token: str | None) -> None:
         if token:
             self.repo.delete_session(token)
@@ -154,9 +171,9 @@ class UseCases:
             return None
         return self.repo.get_user(session.user_id)
 
-    def _new_session(self, user: User) -> str:
+    def _new_session(self, user: User, ttl: timedelta | None = None) -> str:
         token = secrets.token_urlsafe(32)
-        self.repo.add_session(Session(token, user.id, self.clock.now() + self.session_ttl))
+        self.repo.add_session(Session(token, user.id, self.clock.now() + (ttl or self.session_ttl)))
         return token
 
     @staticmethod
@@ -204,6 +221,24 @@ class UseCases:
     def yes_features(self, place_id: str) -> list[FeatureKey]:
         return [f for f, s in self.repo.states_for(place_id).items() if s.state == StateValue.YES]
 
+    def resolve_place(self, user: User | None, *, name: str, lat: float, lon: float,
+                      category: str = "other", address: str = "") -> tuple[Place, bool]:
+        """Map pin + name (nearest stop, reverse geocoding) → place to report on (F12).
+        Same rule as the OSM import: the same name within MATCH_RADIUS_M is the same place.
+        Returns (place, created)."""
+        self._require_user(user)
+        name = name.strip()
+        if not 1 <= len(name) <= MAX_PLACE_NAME:
+            raise ValidationFailed(f"name must have 1..{MAX_PLACE_NAME} characters")
+        location = GeoPoint(lat, lon)
+        existing = self._find_place(name, location)
+        if existing:
+            return existing, False
+        place = Place(self.ids.new("plc"), name, (category or "").strip() or "other", location,
+                      address=address.strip()[:MAX_PLACE_NAME])
+        self.repo.add_place(place)
+        return place, True
+
     # ------------------------------------------------------------------ OSM import (F8)
     async def import_osm(self, admin: User | None, source: str = "osm_file") -> ImportResult:
         """OSM points → open_data observations. Idempotent; matches places by external id or name ≤50 m."""
@@ -223,7 +258,7 @@ class UseCases:
             if not features:
                 result.skipped_no_data += 1
                 continue
-            place = self._match_place(p)
+            place = self._find_place(p.name, GeoPoint(p.lat, p.lon), external_id=p.external_id)
             if place:
                 result.places_matched += 1
             else:
@@ -242,12 +277,12 @@ class UseCases:
             self.recompute(place_id, feature)
         return result
 
-    def _match_place(self, p: domain_osm.OsmPoint) -> Place | None:
-        here = GeoPoint(p.lat, p.lon)
+    def _find_place(self, name: str, here: GeoPoint, external_id: str | None = None) -> Place | None:
+        """Same external id, or the same name (case-insensitive) within MATCH_RADIUS_M."""
         for place in self.repo.list_places():
-            if place.external_id == p.external_id:
+            if external_id and place.external_id == external_id:
                 return place
-            if (place.name.lower() == p.name.lower()
+            if (place.name.lower() == name.lower()
                     and haversine_m(place.location, here) <= domain_osm.MATCH_RADIUS_M):
                 return place
         return None

@@ -38,11 +38,12 @@ class FakeIdentityVerifier:
         return self.identities[id_token]
 
 
-def make_use_cases(auth_mode="demo", verifier=None, admin_emails=None, clock=None, vision=None, osm=None) -> UseCases:
+def make_use_cases(auth_mode="demo", verifier=None, admin_emails=None, clock=None, vision=None, osm=None,
+                   anonymous_auth=True) -> UseCases:
     from app.adapters.outbound.osm_file import FileOsmSource
     from app.adapters.outbound.vision_mock import MockVisionAnalyzer
     uc = UseCases(InMemoryRepo(), clock or FixedClock(NOW), SeqIdGenerator(), FakeStorage(),
-                  verifier, auth_mode=auth_mode, admin_emails=admin_emails or [],
+                  verifier, auth_mode=auth_mode, admin_emails=admin_emails or [], anonymous_auth=anonymous_auth,
                   vision=vision or MockVisionAnalyzer(), osm=osm or FileOsmSource(str(OSM_SNAPSHOT)))
     uc.load_seed()
     return uc

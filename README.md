@@ -52,6 +52,8 @@ uv run python main.py                                          # http://localhos
 | 8 | OSM import (offline snapshot) + MCP client of Open API | [plan](features/08-osm-mcp/plan.md) | [openapi](features/08-osm-mcp/openapi.yaml) | 75 min |
 | 9 | Persistence: SQLite + SQLAlchemy (`REPO_MODE`, `DATABASE_URL`) | [plan](features/09-sqlite/plan.md) | — | 90 min |
 | 10 | Gemini vision (`AI_MODE=gemini`, `GEMINI_*` config) | [plan](features/10-gemini-vision/plan.md) | F6 | 45 min |
+| 11 | Postgres + docker-compose (`DB_ENGINE`, `POSTGRES_*`) | [plan](features/11-postgres-docker/plan.md) | — | 60 min |
+| 12 | Front-end bridge: `POST /auth/anonymous`, `POST /places/resolve` | [plan](features/12-frontend-bridge/plan.md) | [openapi](features/12-frontend-bridge/openapi.yaml) | 45 min |
 
 - F0 blocks all.
 - After F0: **F1, F2, F3 in parallel** (demo auth stub ships in F0, Google added in F1).
