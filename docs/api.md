@@ -116,6 +116,7 @@ Exceeded → `429 {"error": {"code": "RATE_LIMITED", …}}` with a `Retry-After`
 | GET | `/api/v1/accessibility/features` | — | Feature dictionary (filters) |
 | POST | `/api/v1/uploads` | user | Upload photo |
 | POST | `/api/v1/ai/image-tags` | user | AI suggestions from photos |
+| POST | `/api/v1/ai/image-tags/stream` | user | same, as Server-Sent Events (progress + result) |
 | POST | `/api/v1/reports` | user | Report a change (→ observation) |
 | GET | `/api/v1/reports/{id}` | author/admin | Report |
 | GET | `/api/v1/places/{id}/observations` | — | Observations (alerts, history) |
@@ -411,6 +412,30 @@ Body `{ "photo_ids": ["ph_1"], "place_id": "plc_mnk" }` (1–5 photos). A **sugg
   "model": "mock" }
 ```
 `model` is `mock`, `phi-3.5-vision-onnx` or `gemini`. Only screenshots or graphics → 400 `NOT_A_REAL_PLACE`.
+With `AI_MODE=gemini` and `AI_VISION_FALLBACK=onnx`, a failed Gemini call goes to the local ONNX model first, then to mock.
+
+### `POST /api/v1/ai/image-tags/stream` (F44)
+Same body and check as `/ai/image-tags`, answered as `text/event-stream` so a client can show progress while a
+slow model works (Gemini retries, local ONNX on CPU). No token → 401 before the stream; rate limits as `/ai/*`.
+
+```
+event: status
+data: {"stage": "received"}
+
+event: status
+data: {"stage": "analyzing", "model": "gemini"}
+
+event: status
+data: {"stage": "fallback", "from": "gemini", "model": "phi-3.5-vision-onnx"}
+
+: keepalive
+
+event: result
+data: { ...same JSON as /ai/image-tags... }
+```
+`: keepalive` comments every 10 s. Errors after the stream started (validation, `NOT_A_REAL_PLACE`) come as
+`event: error` with `{"error": {"code", "message"}}`; the HTTP status stays 200. `analyzing`/`fallback` appear only
+when a real model runs (not with `AI_MODE=mock`).
 
 ### `POST /api/v1/reports`
 Creates the report **and** one observation (`works` → `yes`, `not_working` → `no`; `nature=temporary` → `temporary: true`). Photos become evidence. The state is recomputed immediately.
