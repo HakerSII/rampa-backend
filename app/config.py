@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     media_dir: str = "media"
     demo_now: datetime | None = None  # set → FixedClock (deterministic demo)
     session_ttl_hours: int = 24
+    public_api_keys: str = "demo-key"  # comma-separated X-Api-Key values for /public/v1
+    public_rate_limit_per_min: int = 60
+
+    @property
+    def public_api_key_list(self) -> list[str]:
+        return [k.strip() for k in self.public_api_keys.split(",") if k.strip()]
 
     @property
     def admin_email_list(self) -> list[str]:

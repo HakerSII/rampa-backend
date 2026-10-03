@@ -17,6 +17,7 @@ uv run python main.py                                          # http://localhos
 ```
 
 - E2E by hand: open `requests/demo.http` (VS Code REST Client) → "Send Request" top → bottom.
+- Open API: `GET /public/v1/places` with header `X-Api-Key: demo-key`.
 - Demo login: `POST /api/v1/auth/demo {"username": "anna"}` → use `Authorization: Bearer demo-anna`.
 - Reset: `POST /api/v1/admin/demo/reset` with `Bearer demo-admin`.
 - Google mode: `.env` → `AUTH_MODE=google`, `GOOGLE_CLIENT_ID=…`, `ADMIN_EMAILS=…` (see `.env.example`).
@@ -39,6 +40,7 @@ uv run python main.py                                          # http://localhos
 | 2 | Places + search + check | [plan](features/02-places-search/plan.md) | [openapi](features/02-places-search/openapi.yaml) | 60–90 min |
 | 3 | Observations, votes, trust (core) | [plan](features/03-observations-trust/plan.md) | [openapi](features/03-observations-trust/openapi.yaml) | 90–120 min |
 | 4 | Moderation queue (admin) | [plan](features/04-admin-queue/plan.md) | [openapi](features/04-admin-queue/openapi.yaml) | 45–60 min |
+| 5 | Open API (`/public/v1`, X-Api-Key, rate limit) | [plan](features/05-open-api/plan.md) | [openapi](features/05-open-api/openapi.yaml) | 45 min |
 
 - F0 blocks all.
 - After F0: **F1, F2, F3 in parallel** (demo auth stub ships in F0, Google added in F1).
@@ -150,11 +152,12 @@ Photo(id, path, url)
 - `POST /admin/demo/reset` (or restart) → demo repeatable, identical numbers.
 - **Fully offline** in `AUTH_MODE=demo`. Only network code: `GoogleIdentityVerifier` (F1), used in `AUTH_MODE=google` only.
 - Every `features/*/openapi.yaml` passes `openapi-spec-validator`.
+- **Every feature adds e2e calls to `requests/demo.http`** (happy path + error statuses in titles), verified by running the file top → bottom.
 - [STATUS.md](STATUS.md) current; local commit per task.
 
 ## 6. Next (beyond MVP, by value)
 
-1. Open API (`/public/v1/*`): same use cases, separate router.
+1. ~~Open API (`/public/v1/*`)~~ → done as F5.
 2. `POST /ai/image-tags` with mock: demo wow factor.
 3. `owner` role + `verified_owner` observations: conflict as in original scenario.
 4. OSM import / MCP integration: see [../plan_fastapi.md](../plan_fastapi.md) (phases 4–5).

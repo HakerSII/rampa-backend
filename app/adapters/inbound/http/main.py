@@ -5,7 +5,8 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.adapters.inbound.http.errors import install_error_handlers
-from app.adapters.inbound.http.routers import admin, auth, observations, places
+from app.adapters.inbound.http.rate_limit import FixedWindowRateLimiter
+from app.adapters.inbound.http.routers import admin, auth, observations, places, public
 from app.application.ports import IdentityVerifier
 from app.bootstrap import build_use_cases
 from app.config import Settings
@@ -19,11 +20,13 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
     # built eagerly (not in lifespan) so test clients without lifespan get seeded data too
     app.state.use_cases = build_use_cases(settings, verifier)
     app.state.settings = settings
+    app.state.rate_limiter = FixedWindowRateLimiter(settings.public_rate_limit_per_min)
 
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
     install_error_handlers(app)
     for module in (auth, places, observations, admin):
         app.include_router(module.router, prefix=API_PREFIX)
+    app.include_router(public.router, prefix="/public/v1")  # Open API, versioned separately
     app.mount("/media", StaticFiles(directory=settings.media_dir, check_dir=False), name="media")
 
     @app.get("/", include_in_schema=False)

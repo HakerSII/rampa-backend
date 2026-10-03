@@ -28,3 +28,11 @@ class ConflictError(DomainError):
 
 class FileTooLarge(DomainError):
     code = "FILE_TOO_LARGE"
+
+
+class RateLimited(DomainError):
+    code = "RATE_LIMITED"
+
+    def __init__(self, message: str, retry_after: int):
+        super().__init__(message)
+        self.retry_after = retry_after
