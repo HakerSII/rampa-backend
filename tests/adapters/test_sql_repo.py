@@ -197,3 +197,14 @@ def test_questions_persist(url):
     uc.repo.commit()
     again = make(url).repo.get_question(q.id)
     assert (again.status, again.outcome, again.answer_text, again.feature) == ("answered", "yes", "Tak", "pets_allowed")
+
+
+def test_notifications_persist(url):
+    """F35"""
+    uc = make(url)
+    q = uc.ask_question(uc.repo.get_user("usr_anna"), "plc_mnk", "Pies?")
+    uc.answer_question(uc.repo.get_user("usr_ewa"), q.id, "Tak")
+    uc.repo.commit()
+    again = make(url)
+    (n,) = again.list_notifications(again.repo.get_user("usr_anna"))
+    assert (n.kind, n.ref_id, n.read) == ("question_answered", q.id, False)
