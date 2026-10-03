@@ -108,3 +108,17 @@ def test_reset_demo_wipes_back_to_seed(url):
     uc.repo.commit()
     r = make(url)
     assert r.repo.list_reports() == [] and len(r.repo.list_places()) == 4
+
+
+def test_adds_missing_columns_to_existing_tables(url):
+    """Schema evolution: a DB created before a column existed gets it on start (nullable)."""
+    from sqlalchemy import create_engine, inspect, text
+    make(url)
+    engine = create_engine(url)
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE queue_items DROP COLUMN resolved_at"))
+    assert "resolved_at" not in {c["name"] for c in inspect(engine).get_columns("queue_items")}
+    engine.dispose()
+    r = make(url)  # restart → migration adds column, data still loads
+    assert "resolved_at" in {c["name"] for c in inspect(r.repo.engine).get_columns("queue_items")}
+    assert len(r.repo.list_places()) == 4
