@@ -36,3 +36,7 @@ class RateLimited(DomainError):
     def __init__(self, message: str, retry_after: int):
         super().__init__(message)
         self.retry_after = retry_after
+
+
+class NotARealPlace(DomainError):
+    code = "NOT_A_REAL_PLACE"

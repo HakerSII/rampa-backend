@@ -135,6 +135,19 @@ class Photo:
     id: str
     path: str
     url: str
+    original_name: str = ""
+
+
+@dataclass(slots=True)
+class ImageAnalysis:
+    """Same fields as analyze_image() JSON in get_model.py (+ which model produced it)."""
+    real_place: bool
+    barrier_detected: bool
+    barrier_type: str
+    affected_disabilities: list[str]
+    description: str
+    confidence: float
+    model: str = "mock"
 
 
 @dataclass(frozen=True, slots=True)

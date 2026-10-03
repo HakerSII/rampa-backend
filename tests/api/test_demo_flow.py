@@ -56,6 +56,8 @@ def test_step4_anna_reports_broken_elevator(client, ctx):
     photo = client.post("/api/v1/uploads", headers=auth("anna"),
                         files={"file": ("winda.png", PNG, "image/png")})
     assert photo.status_code == 201
+    ai = client.post("/api/v1/ai/image-tags", headers=auth("anna"), json={"photo_ids": [photo.json()["id"]]})
+    assert ai.json()["suggested"] == {"element": "elevator", "current_state": "not_working", "severity": "critical"}
     r = client.post("/api/v1/reports", headers=auth("anna"), json={
         "place_id": "plc_mnk", "element": "elevator", "current_state": "not_working",
         "severity": "critical", "nature": "temporary",

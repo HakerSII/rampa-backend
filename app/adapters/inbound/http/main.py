@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.adapters.inbound.http.errors import install_error_handlers
 from app.adapters.inbound.http.rate_limit import FixedWindowRateLimiter
-from app.adapters.inbound.http.routers import admin, auth, observations, places, public
+from app.adapters.inbound.http.routers import admin, ai, auth, observations, places, public
 from app.application.ports import IdentityVerifier
 from app.bootstrap import build_use_cases
 from app.config import Settings
@@ -24,7 +24,7 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
 
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
     install_error_handlers(app)
-    for module in (auth, places, observations, admin):
+    for module in (auth, places, observations, ai, admin):
         app.include_router(module.router, prefix=API_PREFIX)
     app.include_router(public.router, prefix="/public/v1")  # Open API, versioned separately
     app.mount("/media", StaticFiles(directory=settings.media_dir, check_dir=False), name="media")
@@ -35,7 +35,7 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
 
     @app.get("/health", tags=["health"])
     async def health():
-        return {"status": "ok", "auth_mode": settings.auth_mode, "storage": "memory"}
+        return {"status": "ok", "auth_mode": settings.auth_mode, "ai_mode": settings.ai_mode, "storage": "memory"}
 
     return app
 

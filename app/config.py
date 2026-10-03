@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     media_dir: str = "media"
     demo_now: datetime | None = None  # set → FixedClock (deterministic demo)
     session_ttl_hours: int = 24
+    ai_mode: Literal["mock", "onnx"] = "mock"
+    ai_model_path: str = "models/gpu/gpu-int4-rtn-block-32"
+    ai_timeout_s: float = 60.0
     public_api_keys: str = "demo-key"  # comma-separated X-Api-Key values for /public/v1
     public_rate_limit_per_min: int = 60
 

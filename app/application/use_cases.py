@@ -1,10 +1,11 @@
 """All MVP use cases (application layer). Depends only on domain + ports."""
 import secrets
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from datetime import timedelta
 
-from app.application.ports import Clock, FileStorage, IdentityVerifier, IdGenerator, Repo
-from app.domain import check as domain_check, trust, validation
+from app.application.ports import Clock, FileStorage, IdentityVerifier, IdGenerator, Repo, VisionAnalyzer
+from app.domain import check as domain_check, suggestions, trust, validation
 from app.domain.enums import (
     CurrentState,
     DecisionAction,
@@ -19,10 +20,19 @@ from app.domain.enums import (
     StateValue,
     ValidationStatus,
 )
-from app.domain.errors import ConflictError, FileTooLarge, Forbidden, NotFound, Unauthorized, ValidationFailed
+from app.domain.errors import (
+    ConflictError,
+    FileTooLarge,
+    Forbidden,
+    NotARealPlace,
+    NotFound,
+    Unauthorized,
+    ValidationFailed,
+)
 from app.domain.model import (
     CheckResult,
     FeatureStateRecord,
+    ImageAnalysis,
     Observation,
     Photo,
     Place,
@@ -40,6 +50,15 @@ MAX_DESCRIPTION = 1000
 IMAGE_SIGNATURES = {b"\x89PNG\r\n\x1a\n": "png", b"\xff\xd8\xff": "jpg"}
 
 
+@dataclass(slots=True)
+class ImageTagsResult:
+    analysis: ImageAnalysis
+    tags: list[suggestions.Tag]
+    detected: str
+    suggested: suggestions.Suggested | None
+    model: str
+
+
 def _enum(enum_cls, value, field: str):
     try:
         return enum_cls(value)
@@ -50,7 +69,8 @@ def _enum(enum_cls, value, field: str):
 class UseCases:
     def __init__(self, repo: Repo, clock: Clock, ids: IdGenerator, storage: FileStorage,
                  verifier: IdentityVerifier | None, *, auth_mode: str = "demo",
-                 admin_emails: list[str] | None = None, session_ttl_hours: int = 24):
+                 admin_emails: list[str] | None = None, session_ttl_hours: int = 24,
+                 vision: VisionAnalyzer | None = None):
         self.repo = repo
         self.clock = clock
         self.ids = ids
@@ -59,6 +79,7 @@ class UseCases:
         self.auth_mode = auth_mode
         self.admin_emails = admin_emails or []
         self.session_ttl = timedelta(hours=session_ttl_hours)
+        self.vision = vision
 
     # ------------------------------------------------------------------ demo data
     def load_seed(self) -> None:
@@ -160,6 +181,38 @@ class UseCases:
     def yes_features(self, place_id: str) -> list[FeatureKey]:
         return [f for f, s in self.repo.states_for(place_id).items() if s.state == StateValue.YES]
 
+    # ------------------------------------------------------------------ AI suggestions (F6)
+    async def analyze_image(self, user: User | None, photo_ids: list[str],
+                            place_id: str | None = None) -> ImageTagsResult:
+        """Suggestions for the report form. Never changes feature state."""
+        self._require_user(user)
+        if not 1 <= len(photo_ids) <= MAX_PHOTOS:
+            raise ValidationFailed(f"photo_ids: 1..{MAX_PHOTOS} required")
+        photos = [self.repo.get_photo(p) for p in self._check_photos(photo_ids)]
+        if place_id:
+            self.get_place(place_id)
+        if self.vision is None:
+            raise ValidationFailed("AI is not configured")
+
+        analyses = [await self.vision.analyze(p.path, p.original_name) for p in photos]
+        real = [a for a in analyses if a.real_place]
+        if not real:
+            raise NotARealPlace("no photo shows a real place (screenshot or graphic?)")
+
+        best = max(real, key=lambda a: a.confidence)
+        tags: dict[str, suggestions.Tag] = {}
+        for a in real:
+            for tag in suggestions.suggest(a).tags:
+                if tag.label not in tags or tag.confidence > tags[tag.label].confidence:
+                    tags[tag.label] = tag
+        return ImageTagsResult(
+            analysis=best,
+            tags=list(tags.values()),
+            detected="; ".join(a.description for a in real if a.description),
+            suggested=suggestions.suggest(best).suggested,
+            model=best.model,
+        )
+
     # ------------------------------------------------------------------ moderation (F4)
     def list_queue(self, admin: User | None, filter: str = "all", status: str = "open") -> list[QueueItem]:
         self._require_admin(admin)
@@ -241,7 +294,7 @@ class UseCases:
             yield bytes(data)
 
         path, url = await self.storage.save(one_chunk(), f"{photo_id}.{ext}")
-        photo = Photo(photo_id, path, url)
+        photo = Photo(photo_id, path, url, original_name=filename)
         self.repo.add_photo(photo)
         return photo
 

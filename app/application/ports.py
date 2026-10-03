@@ -8,6 +8,7 @@ from app.domain.enums import FeatureKey
 from app.domain.model import (
     FeatureStateRecord,
     GoogleIdentity,
+    ImageAnalysis,
     Observation,
     Photo,
     Place,
@@ -65,6 +66,12 @@ class IdGenerator(Protocol):
 class FileStorage(Protocol):
     async def save(self, chunks: AsyncIterator[bytes], name: str) -> tuple[str, str]:
         """Store bytes under name → (path, public url)."""
+        ...
+
+
+class VisionAnalyzer(Protocol):
+    async def analyze(self, image_path: str, original_name: str) -> ImageAnalysis:
+        """Raise on failure; FallbackVisionAnalyzer turns failures into the mock answer."""
         ...
 
 

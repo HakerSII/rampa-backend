@@ -7,6 +7,7 @@ from app.domain.errors import DomainError, RateLimited
 
 STATUS_BY_CODE = {
     "VALIDATION_ERROR": 400,
+    "NOT_A_REAL_PLACE": 400,
     "UNAUTHORIZED": 401,
     "FORBIDDEN": 403,
     "NOT_FOUND": 404,

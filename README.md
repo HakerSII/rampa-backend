@@ -17,6 +17,7 @@ uv run python main.py                                          # http://localhos
 ```
 
 - E2E by hand: open `requests/demo.http` (VS Code REST Client) → "Send Request" top → bottom.
+- AI: `POST /api/v1/ai/image-tags {"photo_ids": [...]}` — `AI_MODE=mock` (default) or `onnx` (`uv sync --extra ai`, model in `models/`; any failure → mock).
 - Open API: `GET /public/v1/places` with header `X-Api-Key: demo-key`.
 - Demo login: `POST /api/v1/auth/demo {"username": "anna"}` → use `Authorization: Bearer demo-anna`.
 - Reset: `POST /api/v1/admin/demo/reset` with `Bearer demo-admin`.
@@ -41,6 +42,7 @@ uv run python main.py                                          # http://localhos
 | 3 | Observations, votes, trust (core) | [plan](features/03-observations-trust/plan.md) | [openapi](features/03-observations-trust/openapi.yaml) | 90–120 min |
 | 4 | Moderation queue (admin) | [plan](features/04-admin-queue/plan.md) | [openapi](features/04-admin-queue/openapi.yaml) | 45–60 min |
 | 5 | Open API (`/public/v1`, X-Api-Key, rate limit) | [plan](features/05-open-api/plan.md) | [openapi](features/05-open-api/openapi.yaml) | 45 min |
+| 6 | AI photo suggestions (mock / Phi-3.5 ONNX + fallback) | [plan](features/06-ai-image-tags/plan.md) | [openapi](features/06-ai-image-tags/openapi.yaml) | 60 min |
 
 - F0 blocks all.
 - After F0: **F1, F2, F3 in parallel** (demo auth stub ships in F0, Google added in F1).
@@ -71,7 +73,7 @@ Place `plc_mnk` (National Museum), feature `elevator`, seeded `yes` (observation
 | Cut | Why / replacement |
 |---|---|
 | Owner panel (`/owner/*`), roles `owner`, `api_client` | conflict by 2nd `user`; roles left: `guest`, `user`, `admin` |
-| AI (`/ai/image-tags`, `/ai/parse-text`) | photo = evidence only |
+| AI `/ai/parse-text` | not needed for demo; image tags done in F6 |
 | OSM import, `/geocode` | places from seed only |
 | Open API (`/public/v1/*`) | later, same use cases |
 | MCP server | `mcp_server.py` untouched |
@@ -158,7 +160,7 @@ Photo(id, path, url)
 ## 6. Next (beyond MVP, by value)
 
 1. ~~Open API (`/public/v1/*`)~~ → done as F5.
-2. `POST /ai/image-tags` with mock: demo wow factor.
+2. ~~`POST /ai/image-tags` with mock~~ → done as F6 (real Phi-3.5: `uv sync --extra ai`, `AI_MODE=onnx`).
 3. `owner` role + `verified_owner` observations: conflict as in original scenario.
 4. OSM import / MCP integration: see [../plan_fastapi.md](../plan_fastapi.md) (phases 4–5).
 5. SQLAlchemy instead of in-memory: `Repo` port stays, add adapter (full plan T0.6).

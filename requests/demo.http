@@ -63,6 +63,14 @@ Content-Type: image/png
 < ./winda.png
 ------DemoBoundary--
 
+### 4a-AI. AI suggestions for the photo → tags winda/awaria, suggested elevator / not_working / critical
+### (AI_MODE=mock: deterministic; onnx: Phi-3.5 Vision, falls back to mock on error/timeout)
+POST {{base}}/ai/image-tags
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"photo_ids": ["{{upload.response.body.$.id}}"], "place_id": "plc_mnk"}
+
 ### 4b. Anna reports broken elevator → 201, observation_ids[0]
 # @name report
 POST {{base}}/reports
@@ -213,6 +221,33 @@ Authorization: Bearer {{anna}}
 Content-Type: application/json
 
 {"value": 1}
+
+### (setup for next case) upload a "screenshot" → 201
+# @name screenshot
+POST {{base}}/uploads
+Authorization: Bearer {{anna}}
+Content-Type: multipart/form-data; boundary=----DemoBoundary
+
+------DemoBoundary
+Content-Disposition: form-data; name="file"; filename="screenshot.png"
+Content-Type: image/png
+
+< ./winda.png
+------DemoBoundary--
+
+### 400 NOT_A_REAL_PLACE — AI rejects a screenshot
+POST {{base}}/ai/image-tags
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"photo_ids": ["{{screenshot.response.body.$.id}}"]}
+
+### 400 VALIDATION_ERROR — AI with unknown photo
+POST {{base}}/ai/image-tags
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"photo_ids": ["ph_missing"]}
 
 ### 409 CONFLICT — decide twice on the same item (run after 7a)
 POST {{base}}/admin/queue/{{queue.response.body.$.items[0].id}}/decision
