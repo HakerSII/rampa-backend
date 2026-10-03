@@ -7,7 +7,7 @@
 
 - **State:** todo
 - **Deploy:** **Render**, automatic after every merge to `master` (Docker service `rampa-backend` + `rampa-backend-postgres`); see docs/operations.md; front end (`static/api.js`) in progress on branch `Yannie-draft-acihy`
-- **Last pytest:** `uv run pytest` → red: F30b
+- **Last pytest:** `uv run pytest` → 563 passed, 16 skipped
 - **e2e:** `requests/demo.http` — all statuses as expected (memory + SQLite)
 - **Docs:** `docs/` (architecture, api, configuration, operations, PITCH, DEMO, openapi.json)
 - **Branch:** `feat/mvp-backend` (merged with `master`, PR to `master` open)
@@ -81,9 +81,11 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F37 | City config — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | done | e2e F37a; data/cities/krakow.json |
 | F38 | PostGIS + Alembic — [PLAN-GAPS.md](PLAN-GAPS.md) | Claude | deferred | write-behind cache → PostGIS unused until SQL-backed repo; no local Postgres check |
 | F39 | City open-data import (blocked: dataset) — [PLAN-GAPS.md](PLAN-GAPS.md) | — | blocked | needs dataset + licence choice |
+| F40 | One LLM filter-tool schema (Claude + Gemini), AI_RECOMMENDER=gemini — option A | Claude | done | schema in domain; guard test; e2e unchanged (needs a key, rules path covered by F30a–d) |
 
 ## Log (newest first)
 
+- 2026-10-03 · F40 A green: one LLM tool schema for Claude + Gemini, AI_RECOMMENDER=gemini
 - 2026-10-03 · F30b red: Gemini recommender tests
 - 2026-10-03 · PLAN-GAPS: F30–F37 done, F38 deferred, F39 blocked; docs updated
 - 2026-10-03 · F37 green: city config JSON + GET /city

@@ -46,6 +46,13 @@ def build_mailer(settings: Settings):
 
 
 def build_recommender(settings: Settings, city: City):
+    if settings.ai_recommender == "gemini":
+        if not settings.gemini_api_key:
+            log.warning("AI_RECOMMENDER=gemini but GEMINI_API_KEY is empty → rules")
+            return None
+        from app.adapters.outbound.recommender_gemini import GeminiQueryInterpreter
+        return GeminiQueryInterpreter(settings.gemini_api_key, settings.gemini_model, settings.gemini_api_url,
+                                      timeout_s=settings.ai_timeout_s, city=city)
     if settings.ai_recommender != "claude":
         return None
     if not settings.anthropic_api_key:

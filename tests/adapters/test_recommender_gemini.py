@@ -59,3 +59,24 @@ def test_bootstrap_picks_gemini_and_needs_key():
     assert isinstance(r, GeminiQueryInterpreter) and r.model == "gemini-3.8-flash"
     assert build_recommender(Settings(ai_recommender="gemini", gemini_api_key="", _env_file=None), city) is None
     assert build_recommender(Settings(ai_recommender="rules", _env_file=None), city) is None
+
+
+async def test_claude_and_gemini_send_the_same_tool_schema():
+    """F40 A: one filter schema (app/domain/recommend.py) for every provider — no drift possible."""
+    from app.adapters.outbound.recommender_claude import ClaudeQueryInterpreter
+    from app.domain.recommend import filters_schema
+    bodies = {}
+
+    def claude(request):
+        bodies["claude"] = json.loads(request.content)
+        return httpx.Response(200, json={"content": [{"type": "tool_use", "name": "set_filters", "input": {}}]})
+
+    def gemini(request):
+        bodies["gemini"] = json.loads(request.content)
+        return httpx.Response(200, json=gemini_reply({}))
+    await ClaudeQueryInterpreter("k", "c", transport=httpx.MockTransport(claude)).interpret("x")
+    await GeminiQueryInterpreter("k", "g", "https://g.example", transport=httpx.MockTransport(gemini)).interpret("x")
+    claude_schema = bodies["claude"]["tools"][0]["input_schema"]
+    gemini_schema = bodies["gemini"]["tools"][0]["functionDeclarations"][0]["parameters"]
+    assert claude_schema == gemini_schema == filters_schema(load_city())
+    assert bodies["claude"]["system"] == bodies["gemini"]["systemInstruction"]["parts"][0]["text"]

@@ -38,7 +38,7 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | —, `587`, —, — | SMTP server (STARTTLS); **password is a secret** |
 | `MAIL_FROM` | `noreply@rampa.local` | sender address |
 | `EMAIL_LINK_URL` | — | front-end page taking `?token=`; empty → the mail contains only the code |
-| `AI_RECOMMENDER` | `rules` | `POST /ai/recommend` interpreter: `rules` (offline, PL+EN keywords) · `claude` (Claude API, forced tool call; facts never from the model). Failure → rules |
+| `AI_RECOMMENDER` | `rules` | `POST /ai/recommend` interpreter: `rules` (offline, PL+EN keywords) · `claude` (Claude API) · `gemini` (Gemini API, uses `GEMINI_API_KEY` / `GEMINI_MODEL`, shares the free quota with photos). Forced tool call with one shared schema; facts never come from the model. Failure → rules |
 | `ANTHROPIC_API_KEY` | — | **secret**; needed for `AI_RECOMMENDER=claude` |
 | `CLAUDE_MODEL` | `claude-sonnet-5-5` | model for the recommender (compare with `claude-opus-5-5` on the test queries) |
 | `ROUTER` | `straight` | `GET /routes/accessible` path: `straight` = straight-line heuristic (offline) · `osrm` = walking path from OSRM; failure → straight |

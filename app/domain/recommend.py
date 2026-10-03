@@ -104,6 +104,49 @@ def interpret_rules(query: str, city: City | None = None) -> Intent:
     return Intent(profiles, features, categories, area)
 
 
+def _valid(enum_cls, values) -> list:
+    out = []
+    for v in values or []:
+        try:
+            out.append(enum_cls(v))
+        except ValueError:
+            continue  # model answered outside the schema → drop
+    return list(dict.fromkeys(out))
+
+
+FILTER_TOOL = "set_filters"
+FILTER_TOOL_DESCRIPTION = "Accessibility needs and place filters extracted from the user's query."
+FILTER_SYSTEM_PROMPT = (
+    "You convert a user's request for an accessible place in {city} into search filters by calling "
+    "set_filters. Only list needs and features the user actually mentioned. Do not answer the question, "
+    "do not describe places. The query may be Polish or English.")
+
+
+def filters_schema(city: City) -> dict:
+    """JSON schema of the filter tool — ONE definition for every LLM provider (Claude, Gemini).
+    Kept to the subset both accept: no union types, `area` optional instead of nullable."""
+    return {
+        "type": "object",
+        "properties": {
+            "profiles": {"type": "array", "items": {"type": "string", "enum": [p.value for p in P]},
+                         "description": "needs of the visitor (wheelchair, stroller = baby stroller, …)"},
+            "features": {"type": "array", "items": {"type": "string", "enum": [f.value for f in F]},
+                         "description": "extra place features explicitly requested (toilet, pets, parking …)"},
+            "categories": {"type": "array", "items": {"type": "string", "enum": list(city.category_groups)}},
+            "area": {"type": "string", "enum": list(city.areas), "description": "only if a named area is mentioned"},
+        },
+        "required": ["profiles", "features", "categories"],
+    }
+
+
+def intent_from_filters(data: dict, city: City) -> Intent:
+    """Model tool-call arguments → Intent; anything outside the schema / city is dropped."""
+    area = data.get("area")
+    return Intent(_valid(P, data.get("profiles")), _valid(F, data.get("features")),
+                  [c for c in dict.fromkeys(data.get("categories") or []) if c in city.category_groups],
+                  area if area in city.areas else None)
+
+
 _SCORE = {CheckAnswer.YES: 2, CheckAnswer.PARTIAL: 1, CheckAnswer.UNKNOWN: 0, CheckAnswer.NO: -3}
 _FEATURE_SCORE = {StateValue.YES: 2, StateValue.PARTIAL: 1, StateValue.UNKNOWN: 0, StateValue.NO: -3,
                   StateValue.NOT_APPLICABLE: 0}

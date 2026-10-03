@@ -481,7 +481,7 @@ Queue filters: `filter=all|conflict|abuse`, `status=open|escalated|resolved|all`
 
 `POST /api/v1/ai/recommend {"query": "restauracja w centrum, wejdę z wózkiem dziecięcym i psem", "profile"?: "wheelchair", "lat"?, "lon"?, "limit"?: 5}`. Guests are allowed.
 
-1. **Interpret** the query into `intent {profiles, features, categories, area}`. `AI_RECOMMENDER=rules` (default) uses offline PL+EN keywords. `claude` uses Claude with a forced tool call `set_filters`: the model sees only the query and returns only filters. If the model fails, the rules take over. A `profile` parameter is merged into the intent.
+1. **Interpret** the query into `intent {profiles, features, categories, area}`. `AI_RECOMMENDER=rules` (default) uses offline PL+EN keywords. `claude` / `gemini` use the model with a forced tool call `set_filters`. Both providers get the same tool schema and prompt, defined once in `app/domain/recommend.py` (F40 A). The model sees only the query and returns only filters. If the model fails, the rules take over. A `profile` parameter is merged into the intent.
 2. **Rank** places from the database: `check` for each profile plus the requested features. Order: `yes` > `partial` > `unknown` > `no` (last), ties by distance (from `lat/lon`, or the area centre).
 3. **Explain** each item:
    - `reasons`: each relevant feature with its `state`, `source` and `last_verified`, taken from the DB;

@@ -2,6 +2,25 @@
 
 Overview: [../../PLAN-GAPS.md](../../PLAN-GAPS.md) · related: [../30-ai-recommend/plan.md](../30-ai-recommend/plan.md) · [../08-osm-mcp/plan.md](../08-osm-mcp/plan.md)
 
+## Status (2026-10-03): DONE as option A — decided with the user
+
+Implemented: **one filter-tool definition for all LLM providers**, not tied to `RampaTools`.
+- `app/domain/recommend.py`: `FILTER_TOOL`, `FILTER_TOOL_DESCRIPTION`, `FILTER_SYSTEM_PROMPT`, `filters_schema(city)` (subset valid for both providers: no union types, `area` optional), `intent_from_filters(args, city)` (unknown values dropped).
+- `recommender_claude.py` / `recommender_gemini.py` only wrap it (`input_schema` vs `functionDeclarations[].parameters`, forced call); `AI_RECOMMENDER=gemini` added.
+- Guard test: `tests/adapters/test_recommender_gemini.py::test_claude_and_gemini_send_the_same_tool_schema`.
+
+Why not the original proposal below (binding the schema to `RampaTools`):
+1. Different jobs — MCP tools execute and return facts; the recommend tool is never executed (structured extraction only).
+2. `search_accessible_places(profile=…)` takes one need; the filter schema takes a list (e.g. blind + assistance dog).
+3. Category groups / areas in `RampaTools` would need `/city` + distance filtering in the client → duplicated ranking logic (worse than ~20 duplicated schema lines).
+4. `app/` would import from `clients/` (client of our own API) — wrong dependency direction.
+
+Possible follow-up (option B, not done): MCP tool `recommend_places(query)` calling `/ai/recommend`, so MCP shares the ranking engine itself.
+
+---
+
+## Original proposal
+
 ## Problem
 
 Today there are **two unrelated tool definitions** doing almost the same job:
