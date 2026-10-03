@@ -2,6 +2,13 @@ from fastapi import APIRouter, Response, UploadFile
 
 from app.adapters.inbound.http.deps import UC, CurrentUser, OptionalUser
 from app.adapters.inbound.http.schemas import (
+    AbuseIn,
+    QueueItemOut,
+    queue_item_out,
+    Location,
+    MapObservationOut,
+    MapObservations,
+    MapPlaceOut,
     ObservationIn,
     ObservationList,
     ObservationOut,
@@ -56,6 +63,20 @@ async def get_report(report_id: str, uc: UC, user: CurrentUser):
     return report_out(uc, uc.get_report(user, report_id))
 
 
+@router.get("/observations", response_model=MapObservations, tags=["observations"])
+async def map_observations(uc: UC, me: OptionalUser, bbox: str | None = None, active: bool = True,
+                           feature: str | None = None, value: str | None = None, current: bool = False,
+                           since: str | None = None, limit: int = 200):
+    """F24 map layer: observations across places (one request), newest first, with place + report severity."""
+    rows = uc.map_observations(bbox=bbox, active=active, feature=feature, value=value, current=current,
+                               since=since, limit=limit)
+    items = [MapObservationOut(**observation_out(uc, o, me).model_dump(),
+                               place=MapPlaceOut(id=p.id, name=p.name,
+                                                 location=Location(lat=p.location.lat, lon=p.location.lon)),
+                               severity=sev) for o, p, sev in rows]
+    return MapObservations(items=items, total=len(items))
+
+
 @router.get("/places/{place_id}/observations", response_model=ObservationList, tags=["observations"])
 async def list_observations(place_id: str, uc: UC, me: OptionalUser,
                             feature: FeatureKey | None = None, active: bool = True):
@@ -73,6 +94,13 @@ async def add_observation(place_id: str, body: ObservationIn, uc: UC, user: Curr
 async def vote(observation_id: str, body: VoteIn, uc: UC, user: CurrentUser):
     obs, state = uc.vote(user, observation_id, body.value)
     return VoteResultOut(observation=observation_out(uc, obs, user), feature_state=feature_state_out(state))
+
+
+@router.post("/observations/{observation_id}/abuse", status_code=201, response_model=QueueItemOut,
+             tags=["observations"])
+async def report_abuse(observation_id: str, body: AbuseIn, uc: UC, user: CurrentUser):
+    """F26: report spam / false data → admin moderation queue (type abuse)."""
+    return queue_item_out(uc, uc.report_abuse(user, observation_id, body.reason))
 
 
 @router.delete("/observations/{observation_id}/votes/me", status_code=204, tags=["observations"])

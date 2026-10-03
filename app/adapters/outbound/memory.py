@@ -2,7 +2,7 @@ import re
 from collections import defaultdict
 from datetime import datetime, timezone
 
-from app.domain.enums import FeatureKey, QueueStatus
+from app.domain.enums import FeatureKey
 from app.domain.model import (
     FeatureStateRecord,
     Observation,
@@ -33,6 +33,9 @@ class InMemoryRepo:
 
     def commit(self) -> None:
         """Nothing to persist."""
+
+    def reload_if_stale(self) -> bool:
+        return False  # single process, memory is the only copy
 
     def is_empty(self) -> bool:
         return not self.users
@@ -124,7 +127,7 @@ class InMemoryRepo:
     def find_open_queue_item(self, place_id: str, feature: FeatureKey) -> QueueItem | None:
         return next(
             (q for q in self.queue.values()
-             if q.place_id == place_id and q.feature == feature and q.status == QueueStatus.OPEN),
+             if q.place_id == place_id and q.feature == feature and q.open_conflict),
             None,
         )
 

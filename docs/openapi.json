@@ -668,7 +668,7 @@
           "dictionaries"
         ],
         "summary": "Geocode",
-        "description": "Search-box suggestions from the local place index (offline).",
+        "description": "Search-box suggestions: local places first, then Nominatim hits (GEOCODER=nominatim, place_id null).",
         "operationId": "geocode_api_v1_geocode_get",
         "parameters": [
           {
@@ -1127,7 +1127,7 @@
           "routes"
         ],
         "summary": "Accessible Route",
-        "description": "A→B for a needs profile. Heuristic (straight line + street-level barriers within 100 m) — see `note`.",
+        "description": "A→B for a needs profile. Path from OSRM (ROUTER=osrm) or straight line; barriers within 100 m — see `note`.",
         "operationId": "accessible_route_api_v1_routes_accessible_get",
         "parameters": [
           {
@@ -1509,6 +1509,150 @@
         }
       }
     },
+    "/api/v1/observations": {
+      "get": {
+        "tags": [
+          "observations"
+        ],
+        "summary": "Map Observations",
+        "description": "F24 map layer: observations across places (one request), newest first, with place + report severity.",
+        "operationId": "map_observations_api_v1_observations_get",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bbox"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Active"
+            }
+          },
+          {
+            "name": "feature",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Feature"
+            }
+          },
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Value"
+            }
+          },
+          {
+            "name": "current",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Current"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapObservations"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/places/{place_id}/observations": {
       "get": {
         "tags": [
@@ -1710,6 +1854,75 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VoteResultOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/observations/{observation_id}/abuse": {
+      "post": {
+        "tags": [
+          "observations"
+        ],
+        "summary": "Report Abuse",
+        "description": "F26: report spam / false data → admin moderation queue (type abuse).",
+        "operationId": "report_abuse_api_v1_observations__observation_id__abuse_post",
+        "parameters": [
+          {
+            "name": "observation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Observation Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbuseIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueItemOut"
                 }
               }
             }
@@ -4181,6 +4394,19 @@
   },
   "components": {
     "schemas": {
+      "AbuseIn": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "AbuseIn"
+      },
       "AccessibilityOut": {
         "properties": {
           "place_id": {
@@ -4812,6 +5038,7 @@
           "hearing",
           "vision",
           "mobility",
+          "parking",
           "other"
         ],
         "title": "FeatureGroupKey"
@@ -4856,7 +5083,29 @@
           "platform_elevator",
           "crutches_friendly",
           "sign_language_interpreter",
-          "assistance_dog_allowed"
+          "assistance_dog_allowed",
+          "elevator_entrance",
+          "wide_doors",
+          "automatic_doors",
+          "call_bell",
+          "spacious_interior",
+          "high_contrast_info",
+          "tactile_info",
+          "escalator",
+          "adult_changing_table",
+          "turning_space",
+          "extra_accessible_toilets",
+          "high_contrast_markings",
+          "accessible_digital_materials",
+          "audio_description",
+          "video_captions",
+          "fm_system",
+          "disabled_parking",
+          "marked_parking",
+          "level_surface",
+          "more_than_n_spots",
+          "drop_off_zone",
+          "pets_allowed"
         ],
         "title": "FeatureKey"
       },
@@ -5031,7 +5280,14 @@
             "title": "Label"
           },
           "place_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Place Id"
           },
           "location": {
@@ -5441,6 +5697,158 @@
           "items"
         ],
         "title": "MapMarkers"
+      },
+      "MapObservationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "feature": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ObservationValue"
+          },
+          "temporary": {
+            "type": "boolean",
+            "title": "Temporary"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ObservationSource"
+          },
+          "author": {
+            "$ref": "#/components/schemas/AuthorOut"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "comment": {
+            "type": "string",
+            "title": "Comment"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoOut"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "votes": {
+            "$ref": "#/components/schemas/VotesOut"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/ValidationOut"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "place": {
+            "$ref": "#/components/schemas/MapPlaceOut"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "place_id",
+          "feature",
+          "value",
+          "temporary",
+          "source",
+          "author",
+          "report_id",
+          "comment",
+          "evidence",
+          "votes",
+          "validation",
+          "confidence",
+          "created_at",
+          "place",
+          "severity"
+        ],
+        "title": "MapObservationOut"
+      },
+      "MapObservations": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MapObservationOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "MapObservations"
+      },
+      "MapPlaceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "location"
+        ],
+        "title": "MapPlaceOut"
       },
       "MergeIn": {
         "properties": {
@@ -7126,6 +7534,11 @@
       },
       "RouteOut": {
         "properties": {
+          "engine": {
+            "type": "string",
+            "title": "Engine",
+            "default": "straight_line"
+          },
           "feasible": {
             "type": "string",
             "title": "Feasible"

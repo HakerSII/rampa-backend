@@ -60,8 +60,8 @@ Every error has the same shape:
 
 | Name | Values |
 |---|---|
-| Feature | `step_free_entrance`, `ramp` · `elevator` · `accessible_toilet` · `induction_loop`, `sign_language_interpreter` · `braille`, `tactile_paths`, `good_lighting` · `lowered_curb`, `platform_elevator`, `crutches_friendly` · `assistance_dog_allowed` (13) |
-| Feature group | `entrance`, `inside`, `toilet`, `hearing`, `vision`, `mobility`, `other` |
+| Feature (35) | entrance: `step_free_entrance`, `ramp`, `elevator_entrance`, `wide_doors`, `automatic_doors`, `call_bell` · inside: `elevator`, `escalator`, `spacious_interior`, `high_contrast_info`, `tactile_info` · toilet: `accessible_toilet`, `adult_changing_table`, `turning_space`, `extra_accessible_toilets` · hearing: `induction_loop`, `sign_language_interpreter`, `video_captions`, `fm_system` · vision: `braille`, `tactile_paths`, `good_lighting`, `high_contrast_markings`, `accessible_digital_materials`, `audio_description` · mobility: `lowered_curb`, `platform_elevator`, `crutches_friendly` · parking: `disabled_parking`, `marked_parking`, `level_surface`, `more_than_n_spots`, `drop_off_zone` · other: `assistance_dog_allowed`, `pets_allowed` |
+| Feature group | `entrance`, `inside`, `toilet`, `hearing`, `vision`, `mobility`, `parking`, `other` |
 | Needs profile (`check`) | `wheelchair`, `stroller`, `crutches`, `blind`, `low_vision`, `deaf`, `assistance_dog` |
 | State | `yes`, `partial`, `no`, `unknown` |
 | Observation value | `yes`, `partial`, `no` (+ optional `valid_until` for temporary issues) |
@@ -144,6 +144,8 @@ Every error has the same shape:
 | POST | `/api/v1/owner/observations/batch` | owner | Batch update (all-or-nothing) |
 | GET | `/api/v1/owner/places/import/template` | owner | CSV template |
 | POST | `/api/v1/owner/places/import` | owner | CSV import |
+| GET | `/api/v1/observations` | — | Map layer: observations across places (one request) |
+| POST | `/api/v1/observations/{id}/abuse` | user | Report spam / false data → moderation queue (type abuse) |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -242,7 +244,7 @@ reverse geocoding) with the coordinates. The same name (case-insensitive) within
 ```
 
 ### `GET /api/v1/places/{id}/accessibility`
-All 13 features in 7 groups; features without data come back as `unknown`.
+All 35 features in 8 groups; features without data come back as `unknown`.
 
 ```json
 { "place_id": "plc_mnk",
@@ -288,7 +290,7 @@ All 13 features in 7 groups; features without data come back as `unknown`.
 ```
 
 - `GET /categories` → `[ { "key": "museum", "label": "Muzeum", "count": 1 }, … ]`.
-- `GET /geocode?q=muz` → `[ { "label": "Muzeum Narodowe w Krakowie, al. 3 Maja 1, 30-062 Kraków", "place_id": "plc_mnk", "location": {…} } ]`. It matches place names and addresses (at least 2 characters, max 10 results), works offline and doesn't use Nominatim.
+- `GET /geocode?q=muz` → `[ { "label": "Muzeum Narodowe w Krakowie, al. 3 Maja 1, 30-062 Kraków", "place_id": "plc_mnk", "location": {…} } ]`. It matches place names and addresses (at least 2 characters, max 10 results). With `GEOCODER=nominatim` (F27), Nominatim hits limited to Kraków follow the local places with `"place_id": null` (an address without accessibility data yet; hits within 50 m of a known place are dropped). Nominatim failure → local results only. Default `local` works offline.
 
 ## 4b. Similar places and accessible route
 
@@ -296,14 +298,15 @@ All 13 features in 7 groups; features without data come back as `unknown`.
 `{ items: [PlaceSummary + distance_m] }`: other places within 3 km, same category first, then nearest. `limit` is 1–20.
 
 ### `GET /api/v1/routes/accessible?from=plc_mnk&to=plc_urzad&profile=wheelchair`
-`from` and `to` are a place id or `lat,lon`. **This is a heuristic, not a routing engine** (`note` says so):
-- the route is a straight line, with `distance_m` and `duration_min` at 50 m/min;
-- it collects the street-level features relevant to the profile from places within 100 m of the line: wheelchair/stroller/crutches → `lowered_curb`, `platform_elevator`; blind → `tactile_paths`, `lowered_curb`; low vision → `good_lighting`;
+`from` and `to` are a place id or `lat,lon`. The path depends on `ROUTER` (F28); `engine` and `note` say which one answered:
+- `ROUTER=osrm`: real walking path from OSRM (foot profile, OpenStreetMap), with its `distance_m` and `duration_min`. Example MNK → Urząd: 2033 m, 28 min, 192 points. OSRM failure, timeout or no route → straight line;
+- `ROUTER=straight` (default, offline): straight line, `distance_m` and `duration_min` at 50 m/min;
+- it collects the street-level features relevant to the profile from places within 100 m of **the path**: wheelchair/stroller/crutches → `lowered_curb`, `platform_elevator`; blind → `tactile_paths`, `lowered_curb`; low vision → `good_lighting`;
 - `no` → `barriers`, `yes` → `helpers`;
 - `feasible`: barriers → `partial`, data without barriers → `yes`, no data → `unknown`.
 
 ```json
-{ "feasible": "yes", "profile": "wheelchair", "distance_m": 1601, "duration_min": 33,
+{ "engine": "straight_line", "feasible": "yes", "profile": "wheelchair", "distance_m": 1601, "duration_min": 33,
   "geometry": { "type": "LineString", "coordinates": [[19.9238, 50.0603], [19.945, 50.065]] },
   "barriers": [],
   "helpers": [ { "place_id": "plc_urzad", "name": "Urząd Dzielnicy I", "feature": "lowered_curb",
@@ -401,6 +404,34 @@ Body `{ "value": 1 }` or `{ "value": -1 }`. Voting again replaces the previous v
 - "Bez schodów" → step-free entrance `yes`; stairs mentioned → `no` (confidence 0.6).
 - "od …", "remont", "dziś" → `temporary`.
 - It's a **suggestion only** and pre-fills the report form. Text must be 1–1000 characters.
+
+## 5c. Map layer of observations
+
+`GET /api/v1/observations?active=true&bbox=19.93,50.055,19.95,50.07&value=no&current=true&since=…&limit=200`: observations across all places, **newest first**. Each item is a full `Observation` plus:
+
+```json
+{ "place": { "id": "plc_camelot", "name": "Cafe Camelot", "location": { "lat": 50.0628, "lon": 19.9383 } },
+  "severity": "obstacle" }
+```
+- `active` (default `true`) leaves out REJECTED, FLAGGED and expired observations.
+- `bbox` filters on the place location.
+- `current=true` returns only observations that currently decide their feature's state.
+- `severity` comes from the report the observation came from (`null` for quick observations, imports and seed data).
+- `limit` is 1–500.
+
+One request replaces per-place `GET /places/{id}/observations` loops in the map front end.
+
+## 5d. Abuse reports and escalation
+
+`POST /api/v1/observations/{id}/abuse {"reason": "…"}` (logged in): report an observation as spam or false data.
+
+- Not allowed on your own observation (400); once per user (409).
+- Reports from several users join one pending queue item with `type: abuse`; the reasons are kept as comments.
+- Admin `confirm` → the observation becomes FLAGGED (excluded from trust, history kept); `reject` → report dismissed.
+
+Any queue item can be escalated: `POST /admin/queue/{id}/decision {"action": "escalate"}` → `status: escalated`. Data is unchanged and the item can still be confirmed or rejected later. A new contradicting observation extends an escalated conflict instead of opening a second one.
+
+Queue filters: `filter=all|conflict|abuse`, `status=open|escalated|resolved|all`; `counts` has `all`, `conflict`, `abuse`. Dashboard conflicts, owner stats and reminders count only `type: conflict`.
 
 ## 6. Owner (role `owner`)
 

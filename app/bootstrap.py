@@ -5,7 +5,7 @@ from app.adapters.outbound.files import LocalFileStorage
 from app.adapters.outbound.osm_file import FileOsmSource
 from app.adapters.outbound.vision_mock import FallbackVisionAnalyzer, MockVisionAnalyzer
 from app.adapters.outbound.memory import FixedClock, InMemoryRepo, SeqIdGenerator, SystemClock
-from app.application.ports import IdentityVerifier
+from app.application.ports import IdentityVerifier, StaleData
 from app.application.use_cases import UseCases
 from app.config import Settings
 
@@ -28,6 +28,28 @@ def build_vision(settings: Settings):
     return mock
 
 
+def build_geocoder(settings: Settings):
+    if settings.geocoder != "nominatim":
+        return None
+    from app.adapters.outbound.osm_live import NominatimGeocoder
+    return NominatimGeocoder(settings.nominatim_url, settings.http_user_agent, timeout_s=settings.external_timeout_s)
+
+
+def build_router(settings: Settings):
+    if settings.router != "osrm":
+        return None
+    from app.adapters.outbound.osrm import OsrmRouter
+    return OsrmRouter(settings.osrm_url, settings.http_user_agent, timeout_s=settings.external_timeout_s)
+
+
+def build_osm_live(settings: Settings):
+    """Only used on explicit admin import {"source": "overpass"}; falls back to the snapshot."""
+    from app.adapters.outbound.osm_live import FallbackOsmSource, OverpassOsmSource
+    live = OverpassOsmSource(settings.overpass_url, settings.osm_center_lat, settings.osm_center_lon,
+                             settings.osm_radius_m, settings.http_user_agent, timeout_s=max(settings.external_timeout_s, 25))
+    return FallbackOsmSource(live, FileOsmSource(settings.osm_file))
+
+
 def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None) -> UseCases:
     clock = FixedClock(settings.demo_now) if settings.demo_now else SystemClock()
     if verifier is None and settings.auth_mode == "google":
@@ -41,15 +63,25 @@ def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None
         auth_mode=settings.auth_mode, admin_emails=settings.admin_email_list,
         session_ttl_hours=settings.session_ttl_hours, anonymous_auth=settings.anonymous_auth,
         anonymous_ttl_days=settings.anonymous_ttl_days, vision=vision,
-        osm=FileOsmSource(settings.osm_file),
+        osm=FileOsmSource(settings.osm_file), geocoder=build_geocoder(settings), osm_live=build_osm_live(settings),
+        router=build_router(settings),
     )
+    seed_or_continue(use_cases)
+    return use_cases
+
+
+def seed_or_continue(use_cases: UseCases) -> None:
+    """Empty database → seed; persisted data → keep it, continue id sequences.
+    Several workers booting on an empty database: the first seed wins, the others take its data (F29)."""
+    repo = use_cases.repo
     if repo.is_empty():
         use_cases.load_seed()
-        repo.commit()
-    else:  # persisted data: keep it, continue id sequences
-        for existing_id in repo.all_ids():
-            ids.observe(existing_id)
-    return use_cases
+        try:
+            repo.commit()
+            return
+        except StaleData:
+            log.info("another worker seeded the database first → using its data")
+    use_cases.sync(force=True)
 
 
 def _sql_repo(url: str):

@@ -25,7 +25,7 @@ flowchart TB
     end
     subgraph CORE[Application + domain]
         UC[application/use_cases.py<br/>UseCases]
-        PORTS[application/ports.py<br/>Repo · Clock · IdGenerator · FileStorage<br/>IdentityVerifier · VisionAnalyzer · OsmSource]
+        PORTS[application/ports.py<br/>Repo · Clock · IdGenerator · FileStorage<br/>IdentityVerifier · VisionAnalyzer · OsmSource<br/>Geocoder · WalkingRouter]
         DOM[domain/<br/>model · enums · trust · validation · check<br/>suggestions · osm · geo · errors]
     end
     subgraph OUT[Outbound adapters]
@@ -34,7 +34,8 @@ flowchart TB
         FILES[files.py LocalFileStorage]
         GOO[google_auth.py]
         VIS[vision_mock / vision_onnx / vision_gemini]
-        OSMF[osm_file.py]
+        OSMF[osm_file.py · osm_live.py<br/>Nominatim · Overpass]
+        OSRM[osrm.py walking route]
     end
     HTTP --> UC
     MCPC -.HTTP.-> HTTP
@@ -70,13 +71,13 @@ Benefits in practice:
 | `app/domain/text_parse.py` | Free text → suggested observations (rules, PL + EN) |
 | `app/domain/verification.py` | Place badge ("Potwierdzone dzisiaj") + activity-feed classification |
 | `app/domain/history.py`, `stats.py` | Audit trail of a place; admin dashboard tiles |
-| `app/domain/route.py` | A→B route heuristic (barriers/helpers near a straight line) |
+| `app/domain/route.py` | A→B route: barriers/helpers near the path (OSRM polyline or straight line) |
 | `app/domain/osm.py`, `geo.py` | OSM tag mapping; haversine, bbox, distance to a segment |
 | `app/application/ports.py` | Port protocols |
 | `app/application/use_cases.py` | All use cases (`UseCases` class) |
 | `app/adapters/inbound/http/` | `main.py` (app factory, middleware), `deps.py` (auth deps), `errors.py`, `schemas.py`, `rate_limit.py`, `routers/*` |
 | `app/adapters/inbound/http/routers/` | `auth`, `me`, `places` (search, map, card, check, similar, routes, history), `observations` (reports, drafts, votes, uploads), `ai`, `owner`, `admin`, `public` |
-| `app/adapters/outbound/` | `memory.py`, `sql.py`, `files.py`, `google_auth.py`, `vision_*.py`, `osm_file.py` |
+| `app/adapters/outbound/` | `memory.py`, `sql.py`, `files.py`, `google_auth.py`, `vision_*.py`, `osm_file.py`, `osm_live.py` (Nominatim, Overpass, fallback), `osrm.py` |
 | `clients/` | MCP server + tool logic (Open API client) |
 | `data/` | OSM snapshot; SQLite DB file (`rampa.db`, gitignored) |
 | `media/` | Uploaded photos (gitignored) |
@@ -127,16 +128,17 @@ sequenceDiagram
 
 **Place types:** `venue`, `shop`, `public_transport_stop`, `platform`, `parking`, `office`, `street_segment`, `other`.
 
-**Accessibility features (13):**
-- *entrance*: `step_free_entrance`, `ramp`
-- *inside*: `elevator`
-- *toilet*: `accessible_toilet`
-- *hearing*: `induction_loop`, `sign_language_interpreter`
-- *vision*: `braille`, `tactile_paths`, `good_lighting`
+**Accessibility features (35, 8 groups):**
+- *entrance*: `step_free_entrance`, `ramp`, `elevator_entrance`, `wide_doors`, `automatic_doors`, `call_bell`
+- *inside*: `elevator`, `escalator`, `spacious_interior`, `high_contrast_info`, `tactile_info`
+- *toilet*: `accessible_toilet`, `adult_changing_table`, `turning_space`, `extra_accessible_toilets`
+- *hearing*: `induction_loop`, `sign_language_interpreter`, `video_captions`, `fm_system`
+- *vision*: `braille`, `tactile_paths`, `good_lighting`, `high_contrast_markings`, `accessible_digital_materials`, `audio_description`
 - *mobility*: `lowered_curb`, `platform_elevator`, `crutches_friendly`
-- *other*: `assistance_dog_allowed`
+- *parking*: `disabled_parking`, `marked_parking`, `level_surface`, `more_than_n_spots`, `drop_off_zone`
+- *other*: `assistance_dog_allowed`, `pets_allowed`
 
-They are a subset of the 35 features in the full contract (`../openapi.yaml` in the docs repo).
+This is the full model from the contract plus `escalator` (requested by the front end). `partially_inaccessible_exhibition` is left out because its meaning is inverted (`yes` = bad). For the front end: `tactile` → `tactile_paths`, `sign` → `sign_language_interpreter` (to confirm).
 
 ## 5. Rules
 
@@ -236,7 +238,7 @@ Public display names are shortened to "Anna K." (privacy rule from the mock-ups)
 | Audit trail | `history.py` | observations + conflict detected/resolved (`resolved_at`) |
 | Dashboard tiles | `stats.py` | today vs yesterday: reports, open conflicts, low confidence, observations, abuse flags, places |
 | Search | `use_cases.find_places` | features AND, category, text, place type, distance + radius, bbox, sort (nearest/name/recently verified), pages, map markers |
-| Route A→B | `route.py` | straight line; street-level features of places ≤ 100 m: `no` = barrier, `yes` = helper; `partial`/`yes`/`unknown` |
+| Route A→B | `route.py` | OSRM polyline (`ROUTER=osrm`) or straight line; street-level features of places ≤ 100 m: `no` = barrier, `yes` = helper; `partial`/`yes`/`unknown` |
 | Text → observations | `text_parse.py` | clauses + polarity keywords (PL/EN), stairs/step-free special cases, temporary words |
 
 ## 6. Persistence (`REPO_MODE`)
@@ -250,7 +252,8 @@ Public display names are shortened to "Anna K." (privacy rule from the mock-ups)
   - Tables: `users`, `sessions`, `places`, `feature_states`, `observations`, `reports`, `photos`, `queue_items`, `ownership_requests`.
 - **Why write-behind:** the `Repo` port is synchronous and the use cases mutate domain objects in place. This adds persistence without touching the domain or use cases.
 - **Schema evolution:** on start, `SqlRepo` adds any **missing nullable columns** to existing tables (`ALTER TABLE … ADD COLUMN`), so databases created by older versions keep working (e.g. `queue_items.resolved_at`, F13). It never drops or renames anything.
-- **Limit:** a single process only (one uvicorn worker), on both SQLite and Postgres. Multiple workers or replicas would need a fully SQL-backed repository; the port stays the same.
+- **Several workers (F29):** table `meta` holds `data_version`. Each request starts with `UseCases.sync()`, one single-row read; if another worker committed, the cache is reloaded and id sequences continue. Commit is an optimistic lock: `UPDATE meta SET value = value + 1 WHERE value = <loaded>` in the same transaction as the writes. 0 rows → rollback, reload, **409 CONFLICT** (the client retries). Commits without changes skip the check.
+- **Limit:** a whole-cache reload after every foreign commit, so this fits demo or city-pilot load, not high write throughput. Next step: a fully SQL-backed repository behind the same port.
 - **Deployment:** `docker-compose.yml` = `postgres:17-alpine` (healthcheck, volume `pgdata`) + the API image (`Dockerfile`, uv, Python 3.13, extra `postgres`). Verified: the full `demo.http` and the SqlRepo test suite pass on Postgres.
 
 ## 7. Auth
@@ -281,8 +284,8 @@ It is a **client of the Open API**, not part of the backend process. With in-mem
 | Observations + computed state | Trust, history, conflicts, "Yanosik" model | More logic than a flag; mitigated by pure, tested domain functions |
 | Hexagon with mock/offline adapters | Offline, deterministic demo; fast tests | More files; ports only where there are ≥2 implementations |
 | Sync `Repo` + write-behind SQLite | Atomic use cases, persistence without a rewrite | Single process |
-| 13 features, states `yes/partial/no/unknown` | Covers all user questions from the brief | 22 more features in the full model |
-| Route A→B as a heuristic | No routing engine needed; honest `note` | Not turn-by-turn; only barriers near a straight line |
+| 35 features, states `yes/partial/no/unknown` | Full model + `escalator`; all user questions from the brief | Only some features take part in `check` rules; the rest are informational |
+| Route A→B: OSRM opt-in, straight line default | Offline demo stays deterministic; real path when online; honest `engine` + `note` | Not turn-by-turn; barriers only where places have street-level data |
 | `/geocode` from the local index | Offline demo | No address search outside known places |
 | AI = suggestion only + fallback | AI never corrupts data; demo never breaks | Keyword mapping is simple (PL/EN) |
 | Open API mounted at `/public/v1` | Separate versioning from the internal API | Differs from the full contract (`/api/v1/public/v1`) |

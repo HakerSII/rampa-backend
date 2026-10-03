@@ -4,6 +4,9 @@
 ### 1. Start server:  uv run python main.py
 ### 2. Click "Send Request" above each block, top → bottom (requests pass ids along via @name).
 ### 3. Start again any time with step 0 (reset).
+### F29 multi-worker: the whole file also passes against 2 workers on one database, e.g.
+###    REPO_MODE=sql DATABASE_URL=sqlite:///data/mw.db uv run uvicorn main:app --port 8000 --workers 2
+### F27/F28 live OSM: GEOCODER=nominatim ROUTER=osrm (fallback to local / straight line when offline)
 ### =====================================================================
 
 @base = http://localhost:8000/api/v1
@@ -67,6 +70,9 @@ GET {{base}}/routes/accessible?from=plc_mnk&to=plc_urzad&profile=blind
 ### 404 NOT_FOUND — route from unknown place
 GET {{base}}/routes/accessible?from=nowhere&to=plc_urzad
 
+### F28. Route between coordinates → engine osrm when ROUTER=osrm, else straight_line (same shape)
+GET {{base}}/routes/accessible?from=50.0617,19.9373&to=plc_urzad&profile=stroller
+
 ### 1i. Filter by place type (venue / shop / public_transport_stop / platform / parking / office / …)
 GET {{base}}/places?place_type=office
 
@@ -93,6 +99,20 @@ Content-Type: application/json
 
 ### 400 VALIDATION_ERROR — unknown place type
 GET {{base}}/places?place_type=spaceport
+
+### 1l. Escalator out of order on ICE (feature requested by the front end)
+POST {{base}}/places/plc_ice/observations
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"feature": "escalator", "value": "no", "temporary": true, "comment": "Schody ruchome nieczynne"}
+
+### 1m. Parking feature: disabled parking at the office
+POST {{base}}/places/plc_urzad/observations
+Authorization: Bearer {{ola}}
+Content-Type: application/json
+
+{"feature": "disabled_parking", "value": "yes"}
 
 ### Feature dictionary (filters)
 GET {{base}}/accessibility/features
@@ -206,6 +226,15 @@ Authorization: Bearer {{jan}}
 ### 409 CONFLICT — submit twice
 POST {{base}}/reports/{{janDraft.response.body.$.id}}/submit
 Authorization: Bearer {{jan}}
+
+### 4b-MAP. Map layer: current problems in the city (one request) — Anna's elevator with severity critical
+GET {{base}}/observations?value=no&current=true&since=2026-01-01T00:00:00Z
+
+### 4b-MAP2. Map layer for a viewport (old town)
+GET {{base}}/observations?bbox=19.93,50.055,19.95,50.07&limit=50
+
+### 400 VALIDATION_ERROR — map layer with bad bbox
+GET {{base}}/observations?bbox=1,2,3
 
 ### 4c. Elevator now: no, temporary, confidence 0.6
 GET {{base}}/places/plc_mnk/accessibility
@@ -328,6 +357,65 @@ Authorization: Bearer {{admin}}
 Content-Type: application/json
 
 {"reason": "spam"}
+
+### 7m1. F26: another false "no ramp" on Camelot (Marek) …
+# @name fake
+POST {{base}}/places/plc_camelot/observations
+Authorization: Bearer {{marek}}
+Content-Type: application/json
+
+{"feature": "ramp", "value": "no", "comment": "brak"}
+
+### 7m2. … Anna reports it as abuse → 201, queue item type abuse
+POST {{base}}/observations/{{fake.response.body.$.id}}/abuse
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"reason": "Byłam wczoraj, podjazd jest"}
+
+### 7m3. … Jan reports it too → joins the same item (2 reasons)
+POST {{base}}/observations/{{fake.response.body.$.id}}/abuse
+Authorization: Bearer {{jan}}
+Content-Type: application/json
+
+{"reason": "Fałszywe zgłoszenie"}
+
+### 7m4. Anna again → 409 CONFLICT (once per user)
+POST {{base}}/observations/{{fake.response.body.$.id}}/abuse
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"reason": "jeszcze raz"}
+
+### 7m5. Marek reports his own observation → 400
+POST {{base}}/observations/{{fake.response.body.$.id}}/abuse
+Authorization: Bearer {{marek}}
+Content-Type: application/json
+
+{"reason": "own"}
+
+### 7m6. Admin: abuse queue (counts all / conflict / abuse)
+# @name abuseQ
+GET {{base}}/admin/queue?filter=abuse
+Authorization: Bearer {{admin}}
+
+### 7m7. Admin escalates it to a coordinator → status escalated, data unchanged
+POST {{base}}/admin/queue/{{abuseQ.response.body.$.items[0].id}}/decision
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"action": "escalate", "comment": "Koordynator sprawdzi na miejscu"}
+
+### 7m8. Escalated items
+GET {{base}}/admin/queue?status=escalated
+Authorization: Bearer {{admin}}
+
+### 7m9. Coordinator confirms abuse → approved, observation FLAGGED, ramp yes
+POST {{base}}/admin/queue/{{abuseQ.response.body.$.items[0].id}}/decision
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"action": "confirm"}
 
 ### 7n. Jan applies for ownership of ICE ("Jestem właścicielem")
 # @name ownReq
@@ -631,6 +719,13 @@ Authorization: Bearer {{anna}}
 Content-Type: application/json
 
 {"source": "osm_file"}
+
+### I7. F27: live import from Overpass → 200; source "overpass", or "osm_file (fallback)" when offline
+POST {{base}}/admin/imports
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"source": "overpass"}
 
 ### 400 VALIDATION_ERROR — unknown import source
 POST {{base}}/admin/imports

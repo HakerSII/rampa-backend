@@ -6,7 +6,10 @@ from typing import Protocol
 
 from app.domain.enums import FeatureKey
 from app.domain.osm import OsmPoint
+from app.domain.route import RoutePath
 from app.domain.model import (
+    GeoPoint,
+    GeocodeHit,
     FeatureStateRecord,
     GoogleIdentity,
     ImageAnalysis,
@@ -21,10 +24,17 @@ from app.domain.model import (
 )
 
 
+class StaleData(Exception):
+    """F29: another worker committed since this cache was loaded; the write was dropped — retry."""
+
+
 class Repo(Protocol):
     def clear(self) -> None: ...
+    def reload_if_stale(self) -> bool:
+        """F29: reload when another worker committed; True = reloaded (memory: always False)."""
+        ...
     def commit(self) -> None:
-        """Persist changes (no-op in memory). Called after each write request."""
+        """Persist changes (no-op in memory). Called after each write request. Raises StaleData on a race."""
         ...
     def is_empty(self) -> bool: ...
     def all_ids(self) -> list[str]: ...
@@ -60,7 +70,8 @@ class Repo(Protocol):
     def add_queue_item(self, item: QueueItem) -> None: ...
     def get_queue_item(self, item_id: str) -> QueueItem | None: ...
     def list_queue_items(self) -> list[QueueItem]: ...
-    def find_open_queue_item(self, place_id: str, feature: FeatureKey) -> QueueItem | None: ...
+    def find_open_queue_item(self, place_id: str, feature: FeatureKey) -> QueueItem | None:  # pending conflict
+        ...
 
     # ownership requests
     def add_ownership_request(self, req: OwnershipRequest) -> None: ...
@@ -94,6 +105,18 @@ class VisionAnalyzer(Protocol):
 
 class OsmSource(Protocol):
     async def fetch(self) -> list[OsmPoint]: ...
+
+
+class WalkingRouter(Protocol):
+    async def walk(self, a: GeoPoint, b: GeoPoint) -> RoutePath | None:
+        """Walking path; None = no route; raise on failure (use case falls back to the straight line)."""
+        ...
+
+
+class Geocoder(Protocol):
+    async def search(self, q: str) -> list[GeocodeHit]:
+        """Raise on failure; the use case falls back to the local index."""
+        ...
 
 
 class IdentityVerifier(Protocol):

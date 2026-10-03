@@ -300,6 +300,22 @@ class ObservationOut(BaseModel):
     valid_until: str | None = None
 
 
+class MapPlaceOut(BaseModel):
+    id: str
+    name: str
+    location: Location
+
+
+class MapObservationOut(ObservationOut):
+    place: MapPlaceOut
+    severity: str | None
+
+
+class MapObservations(BaseModel):
+    items: list[MapObservationOut]
+    total: int
+
+
 class ObservationList(BaseModel):
     items: list[ObservationOut]
 
@@ -383,6 +399,10 @@ class QueueDetailOut(QueueItemOut):
     comments: list[QueueCommentOut] = []
 
 
+class AbuseIn(BaseModel):
+    reason: str
+
+
 class DecisionIn(BaseModel):
     action: str
     winning_observation_id: str | None = None
@@ -398,7 +418,7 @@ class DecisionOut(BaseModel):
 def queue_item_out(uc, q: QueueItem) -> QueueItemOut:
     place = uc.repo.get_place(q.place_id)
     return QueueItemOut(
-        id=q.id, type=q.type, status=q.status, label="Konflikt danych",
+        id=q.id, type=q.type, status=q.status, label="Konflikt danych" if q.type == "conflict" else "Zgłoszenie nadużycia",
         place=QueuePlace(id=q.place_id, name=place.name if place else q.place_id),
         feature=q.feature, observation_count=len(q.observation_ids), created_at=iso(q.created_at),
     )
@@ -409,7 +429,8 @@ def queue_detail_out(uc, q: QueueItem, me: User) -> QueueDetailOut:
     state = uc.get_accessibility(q.place_id)[q.feature]
     return QueueDetailOut(
         **queue_item_out(uc, q).model_dump(),
-        summary=f"Sprzeczne zgłoszenia: {LABELS_PL[q.feature]}",
+        summary=(f"Sprzeczne zgłoszenia: {LABELS_PL[q.feature]}" if q.type == "conflict"
+                 else f"Zgłoszone nadużycie: {LABELS_PL[q.feature]}"),
         observations=[observation_out(uc, o, me) for o in observations],
         feature_state=feature_state_out(state),
         comments=[QueueCommentOut(author=author_out(uc, c["author_id"]), text=c["text"], created_at=c["created_at"])

@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from app.domain.enums import FeatureKey as F, ObservationValue
 
 # inflected Polish stems (pętli, windy, psy …); explicit forms where a stem would over-match
+ESCALATOR_WORDS = ("schody ruchome", "ruchome schody", "escalator")
 TEXT_KEYWORDS: dict[F, tuple[str, ...]] = {
+    F.ESCALATOR: ESCALATOR_WORDS,
     F.ELEVATOR: ("winda", "windy", "windzie", "windą", "windę", "elevator", "lift"),
     F.RAMP: ("podjazd", "ramp"),
     F.ACCESSIBLE_TOILET: ("toalet", "wc", "toilet"),
@@ -59,7 +61,7 @@ def parse_text(text: str) -> list[TextSuggestion]:
         if any(p in clause for p in STEP_FREE):
             found.setdefault(F.STEP_FREE_ENTRANCE,
                              TextSuggestion(F.STEP_FREE_ENTRANCE, ObservationValue.YES, temporary, EXPLICIT))
-        elif any(w in clause for w in STAIRS):
+        elif any(w in clause for w in STAIRS) and not any(e in clause for e in ESCALATOR_WORDS):
             found.setdefault(F.STEP_FREE_ENTRANCE,
                              TextSuggestion(F.STEP_FREE_ENTRANCE, ObservationValue.NO, temporary, IMPLIED))
         if polarity is None:

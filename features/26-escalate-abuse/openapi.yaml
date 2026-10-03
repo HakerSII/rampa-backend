@@ -1,0 +1,97 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F26 Escalate + abuse reports
+  version: 0.1.0-mvp
+  description: >
+    Users report spam / false observations into the moderation queue (type abuse).
+    Admins can escalate any queue item to a coordinator (data unchanged, decidable later).
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: observations
+  - name: admin
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+  schemas:
+    QueueItem:
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [conflict, abuse] }
+        status: { type: string, enum: [open, escalated, resolved] }
+        label: { type: string }
+        feature: { type: string }
+        observation_count: { type: integer }
+        created_at: { type: string, format: date-time }
+paths:
+  /observations/{observationId}/abuse:
+    post:
+      tags: [observations]
+      summary: Report an observation as spam / false data (not your own, once per user)
+      operationId: reportAbuse
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: observationId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        "201":
+          description: Queue item (type abuse); reports of several users join one pending item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QueueItem" }
+        "400": { description: "VALIDATION_ERROR (empty reason, own observation)" }
+        "401": { description: UNAUTHORIZED }
+        "404": { description: NOT_FOUND }
+        "409": { description: "CONFLICT (already reported by this user)" }
+  /admin/queue:
+    get:
+      tags: [admin]
+      summary: Moderation queue, typed
+      operationId: listQueueTyped
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: filter, in: query, schema: { type: string, enum: [all, conflict, abuse], default: all } }
+        - { name: status, in: query, schema: { type: string, enum: [open, escalated, resolved, all], default: open } }
+      responses:
+        "200":
+          description: "Items + counts {all, conflict, abuse} of open items"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/QueueItem" } }
+                  total: { type: integer }
+                  counts: { type: object, additionalProperties: { type: integer } }
+  /admin/queue/{itemId}/decision:
+    post:
+      tags: [admin]
+      summary: "confirm | reject | escalate (abuse: confirm → FLAGGED, reject → dismissed)"
+      operationId: decideTyped
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: itemId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [confirm, reject, escalate] }
+                winning_observation_id: { type: string, description: "conflict confirm only" }
+                comment: { type: string }
+      responses:
+        "200":
+          description: "status approved | rejected | escalated + feature state"
+        "409": { description: "CONFLICT (already resolved / already escalated)" }

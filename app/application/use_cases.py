@@ -1,4 +1,5 @@
 """All MVP use cases (application layer). Depends only on domain + ports."""
+import logging
 import secrets
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -12,7 +13,9 @@ from app.application.ports import (
     FileStorage,
     IdentityVerifier,
     IdGenerator,
+    Geocoder,
     OsmSource,
+    WalkingRouter,
     Repo,
     VisionAnalyzer,
 )
@@ -52,6 +55,7 @@ from app.domain.errors import (
 from app.domain.model import (
     CheckResult,
     FeatureStateRecord,
+    GeocodeHit,
     GeoPoint,
     ImageAnalysis,
     Observation,
@@ -106,13 +110,6 @@ class PlaceResults:
 class CategoryCount:
     key: str
     count: int
-
-
-@dataclass(slots=True)
-class GeocodeHit:
-    label: str
-    place_id: str
-    location: GeoPoint
 
 
 @dataclass(slots=True)
@@ -198,6 +195,9 @@ REPORT_VALUE = {CurrentState.WORKS: ObservationValue.YES, CurrentState.PARTIALLY
                 CurrentState.NOT_WORKING: ObservationValue.NO}
 
 
+log = logging.getLogger(__name__)
+
+
 def _enum(enum_cls, value, field: str):
     try:
         return enum_cls(value)
@@ -210,7 +210,9 @@ class UseCases:
                  verifier: IdentityVerifier | None, *, auth_mode: str = "demo",
                  admin_emails: list[str] | None = None, session_ttl_hours: int = 24,
                  anonymous_auth: bool = True, anonymous_ttl_days: int = 365,
-                 vision: VisionAnalyzer | None = None, osm: OsmSource | None = None):
+                 vision: VisionAnalyzer | None = None, osm: OsmSource | None = None,
+                 geocoder: Geocoder | None = None, osm_live: OsmSource | None = None,
+                 router: WalkingRouter | None = None):
         self.repo = repo
         self.clock = clock
         self.ids = ids
@@ -223,6 +225,18 @@ class UseCases:
         self.anonymous_ttl = timedelta(days=anonymous_ttl_days)
         self.vision = vision
         self.osm = osm
+        self.geocoder = geocoder
+        self.osm_live = osm_live
+        self.router = router
+
+    # ------------------------------------------------------------------ multi-worker (F29)
+    def sync(self, force: bool = False) -> bool:
+        """Before each request: pick up other workers' commits; continue id sequences after a reload."""
+        reloaded = self.repo.reload_if_stale()
+        if reloaded or force:
+            for existing_id in self.repo.all_ids():
+                self.ids.observe(existing_id)
+        return reloaded
 
     # ------------------------------------------------------------------ demo data
     def load_seed(self) -> None:
@@ -377,6 +391,21 @@ class UseCases:
                 if needle in p.name.casefold() or needle in (p.address or "").casefold()]
         return hits[:10]
 
+    async def geocode_live(self, q: str) -> list[GeocodeHit]:
+        """F27: local places first (they have data), then live geocoder hits; geocoder failure → local only."""
+        local = self.geocode(q)
+        if self.geocoder is None:
+            return local
+        try:
+            external = await self.geocoder.search(q.strip())
+        except Exception as e:  # noqa: BLE001 — network / quota / parse → offline answer
+            log.warning("geocoder failed (%s) → local only", e)
+            return local
+        places = self.repo.list_places()
+        fresh = [h for h in external
+                 if not any(haversine_m(p.location, h.location) <= domain_osm.MATCH_RADIUS_M for p in places)]
+        return (local + fresh)[:10]
+
     def get_place(self, place_id: str) -> Place:
         place = self.repo.get_place(place_id)
         if place is None:
@@ -416,6 +445,18 @@ class UseCases:
         a, b = self._resolve_point(origin), self._resolve_point(destination)
         places = [(p, self.repo.states_for(p.id)) for p in self.repo.list_places()]
         return plan_route(a, b, profile, places)
+
+    async def accessible_route_live(self, origin: str, destination: str, profile: NeedsProfile) -> RouteResult:
+        """F28: walking path from the routing engine; failure / no route → straight-line heuristic."""
+        a, b = self._resolve_point(origin), self._resolve_point(destination)
+        path = None
+        if self.router is not None:
+            try:
+                path = await self.router.walk(a, b)
+            except Exception as e:  # noqa: BLE001 — network / timeout / parse → straight line
+                log.warning("router failed (%s) → straight line", e)
+        places = [(p, self.repo.states_for(p.id)) for p in self.repo.list_places()]
+        return plan_route(a, b, profile, places, path)
 
     def _resolve_point(self, raw: str) -> GeoPoint:
         """Place id or 'lat,lon'."""
@@ -504,11 +545,12 @@ class UseCases:
     async def import_osm(self, admin: User | None, source: str = "osm_file") -> ImportResult:
         """OSM points → open_data observations. Idempotent; matches places by external id or name ≤50 m."""
         self._require_admin(admin)
-        if source != "osm_file" or self.osm is None:
-            raise ValidationFailed(f"unknown import source: {source}")
-        points = await self.osm.fetch()
+        osm = {"osm_file": self.osm, "overpass": self.osm_live}.get(source)
+        if osm is None:
+            raise ValidationFailed(f"unknown or unavailable import source: {source}")
+        points = await osm.fetch()
 
-        result = ImportResult(source, points=len(points))
+        result = ImportResult(getattr(osm, "last_source", source), points=len(points))
         osm_user = self.repo.get_user(OSM_AUTHOR_ID)
         touched: set[tuple[str, FeatureKey]] = set()
         for p in points:
@@ -633,7 +675,7 @@ class UseCases:
                    if r.place_id in ids and r.status == "submitted" and r.created_at >= since]
         updates = [o for p in places for o in self.repo.list_observations(p.id)
                    if o.author_id == user.id and o.source == ObservationSource.VERIFIED_OWNER and o.created_at >= since]
-        conflicts = [q for q in self.repo.list_queue_items() if q.place_id in ids and q.status == QueueStatus.OPEN]
+        conflicts = [q for q in self.repo.list_queue_items() if q.place_id in ids and q.open_conflict]
         avg = round(sum(confidences) / len(confidences), 2) if confidences else 0.0
         return OwnerStats(len(places), avg, len(reports), len(updates), len(conflicts))
 
@@ -697,7 +739,7 @@ class UseCases:
         for o in observations:
             by_source[str(o.source)] = by_source.get(str(o.source), 0) + 1
         conflicts = sum(1 for q in self.repo.list_queue_items()
-                        if q.place_id == place_id and q.status == QueueStatus.OPEN)
+                        if q.place_id == place_id and q.open_conflict)
         v = self.verification_for(place_id)
         return OwnerPlaceStats(len(observations), by_source, sum(o.up_votes for o in observations),
                                sum(o.down_votes for o in observations), conflicts, v.last_verified, v.confidence)
@@ -745,7 +787,7 @@ class UseCases:
                 reminders.append(Reminder(place.id, "stale_data",
                                           f"Sprawdź aktualność danych — {place.name}", "normal"))
             for q in self.repo.list_queue_items():
-                if q.place_id == place.id and q.status == QueueStatus.OPEN:
+                if q.place_id == place.id and q.open_conflict:
                     reminders.append(Reminder(place.id, "conflict",
                                               f"Wyjaśnij sprzeczne zgłoszenia: {LABELS_PL[q.feature]} — {place.name}",
                                               "high", q.feature))
@@ -984,10 +1026,10 @@ class UseCases:
     def list_queue(self, admin: User | None, filter: str = "all", status: str = "open") -> list[QueueItem]:
         self._require_admin(admin)
         items = self.repo.list_queue_items()
-        if filter not in ("all", "conflict") or status not in ("open", "resolved", "all"):
-            raise ValidationFailed("filter must be all|conflict, status open|resolved|all")
-        if filter == "conflict":
-            items = [q for q in items if q.type == "conflict"]
+        if filter not in ("all", "conflict", "abuse") or status not in ("open", "escalated", "resolved", "all"):
+            raise ValidationFailed("filter must be all|conflict|abuse, status open|escalated|resolved|all")
+        if filter != "all":
+            items = [q for q in items if q.type == filter]
         if status != "all":
             items = [q for q in items if q.status == status]
         return items
@@ -1001,12 +1043,23 @@ class UseCases:
 
     def decide(self, admin: User | None, item_id: str, action: str,
                winning_observation_id: str | None = None, comment: str = "") -> FeatureStateRecord:
-        """confirm: winner kept + admin observation, opposite values REJECTED; reject: all REJECTED.
+        """confirm: winner kept + admin observation, opposite values REJECTED; reject: all REJECTED;
+        escalate: handed to a coordinator, data unchanged, decidable later.
+        Abuse items: confirm → observation FLAGGED; reject → report dismissed.
         Observations are never deleted — only their validation changes."""
         item = self.get_queue_item(admin, item_id)
         action_v = _enum(DecisionAction, action, "action")
-        if item.status != QueueStatus.OPEN:
+        if not item.pending:
             raise ConflictError(f"queue item already resolved: {item_id}")
+        if action_v == DecisionAction.ESCALATE:
+            if item.status == QueueStatus.ESCALATED:
+                raise ConflictError(f"queue item already escalated: {item_id}")
+            item.status, item.decision = QueueStatus.ESCALATED, "escalated"
+            if comment.strip():
+                self.add_queue_comment(admin, item_id, comment)
+            return self.recompute(item.place_id, item.feature)
+        if item.type == "abuse":
+            return self._decide_abuse(item, action_v)
         observations = [self._get_observation(i) for i in item.observation_ids]
 
         if action_v == DecisionAction.CONFIRM:
@@ -1023,6 +1076,34 @@ class UseCases:
                 o.validation = ValidationStatus.REJECTED
             item.status, item.decision, item.resolved_at = QueueStatus.RESOLVED, "rejected", self.clock.now()
         return self.recompute(item.place_id, item.feature)
+
+    def _decide_abuse(self, item: QueueItem, action: DecisionAction) -> FeatureStateRecord:
+        obs = self._get_observation(item.observation_ids[0])
+        if action == DecisionAction.CONFIRM:
+            reasons = "; ".join(c["text"] for c in item.comments)
+            obs.validation, obs.flag_reason = ValidationStatus.FLAGGED, f"Zgłoszenia nadużycia: {reasons}"[:200]
+        item.status, item.resolved_at = QueueStatus.RESOLVED, self.clock.now()
+        item.decision = "approved" if action == DecisionAction.CONFIRM else "rejected"
+        return self.recompute(item.place_id, item.feature)
+
+    def report_abuse(self, user: User | None, observation_id: str, reason: str) -> QueueItem:
+        """F26: any user reports spam / false data → moderation queue (type abuse). Once per user."""
+        self._require_user(user)
+        obs = self._get_observation(observation_id)
+        reason = (reason or "").strip()
+        if not 1 <= len(reason) <= 200:
+            raise ValidationFailed("reason must have 1..200 characters")
+        if obs.author_id == user.id:
+            raise ValidationFailed("cannot report your own observation")
+        items = [q for q in self.repo.list_queue_items() if q.type == "abuse" and observation_id in q.observation_ids]
+        if any(c["author_id"] == user.id for q in items for c in q.comments):
+            raise ConflictError("you already reported this observation")
+        item = next((q for q in items if q.pending), None)
+        if item is None:
+            item = QueueItem(self.ids.new("q"), obs.place_id, obs.feature, self.clock.now(), [obs.id], type="abuse")
+            self.repo.add_queue_item(item)
+        item.comments.append({"author_id": user.id, "text": reason, "created_at": self.clock.now().isoformat()})
+        return item
 
     # ------------------------------------------------------------------ observations (F3)
     def recompute(self, place_id: str, feature: FeatureKey) -> FeatureStateRecord:
@@ -1184,6 +1265,51 @@ class UseCases:
             obs = self.repo.get_observation(state.active_observation_id) if state.active_observation_id else None
             if obs and obs.valid_until and obs.valid_until <= now:
                 self.recompute(place_id, feature)
+
+    def map_observations(self, *, bbox: str | None = None, active: bool = True, feature: str | None = None,
+                         value: str | None = None, current: bool = False, since: str | None = None,
+                         limit: int = 200) -> list[tuple[Observation, Place, str | None]]:
+        """F24: observations across places for the map, newest first, with place + report severity."""
+        if not 1 <= limit <= 500:
+            raise ValidationFailed("limit: 1..500")
+        try:
+            box = parse_bbox(bbox) if bbox else None
+        except ValueError as e:
+            raise ValidationFailed(str(e)) from e
+        feature_v = _enum(FeatureKey, feature, "feature") if feature else None
+        value_v = _enum(ObservationValue, value, "value") if value else None
+        since_dt = None
+        if since:
+            try:  # "+01:00" often arrives as " 01:00" when not URL-encoded
+                since_dt = datetime.fromisoformat(re.sub(r" (\d{2}:\d{2})$", r"+\1", since.strip()))
+            except ValueError as e:
+                raise ValidationFailed("since must be an ISO date-time") from e
+            if since_dt.tzinfo is None:
+                since_dt = since_dt.replace(tzinfo=self.clock.now().tzinfo)
+        now = self.clock.now()
+
+        rows = []
+        for place in self.repo.list_places():
+            if box and not in_bbox(place.location, box):
+                continue
+            if current:
+                self._refresh_expired(place.id)
+            states = self.repo.states_for(place.id) if current else {}
+            for o in self.repo.list_observations(place.id, feature_v):
+                if active and (not validation.is_active(o) or trust.is_expired(o, now)):
+                    continue
+                if value_v and o.value != value_v:
+                    continue
+                if since_dt and o.created_at < since_dt:
+                    continue
+                if current and (o.feature not in states or states[o.feature].active_observation_id != o.id):
+                    continue
+                report = self.repo.get_report(o.report_id) if o.report_id else None
+                severity = str(report.severity) if report and report.severity else None
+                rows.append((o, place, severity))
+        seq = lambda o: int(o.id.rsplit("_", 1)[-1]) if o.id.rsplit("_", 1)[-1].isdigit() else 0  # noqa: E731
+        rows.sort(key=lambda r: (r[0].created_at, seq(r[0])), reverse=True)
+        return rows[:limit]
 
     def list_observations(self, place_id: str, feature: FeatureKey | None = None,
                           active: bool = True) -> list[Observation]:

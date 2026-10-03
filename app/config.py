@@ -36,6 +36,17 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3.8-flash"
     gemini_api_url: str = "https://generativelanguage.googleapis.com/v1beta"
     osm_file: str = "data/osm_krakow_tauron.json"  # offline OSM snapshot
+    # F27 live OSM: geocoder for the search box; Overpass for POST /admin/imports {"source": "overpass"}
+    geocoder: Literal["local", "nominatim"] = "local"
+    nominatim_url: str = "https://nominatim.openstreetmap.org/search"
+    overpass_url: str = "https://overpass-api.de/api/interpreter"
+    osm_center_lat: float = 50.0647  # Rynek Główny
+    osm_center_lon: float = 19.9450
+    osm_radius_m: int = 1500
+    external_timeout_s: float = 10.0
+    router: Literal["straight", "osrm"] = "straight"  # F28: GET /route geometry
+    osrm_url: str = "https://routing.openstreetmap.de/routed-foot"  # FOSSGIS OSRM, foot profile
+    http_user_agent: str = "RampaKrakowBezBarier/0.1 (HackYeah 2026)"  # OSM usage policy: identify the app
     public_api_keys: str = "demo-key"  # comma-separated X-Api-Key values for /public/v1
     public_rate_limit_per_min: int = 60
 

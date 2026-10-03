@@ -18,9 +18,9 @@ async def test_seeded_answers_for_user_questions(uc, place, profile, answer):
     assert uc.check_place(place, profile).answer == answer
 
 
-async def test_accessibility_now_has_13_features_in_7_groups(uc):
+async def test_accessibility_lists_all_features(uc):
     states = uc.get_accessibility("plc_urzad")
-    assert len(states) == 13 and states[F.LOWERED_CURB].state == "yes"
+    assert len(states) == 35 and states[F.LOWERED_CURB].state == "yes"
 
 
 async def test_search_by_new_feature(uc):

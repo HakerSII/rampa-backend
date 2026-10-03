@@ -71,6 +71,13 @@ class Place:
 
 
 @dataclass(slots=True)
+class GeocodeHit:
+    label: str
+    place_id: str | None  # None = external geocoder hit (no accessibility data yet)
+    location: GeoPoint
+
+
+@dataclass(slots=True)
 class Observation:
     id: str
     place_id: str
@@ -141,6 +148,15 @@ class QueueItem:
     decision: str | None = None  # approved | rejected
     resolved_at: datetime | None = None
     comments: list[dict] = field(default_factory=list)  # {author_id, text, created_at (ISO)}
+
+    @property
+    def pending(self) -> bool:
+        """open or escalated — still waiting for a decision"""
+        return self.status != QueueStatus.RESOLVED
+
+    @property
+    def open_conflict(self) -> bool:
+        return self.type == "conflict" and self.pending
 
 
 @dataclass(slots=True)
