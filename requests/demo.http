@@ -55,6 +55,18 @@ GET {{base}}/geocode?q=muz
 ### 400 VALIDATION_ERROR — sort=nearest without location
 GET {{base}}/places?sort=nearest
 
+### 1f. Similar places near the museum (same category first, then nearest)
+GET {{base}}/places/plc_mnk/similar?limit=3
+
+### 1g. Route museum → office for a wheelchair (heuristic: helpers/barriers within 100 m)
+GET {{base}}/routes/accessible?from=plc_mnk&to=plc_urzad&profile=wheelchair
+
+### 1h. Same route for a blind person (tactile paths, kerbs)
+GET {{base}}/routes/accessible?from=plc_mnk&to=plc_urzad&profile=blind
+
+### 404 NOT_FOUND — route from unknown place
+GET {{base}}/routes/accessible?from=nowhere&to=plc_urzad
+
 ### Feature dictionary (filters)
 GET {{base}}/accessibility/features
 

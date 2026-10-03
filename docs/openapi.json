@@ -940,6 +940,120 @@
         }
       }
     },
+    "/api/v1/places/{place_id}/similar": {
+      "get": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Similar Places",
+        "description": "\"Podobne miejsca w okolicy\": within 3 km, same category first, then nearest.",
+        "operationId": "similar_places_api_v1_places__place_id__similar_get",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 5,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimilarOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/routes/accessible": {
+      "get": {
+        "tags": [
+          "routes"
+        ],
+        "summary": "Accessible Route",
+        "description": "A→B for a needs profile. Heuristic (straight line + street-level barriers within 100 m) — see `note`.",
+        "operationId": "accessible_route_api_v1_routes_accessible_get",
+        "parameters": [
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "To"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "From"
+            }
+          },
+          {
+            "name": "profile",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/NeedsProfile",
+              "default": "wheelchair"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/accessibility/features": {
       "get": {
         "tags": [
@@ -3493,6 +3607,31 @@
         ],
         "title": "ImportOut"
       },
+      "LineString": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "LineString",
+            "title": "Type",
+            "default": "LineString"
+          },
+          "coordinates": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Coordinates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "coordinates"
+        ],
+        "title": "LineString"
+      },
       "Location": {
         "properties": {
           "lat": {
@@ -4607,6 +4746,89 @@
         ],
         "title": "Role"
       },
+      "RouteOut": {
+        "properties": {
+          "feasible": {
+            "type": "string",
+            "title": "Feasible"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/NeedsProfile"
+          },
+          "distance_m": {
+            "type": "integer",
+            "title": "Distance M"
+          },
+          "duration_min": {
+            "type": "integer",
+            "title": "Duration Min"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/LineString"
+          },
+          "barriers": {
+            "items": {
+              "$ref": "#/components/schemas/RoutePointOut"
+            },
+            "type": "array",
+            "title": "Barriers"
+          },
+          "helpers": {
+            "items": {
+              "$ref": "#/components/schemas/RoutePointOut"
+            },
+            "type": "array",
+            "title": "Helpers"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feasible",
+          "profile",
+          "distance_m",
+          "duration_min",
+          "geometry",
+          "barriers",
+          "helpers",
+          "note"
+        ],
+        "title": "RouteOut"
+      },
+      "RoutePointOut": {
+        "properties": {
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "feature": {
+            "$ref": "#/components/schemas/FeatureKey"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          }
+        },
+        "type": "object",
+        "required": [
+          "place_id",
+          "name",
+          "feature",
+          "label",
+          "location"
+        ],
+        "title": "RoutePointOut"
+      },
       "Severity": {
         "type": "string",
         "enum": [
@@ -4615,6 +4837,22 @@
           "minor"
         ],
         "title": "Severity"
+      },
+      "SimilarOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "SimilarOut"
       },
       "StatTileOut": {
         "properties": {

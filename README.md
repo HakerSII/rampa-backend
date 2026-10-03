@@ -61,6 +61,7 @@ uv run python main.py                                          # http://localhos
 | 17 | Geo search (near/radius/bbox/sort/pages/map), categories, geocode | [plan](features/17-geo-search/plan.md) | [openapi](features/17-geo-search/openapi.yaml) | 60 min |
 | 18 | Report drafts (draft → PATCH → submit) | [plan](features/18-report-drafts/plan.md) | [openapi](features/18-report-drafts/openapi.yaml) | 45 min |
 | 19 | AI parse-text (rules, PL + EN) | [plan](features/19-parse-text/plan.md) | [openapi](features/19-parse-text/openapi.yaml) | 30 min |
+| 20 | Similar places + accessible route A→B (heuristic) | [plan](features/20-similar-routes/plan.md) | [openapi](features/20-similar-routes/openapi.yaml) | 60 min |
 
 - F0 blocks all.
 - After F0: **F1, F2, F3 in parallel** (demo auth stub ships in F0, Google added in F1).

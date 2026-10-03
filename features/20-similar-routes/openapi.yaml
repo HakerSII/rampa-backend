@@ -1,0 +1,71 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F20 Similar places + accessible route
+  version: 0.1.0-mvp
+  description: Similar places nearby; A→B route heuristic (straight line + street-level barriers within 100 m).
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: places
+  - name: routes
+paths:
+  /places/{placeId}/similar:
+    parameters:
+      - { name: placeId, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [places]
+      summary: Similar places within 3 km (same category first, then nearest)
+      operationId: similarPlaces
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 20, default: 5 } }
+      responses:
+        "200": { description: "{ items: [PlaceSummary + distance_m] }" }
+        "400": { description: VALIDATION_ERROR }
+        "404": { description: NOT_FOUND }
+  /routes/accessible:
+    get:
+      tags: [routes]
+      summary: Accessible route A→B (heuristic)
+      operationId: accessibleRoute
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string }, description: "place id or lat,lon" }
+        - { name: to, in: query, required: true, schema: { type: string }, description: "place id or lat,lon" }
+        - name: profile
+          in: query
+          schema: { type: string, enum: [wheelchair, crutches, stroller, blind, low_vision, deaf, assistance_dog], default: wheelchair }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  feasible: { type: string, enum: ["yes", partial, unknown] }
+                  profile: { type: string }
+                  distance_m: { type: integer }
+                  duration_min: { type: integer }
+                  geometry:
+                    type: object
+                    properties:
+                      type: { const: LineString }
+                      coordinates: { type: array, items: { type: array, items: { type: number } } }
+                  barriers: { type: array, items: { $ref: "#/components/schemas/RoutePoint" } }
+                  helpers: { type: array, items: { $ref: "#/components/schemas/RoutePoint" } }
+                  note: { type: string }
+        "400": { description: VALIDATION_ERROR (bad lat,lon) }
+        "404": { description: NOT_FOUND (unknown place) }
+components:
+  schemas:
+    RoutePoint:
+      type: object
+      properties:
+        place_id: { type: string }
+        name: { type: string }
+        feature: { type: string }
+        label: { type: string }
+        location:
+          type: object
+          properties:
+            lat: { type: number }
+            lon: { type: number }

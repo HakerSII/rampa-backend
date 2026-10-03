@@ -15,6 +15,7 @@ from app.adapters.inbound.http.schemas import (
     Location,
     PlaceOut,
     PlacePage,
+    PlaceSummary,
     accessibility_out,
     activity_item_out,
     author_out,
@@ -25,7 +26,7 @@ from app.adapters.inbound.http.schemas import (
     place_summary,
 )
 from app.application.use_cases import PlaceQuery
-from app.domain.enums import FeatureKey, NeedsProfile
+from app.domain.enums import LABELS_PL, FeatureKey, NeedsProfile
 from app.domain.model import GeoPoint
 from app.domain.errors import ValidationFailed
 
@@ -159,6 +160,56 @@ async def place_history(place_id: str, uc: UC, user: CurrentUser):
                                              actor=actor(e.actor_id), observation_id=e.observation_id,
                                              queue_id=e.queue_id)
                              for e in uc.place_history(user, place_id)])
+
+
+class SimilarOut(BaseModel):
+    items: list[PlaceSummary]
+
+
+@router.get("/places/{place_id}/similar", response_model=SimilarOut, tags=["places"])
+async def similar_places(place_id: str, uc: UC, limit: int = 5):
+    """"Podobne miejsca w okolicy": within 3 km, same category first, then nearest."""
+    return SimilarOut(items=[place_summary(p, uc.yes_features(p.id), uc.verification_for(p.id), d)
+                             for p, d in uc.similar_places(place_id, limit)])
+
+
+class RoutePointOut(BaseModel):
+    place_id: str
+    name: str
+    feature: FeatureKey
+    label: str
+    location: Location
+
+
+class LineString(BaseModel):
+    type: Literal["LineString"] = "LineString"
+    coordinates: list[list[float]]
+
+
+class RouteOut(BaseModel):
+    feasible: str
+    profile: NeedsProfile
+    distance_m: int
+    duration_min: int
+    geometry: LineString
+    barriers: list[RoutePointOut]
+    helpers: list[RoutePointOut]
+    note: str
+
+
+def _route_point(p) -> RoutePointOut:
+    return RoutePointOut(place_id=p.place_id, name=p.name, feature=p.feature, label=LABELS_PL[p.feature],
+                         location=Location(lat=p.location.lat, lon=p.location.lon))
+
+
+@router.get("/routes/accessible", response_model=RouteOut, tags=["routes"])
+async def accessible_route(uc: UC, to: str, origin: Annotated[str, Query(alias="from")],
+                           profile: NeedsProfile = NeedsProfile.WHEELCHAIR):
+    """A→B for a needs profile. Heuristic (straight line + street-level barriers within 100 m) — see `note`."""
+    r = uc.accessible_route(origin, to, profile)
+    return RouteOut(feasible=r.feasible, profile=profile, distance_m=r.distance_m, duration_min=r.duration_min,
+                    geometry=LineString(coordinates=r.geometry), barriers=[_route_point(p) for p in r.barriers],
+                    helpers=[_route_point(p) for p in r.helpers], note=r.note)
 
 
 @router.get("/accessibility/features", response_model=list[FeatureDictGroup], tags=["dictionaries"])

@@ -15,6 +15,7 @@ from app.application.ports import (
 )
 from app.domain import check as domain_check, osm as domain_osm, suggestions, trust, validation
 from app.domain.geo import haversine_m, in_bbox, parse_bbox
+from app.domain.route import RouteResult, plan_route
 from app.domain.text_parse import TextSuggestion, parse_text
 from app.domain.history import HistoryEvent, build_history
 from app.domain.stats import AdminStats, compute_stats
@@ -301,6 +302,38 @@ class UseCases:
                   and o.validation != ValidationStatus.REJECTED
                   and states[o.feature].active_observation_id == o.id]
         return domain_check.check_place(place_id, states, profile, issues)
+
+    # ------------------------------------------------------------------ similar + routes (F20)
+    SIMILAR_RADIUS_M = 3000
+
+    def similar_places(self, place_id: str, limit: int = 5) -> list[tuple[Place, int]]:
+        """Other places within 3 km: same category first, then nearest."""
+        if not 1 <= limit <= 20:
+            raise ValidationFailed("limit: 1..20")
+        place = self.get_place(place_id)
+        others = [(p, round(haversine_m(place.location, p.location))) for p in self.repo.list_places()
+                  if p.id != place.id]
+        near = [t for t in others if t[1] <= self.SIMILAR_RADIUS_M]
+        near.sort(key=lambda t: (t[0].category != place.category, t[1]))
+        return near[:limit]
+
+    def accessible_route(self, origin: str, destination: str, profile: NeedsProfile) -> RouteResult:
+        a, b = self._resolve_point(origin), self._resolve_point(destination)
+        places = [(p, self.repo.states_for(p.id)) for p in self.repo.list_places()]
+        return plan_route(a, b, profile, places)
+
+    def _resolve_point(self, raw: str) -> GeoPoint:
+        """Place id or 'lat,lon'."""
+        place = self.repo.get_place(raw)
+        if place:
+            return place.location
+        if "," not in raw:
+            raise NotFound(f"unknown place or point: {raw}")
+        try:
+            lat, lon = (float(x) for x in raw.split(","))
+        except ValueError as e:
+            raise ValidationFailed(f"point must be 'lat,lon' or a place id: {raw}") from e
+        return GeoPoint(lat, lon)
 
     # ------------------------------------------------------------------ me (F16)
     def list_favorites(self, user: User | None) -> list[Place]:

@@ -118,6 +118,8 @@ Every error has the same shape:
 | PATCH | `/api/v1/reports/{id}` | author | Edit a draft |
 | POST | `/api/v1/reports/{id}/submit` | author | Submit a draft → observation |
 | POST | `/api/v1/ai/parse-text` | user | Free text → suggested observations |
+| GET | `/api/v1/places/{id}/similar` | — | Similar places nearby |
+| GET | `/api/v1/routes/accessible` | — | A→B route for a profile (heuristic) |
 | GET | `/health` | — | Status and active modes |
 
 ## 3. Auth
@@ -232,6 +234,27 @@ All 13 features in 7 groups; features without data come back as `unknown`.
 
 - `GET /categories` → `[ { "key": "museum", "label": "Muzeum", "count": 1 }, … ]`.
 - `GET /geocode?q=muz` → `[ { "label": "Muzeum Narodowe w Krakowie, al. 3 Maja 1, 30-062 Kraków", "place_id": "plc_mnk", "location": {…} } ]`. It matches place names and addresses (at least 2 characters, max 10 results), works offline and doesn't use Nominatim.
+
+## 4b. Similar places and accessible route
+
+### `GET /api/v1/places/{id}/similar?limit=5`
+`{ items: [PlaceSummary + distance_m] }`: other places within 3 km, same category first, then nearest. `limit` is 1–20.
+
+### `GET /api/v1/routes/accessible?from=plc_mnk&to=plc_urzad&profile=wheelchair`
+`from` and `to` are a place id or `lat,lon`. **This is a heuristic, not a routing engine** (`note` says so):
+- the route is a straight line, with `distance_m` and `duration_min` at 50 m/min;
+- it collects the street-level features relevant to the profile from places within 100 m of the line: wheelchair/stroller/crutches → `lowered_curb`, `platform_elevator`; blind → `tactile_paths`, `lowered_curb`; low vision → `good_lighting`;
+- `no` → `barriers`, `yes` → `helpers`;
+- `feasible`: barriers → `partial`, data without barriers → `yes`, no data → `unknown`.
+
+```json
+{ "feasible": "yes", "profile": "wheelchair", "distance_m": 1601, "duration_min": 33,
+  "geometry": { "type": "LineString", "coordinates": [[19.9238, 50.0603], [19.945, 50.065]] },
+  "barriers": [],
+  "helpers": [ { "place_id": "plc_urzad", "name": "Urząd Dzielnicy I", "feature": "lowered_curb",
+                 "label": "Obniżony krawężnik", "location": { "lat": 50.065, "lon": 19.945 } } ],
+  "note": "heuristic: straight line between the points; …" }
+```
 
 ## 5. Reporting and observations
 
