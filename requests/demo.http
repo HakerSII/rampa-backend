@@ -461,6 +461,13 @@ Accept: text/event-stream
 
 {"question": "Czy Muzeum Narodowe jest dostępne na wózku?"}
 
+### F49. Import the full place catalogue (Accessly main, ~6,500 places, data/krakow_catalog.json) → idempotent
+POST {{base}}/admin/imports
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{"source": "catalog"}
+
 ### 4a-TXT. AI from text: "winda od dwóch tygodni nie działa" → elevator / no / temporary
 POST {{base}}/ai/parse-text
 Authorization: Bearer {{anna}}
