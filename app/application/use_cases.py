@@ -980,11 +980,19 @@ class UseCases:
             place = by_ref.get(e.get("ref")) or next(
                 (p for p in by_name.get(name.lower(), []) if haversine_m(p.location, here) <= domain_osm.MATCH_RADIUS_M),
                 None)
+            contact = {k: str(e[k]) for k in ("phone", "website") if e.get(k)}
+            hours = clean_text(str(e.get("opening_hours") or ""))
             if place:
                 result.places_matched += 1
+                # fill what is missing (catalogue imported before kind/hours existed); values already set stay
+                if not place.kind and e.get("kind"):
+                    place.kind = clean_text(str(e["kind"]))[:40]
+                if not place.opening_hours and hours:
+                    place.opening_hours = [{"text": hours}]
+                if not place.address and e.get("address"):
+                    place.address = clean_text(str(e["address"]))
+                place.contact = {**contact, **place.contact}
             else:
-                contact = {k: str(e[k]) for k in ("phone", "website") if e.get(k)}
-                hours = clean_text(str(e.get("opening_hours") or ""))
                 place = Place(self.ids.new("plc_osm"), name, str(e.get("category") or "other"), here,
                               address=clean_text(str(e.get("address") or "")), external_id=e.get("ref"),
                               contact=contact, opening_hours=[{"text": hours}] if hours else [],
