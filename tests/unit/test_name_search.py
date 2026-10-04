@@ -74,8 +74,8 @@ async def test_an_address_next_to_a_known_place_is_still_found():
 
     class Geo:
         async def search(self, q):
-            return [GeocodeHit("3 Maja 1, Kraków", None, GeoPoint(50.0603, 19.9239))]  # next to plc_mnk
+            return [GeocodeHit("Wygoda 2, Kraków", None, GeoPoint(50.0604, 19.9240))]  # 20 m from plc_mnk
 
     uc = make_use_cases(geocoder=Geo())
-    hits = await uc.geocode_live("3 Maja 1")
-    assert [h.label for h in hits] == ["3 Maja 1, Kraków"]
+    hits = await uc.geocode_live("Wygoda 2")
+    assert [h.label for h in hits] == ["Wygoda 2, Kraków"]

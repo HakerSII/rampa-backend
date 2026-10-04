@@ -559,9 +559,10 @@ class UseCases:
         except Exception as e:  # noqa: BLE001 — network / quota / parse → offline answer
             log.warning("geocoder failed (%s) → local only", e)
             return local
-        places = self.repo.list_places()
+        # a geocoder hit duplicates a listed local hit (same spot) → dropped; next to any other place it stays (F51:
+        # with the full catalogue almost every address has some place within 50 m)
         fresh = [h for h in external
-                 if not any(haversine_m(p.location, h.location) <= domain_osm.MATCH_RADIUS_M for p in places)]
+                 if not any(haversine_m(l.location, h.location) <= domain_osm.MATCH_RADIUS_M for l in local)]
         return (local + fresh)[:10]
 
     def get_place(self, place_id: str) -> Place:
