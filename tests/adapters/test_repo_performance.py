@@ -26,7 +26,7 @@ def test_list_observations_per_place_is_fast():
     repo = big_repo()
     t = time.perf_counter()
     found = sum(len(repo.list_observations(p.id)) for p in repo.list_places())
-    assert found == 2000 and time.perf_counter() - t < 0.5
+    assert found == 2000 and time.perf_counter() - t < 0.05  # an index lookup per place, not a scan
 
 
 def test_index_follows_adds_and_feature_filter():
@@ -50,4 +50,4 @@ def test_map_observations_with_the_full_catalogue_is_fast():
     t = time.perf_counter()
     uc.map_observations(active=True, limit=500)
     uc.map_observations(active=True, current=True, limit=500)
-    assert time.perf_counter() - t < 2.0
+    assert time.perf_counter() - t < 0.4
