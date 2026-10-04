@@ -9,7 +9,9 @@ from app.adapters.inbound.http.rate_limit import FixedWindowRateLimiter, Request
 from app.adapters.inbound.http.security import CleanJsonBodyMiddleware, SecurityHeadersMiddleware
 from app.adapters.inbound.http.routers import admin, ai, auth, me, observations, owner, places, public
 from app.application.ports import IdentityVerifier, StaleData
-from app.bootstrap import build_use_cases
+from app.adapters.inbound.http.chat_tools import InProcessChatTools
+from app.application.chat import ChatAssistant
+from app.bootstrap import build_chat_model, build_use_cases
 from app.config import Settings
 
 API_PREFIX = "/api/v1"
@@ -22,6 +24,13 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
     app.state.use_cases = build_use_cases(settings, verifier)
     app.state.settings = settings
     app.state.rate_limiter = FixedWindowRateLimiter(settings.public_rate_limit_per_min)
+    # F46: chat — the model loads in the background at start; tools = the MCP tools against our own Open API
+    chat_model = build_chat_model(settings)
+    keys = settings.public_api_key_list
+    app.state.chat = ChatAssistant(chat_model, InProcessChatTools(app, keys[0] if keys else ""),
+                                   settings.chat_max_new_tokens)
+    if chat_model is not None and settings.chat_preload:
+        chat_model.start_loading()
 
     app.add_middleware(CleanJsonBodyMiddleware)     # F42: user text → plain text
     app.add_middleware(SecurityHeadersMiddleware)   # F42: nosniff, CSP, no framing
@@ -58,6 +67,7 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
     @app.get("/health", tags=["health"])
     async def health():
         return {"status": "ok", "auth_mode": settings.auth_mode, "ai_mode": settings.ai_mode,
+                "chat": app.state.chat.status()["state"] if settings.chat_mode != "off" else "off",
                 "storage": settings.repo_mode,
                 "database": settings.db_dialect if settings.repo_mode == "sql" else None}
 

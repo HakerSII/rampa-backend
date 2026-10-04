@@ -1,11 +1,12 @@
 import asyncio
 import json
 
-from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
 from app.adapters.inbound.http.deps import UC, CurrentUser, OptionalUser
+from app.adapters.inbound.http.errors import error_body
 from app.domain.errors import DomainError
 from app.domain.enums import LABELS_PL, CurrentState, FeatureKey, NeedsProfile, ObservationValue, Severity
 
@@ -108,41 +109,39 @@ def _sse(event: str, data) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-@router.post("/ai/image-tags/stream")
-async def image_tags_stream(body: ImageTagsIn, uc: UC, user: CurrentUser):
-    """Same check as /ai/image-tags, as Server-Sent Events: status (received, analyzing, fallback),
-    keepalive comments while a slow model works, then result or error."""
-    steps: asyncio.Queue = asyncio.Queue()
+def _event_stream(run) -> StreamingResponse:
+    """SSE response: run(emit) emits (event, data) pairs and may return a last pair; keepalive comments while
+    it works; any error after the start becomes an `error` event (the stream is never cut)."""
+    queue: asyncio.Queue = asyncio.Queue()
 
-    async def run():
+    async def guarded():
         try:
-            r = await uc.analyze_image(user, body.photo_ids, body.place_id, on_step=steps.put_nowait,
-                                       expected=_expected(body))
-            return _sse("result", _image_tags_out(r).model_dump(mode="json"))
+            return await run(queue.put_nowait)
         except DomainError as e:
             error = {"code": e.code, "message": str(e)}
             if e.details:
                 error["details"] = e.details
-            return _sse("error", {"error": error})
+            return "error", {"error": error}
         except Exception:  # noqa: BLE001 — the stream already started: report, never cut it
-            return _sse("error", {"error": {"code": "INTERNAL_ERROR", "message": "image check failed"}})
+            return "error", {"error": {"code": "INTERNAL_ERROR", "message": "request failed"}}
 
     async def events():
-        yield _sse("status", {"stage": "received"})
-        task = asyncio.create_task(run())
+        task = asyncio.create_task(guarded())
         try:
             while True:
-                getter = asyncio.create_task(steps.get())
+                getter = asyncio.create_task(queue.get())
                 done, _ = await asyncio.wait({task, getter}, timeout=KEEPALIVE_S,
                                              return_when=asyncio.FIRST_COMPLETED)
                 if getter in done:
-                    yield _sse("status", getter.result())
+                    yield _sse(*getter.result())
                     continue
                 getter.cancel()
                 if task in done:
-                    while not steps.empty():
-                        yield _sse("status", steps.get_nowait())
-                    yield task.result()
+                    while not queue.empty():
+                        yield _sse(*queue.get_nowait())
+                    last = task.result()
+                    if last:
+                        yield _sse(*last)
                     return
                 yield ": keepalive\n\n"
         finally:
@@ -150,6 +149,55 @@ async def image_tags_stream(body: ImageTagsIn, uc: UC, user: CurrentUser):
 
     return StreamingResponse(events(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@router.post("/ai/image-tags/stream")
+async def image_tags_stream(body: ImageTagsIn, uc: UC, user: CurrentUser):
+    """Same check as /ai/image-tags, as Server-Sent Events: status (received, analyzing, fallback),
+    keepalive comments while a slow model works, then result or error."""
+
+    async def run(emit):
+        emit(("status", {"stage": "received"}))
+        r = await uc.analyze_image(user, body.photo_ids, body.place_id, on_step=lambda s: emit(("status", s)),
+                                   expected=_expected(body))
+        return "result", _image_tags_out(r).model_dump(mode="json")
+
+    return _event_stream(run)
+
+
+# ---------------------------------------------------------------- F46 chat assistant
+class ChatIn(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+
+
+def _chat_disabled(request: Request) -> JSONResponse | None:
+    if request.app.state.settings.chat_mode == "off":
+        return JSONResponse(error_body("CHAT_DISABLED", "chat is disabled (CHAT_MODE=off)"), 503)
+    return None
+
+
+@router.get("/ai/chat/status")
+async def chat_status(request: Request):
+    """Chat model state: rules (no model) | loading | ready | error | off."""
+    mode = request.app.state.settings.chat_mode
+    status = request.app.state.chat.status()
+    if mode == "off":
+        status = {**status, "state": "off"}
+    return {"mode": mode, **status}
+
+
+@router.post("/ai/chat/stream")
+async def chat_stream(body: ChatIn, request: Request, user: OptionalUser):
+    """Ask the assistant (guest allowed): status, tool_call, tool_result, token events, then done or error."""
+    disabled = _chat_disabled(request)
+    if disabled:
+        return disabled
+    chat = request.app.state.chat
+
+    async def run(emit):
+        await chat.ask(body.question.strip(), emit)
+
+    return _event_stream(run)
 
 
 # ---------------------------------------------------------------- F30 recommendations

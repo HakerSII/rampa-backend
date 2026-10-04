@@ -43,7 +43,7 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | —, `587`, —, — | SMTP server (STARTTLS); **password is a secret** |
 | `MAIL_FROM` | `noreply@rampa.local` | sender address |
 | `EMAIL_LINK_URL` | — | front-end page taking `?token=`; empty → the mail contains only the code |
-| `AI_RECOMMENDER` | `rules` | `POST /ai/recommend` interpreter: `rules` (offline, PL+EN keywords) · `claude` (Claude API) · `gemini` (Gemini API, uses `GEMINI_API_KEY` / `GEMINI_MODEL`, shares the free quota with photos). Forced tool call with one shared schema; facts never come from the model. Failure → rules |
+| `AI_RECOMMENDER` | `rules` | `POST /ai/recommend` interpreter: `rules` (offline, PL+EN keywords) · `claude` (Claude API) · `gemini` (Gemini API, uses `GEMINI_API_KEY` / `GEMINI_MODEL`, shares the free quota with photos) · `onnx` (local Phi-3.5 from `AI_MODEL_PATH`, F47; schema values in the prompt; slow on CPU, waits up to `AI_TIMEOUT_S`). Claude/Gemini: forced tool call with one shared schema; facts never come from the model. Failure → rules |
 | `ANTHROPIC_API_KEY` | — | **secret**; needed for `AI_RECOMMENDER=claude` |
 | `CLAUDE_MODEL` | `claude-sonnet-5-5` | model for the recommender (compare with `claude-opus-5-5` on the test queries) |
 | `ROUTER` | `straight` | `GET /routes/accessible` path: `straight` = straight-line heuristic (offline) · `osrm` = walking path from OSRM; failure → straight |
@@ -56,6 +56,11 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `AI_MODEL_PATH` | `models/gpu/gpu-int4-rtn-block-32` | ONNX model folder (`onnx`); needs `uv sync --extra ai` |
 | `AI_VISION_FALLBACK` | `mock` | `gemini` failed → `onnx` = try the local model (`AI_MODEL_PATH`) before mock; skipped with a warning when onnxruntime-genai or the model folder is missing |
 | `AI_ONNX_TIMEOUT_S` | `180` | max time for the local fallback model (slow on CPU) |
+| `CHAT_MODE` | `rules` | F46 chat: `rules` (keyword rules + template, no model) · `onnx` (local Phi-3.5) · `off` (503) |
+| `CHAT_MODEL_PATH` | — | model folder for the chat; empty = `AI_MODEL_PATH` (one copy in memory, shared with photos and recommendations) |
+| `CHAT_PRELOAD` | `true` | start loading the local model in the background when the server starts (chat and `AI_RECOMMENDER=onnx`) |
+| `CHAT_TIMEOUT_S` | `120` | max time per chat model call → rules answer |
+| `CHAT_MAX_NEW_TOKENS` | `160` | length limit of a chat answer |
 | `GEMINI_API_KEY` | — | **secret**; from https://aistudio.google.com/apikey, sent as the `x-goog-api-key` header |
 | `GEMINI_MODEL` | `gemini-3.8-flash` | Gemini model name (Google retired `gemini-2.5-flash` for new users) |
 | `GEMINI_API_URL` | `https://generativelanguage.googleapis.com/v1beta` | API base URL |

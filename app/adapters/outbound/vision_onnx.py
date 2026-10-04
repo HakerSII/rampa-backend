@@ -3,6 +3,7 @@ Needs `uv sync --extra ai` and the model in AI_MODEL_PATH. Inference is sync + h
 runs in a thread, one at a time. Wrap in FallbackVisionAnalyzer (bootstrap does)."""
 import asyncio
 
+from app.adapters.outbound import phi_onnx
 from app.adapters.outbound.vision_prompt import INSTRUCTION, parse_analysis as _parse
 from app.domain.model import ImageAnalysis
 
@@ -42,14 +43,15 @@ class OnnxPhiVisionAnalyzer:
         return parse_analysis(raw)
 
     def _load(self) -> None:
-        import onnxruntime_genai as og  # optional extra "ai"
-
-        self._model = og.Model(self.model_path)
-        self._processor = self._model.create_multimodal_processor()
+        loaded = phi_onnx.load(self.model_path)  # shared with the chat (F46)
+        self._model, self._processor = loaded.model, loaded.processor
 
     def _infer(self, image_path: str) -> str:
-        import onnxruntime_genai as og
+        with phi_onnx.RUN_LOCK:  # one inference at a time, also across photo analysis and chat
+            return self._infer_locked(image_path)
 
+    def _infer_locked(self, image_path: str) -> str:
+        og = phi_onnx._og()
         images = og.Images.open(image_path)
         inputs = self._processor(PROMPT, images=images)
         params = og.GeneratorParams(self._model)

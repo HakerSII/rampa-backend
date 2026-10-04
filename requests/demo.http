@@ -451,6 +451,16 @@ Accept: text/event-stream
 ### F45c. The deleted photo is gone → 404
 GET http://localhost:8000{{metaUpload.response.body.$.url}}
 
+### F46a. Chat status → {mode, state: rules|loading|ready|error|off, model, tools}
+GET {{base}}/ai/chat/status
+
+### F46b. Ask the assistant (guest) → SSE: status, tool_call, tool_result, token…, done {answer, model, tool}
+POST {{base}}/ai/chat/stream
+Content-Type: application/json
+Accept: text/event-stream
+
+{"question": "Czy Muzeum Narodowe jest dostępne na wózku?"}
+
 ### 4a-TXT. AI from text: "winda od dwóch tygodni nie działa" → elevator / no / temporary
 POST {{base}}/ai/parse-text
 Authorization: Bearer {{anna}}

@@ -2613,6 +2613,84 @@
         }
       }
     },
+    "/api/v1/ai/chat/status": {
+      "get": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Chat Status",
+        "description": "Chat model state: rules (no model) | loading | ready | error | off.",
+        "operationId": "chat_status_api_v1_ai_chat_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/chat/stream": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Chat Stream",
+        "description": "Ask the assistant (guest allowed): status, tool_call, tool_result, token events, then done or error.",
+        "operationId": "chat_stream_api_v1_ai_chat_stream_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ai/recommend": {
       "post": {
         "tags": [
@@ -5947,6 +6025,21 @@
           "count"
         ],
         "title": "CategoryOut"
+      },
+      "ChatIn": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Question"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "ChatIn"
       },
       "CheckAnswer": {
         "type": "string",

@@ -118,6 +118,8 @@ Exceeded → `429 {"error": {"code": "RATE_LIMITED", …}}` with a `Retry-After`
 | POST | `/api/v1/uploads` | user | Upload photo |
 | POST | `/api/v1/ai/image-tags` | user | AI suggestions from photos |
 | POST | `/api/v1/ai/image-tags/stream` | user | same, as Server-Sent Events (progress + result) |
+| GET | `/api/v1/ai/chat/status` | guest | chat model state (F46) |
+| POST | `/api/v1/ai/chat/stream` | guest | ask the assistant, answer streamed (SSE, F46) |
 | POST | `/api/v1/reports` | user | Report a change (→ observation) |
 | GET | `/api/v1/reports/{id}` | author/admin | Report |
 | GET | `/api/v1/places/{id}/observations` | — | Observations (alerts, history) |
@@ -449,6 +451,28 @@ data: { ...same JSON as /ai/image-tags... }
 `: keepalive` comments every 10 s. Errors after the stream started (validation, `NOT_A_REAL_PLACE`, `PHOTO_MISMATCH` with `details`) come as
 `event: error` with `{"error": {"code", "message"}}`; the HTTP status stays 200. `analyzing`/`fallback` appear only
 when a real model runs (not with `AI_MODE=mock`).
+
+### `GET /api/v1/ai/chat/status` (F46)
+`{"mode": "onnx", "state": "ready", "model": "phi-3.5-vision-onnx", "tools": ["check_accessibility", "search_accessible_places"]}`.
+`state`: `rules` (CHAT_MODE=rules, no model) · `loading` · `ready` · `error` (model could not load → rules answers) · `off`.
+
+### `POST /api/v1/ai/chat/stream` (F46)
+Body `{"question": "Czy Muzeum Narodowe jest dostępne na wózku?"}` (1–500 chars, guest allowed, `/ai/*` rate limits;
+`CHAT_MODE=off` → 503 `CHAT_DISABLED`). The tools are the MCP server's, run in-process against `/public/v1`, so the
+answer comes from the database. `text/event-stream`:
+
+```
+event: status      data: {"stage": "received"}
+event: status      data: {"stage": "choosing_tool", "model": "phi-3.5-vision-onnx"}     (model_loading → rules)
+event: tool_call   data: {"name": "check_accessibility", "arguments": {"place_name": "Muzeum Narodowe"}, "chosen_by": "model"}
+event: tool_result data: {"name": "check_accessibility", "result": {...same JSON as the MCP tool...}}
+event: status      data: {"stage": "answering", "model": "phi-3.5-vision-onnx"}
+event: token       data: {"text": "Tak, "}                                               (many)
+event: done        data: {"answer": "Tak, Muzeum Narodowe jest dostępne…", "model": "phi-3.5-vision-onnx", "tool": "check_accessibility"}
+```
+`: keepalive` every 10 s. Without a usable model (rules mode, still loading, error, timeout) the rules pick the tool and
+a template writes the answer (`"model": "rules"`, one `token` event). Local Phi-3.5 on CPU: ~30–40 s to pick the tool,
+first answer token after ~15–20 s more, then ~0.7 s per token.
 
 ### `POST /api/v1/reports`
 Creates the report **and** one observation (`works` → `yes`, `not_working` → `no`; `nature=temporary` → `temporary: true`). Photos become evidence. The state is recomputed immediately.
