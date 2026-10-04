@@ -489,6 +489,18 @@ first answer token after ~15–20 s more, then ~0.7 s per token.
 - Chat (F46): "co jest w pobliżu / koło / blisko X" → `find_location` then `places_nearby` (500 m); a place not found by
   name → its location and surroundings; "jakie miejsca znasz", "pomoc" → a short guide, no tool.
 
+### Account settings (F54) and reviews (F55)
+- `PATCH /api/v1/me` `{"display_name": "Ewa N."}` (1–60 chars, plain text) → user. `DELETE /api/v1/me` → 204: every
+  session ends; favourites, needs profile and reviews are deleted; e-mail / Google / demo login are forgotten.
+  Observations, reports and questions stay, shown as "Usunięty użytkownik".
+- `GET /api/v1/places/{id}/reviews` (guest) → `{items: [{id, author, rating, text, created_at, updated_at}], count,
+  average, mine}` newest first. `PUT /api/v1/places/{id}/reviews/me` `{"rating": 1–5, "text": "…"}` (≤ 500) adds or
+  replaces my review — an account is needed (e-mail / Google / demo; this device's anonymous identity → 403).
+  `DELETE …/reviews/me` → 204. Places carry `rating: {avg, count} | null` (card and list).
+- Features (F53): 13 more feature keys for the app's catalogue and report types — `quiet_space`, `accessible_room`,
+  `roll_in_shower`, `grab_bars`, `reception_24h`, `medical_equipment_allowed`, `kitchenette`, `open_24h`,
+  `staff_english`, `staff_german`, `staff_ukrainian`, `information_sign`, `other_barrier` (52 in all).
+
 ### `POST /api/v1/reports`
 Creates the report **and** one observation (`works` → `yes`, `not_working` → `no`; `nature=temporary` → `temporary: true`). Photos become evidence. The state is recomputed immediately.
 

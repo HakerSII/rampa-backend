@@ -483,6 +483,27 @@ Accept: text/event-stream
 
 {"question": "co jest w pobliżu Muzeum Narodowego?"}
 
+### F54a. Change my display name → user
+PATCH {{base}}/me
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"display_name": "Ania K."}
+
+### F55a. My review of a place (1–5 stars + text; an account is needed) → review
+PUT {{base}}/places/plc_mnk/reviews/me
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+
+{"rating": 4, "text": "Winda działa, wejście od al. 3 Maja."}
+
+### F55b. Reviews of a place → {items, count, average, mine}
+GET {{base}}/places/plc_mnk/reviews
+Authorization: Bearer {{anna}}
+
+### F52. Barrier reports only (imported open data left out)
+GET {{base}}/observations?active=true&exclude_source=open_data&limit=50
+
 ### 4a-TXT. AI from text: "winda od dwóch tygodni nie działa" → elevator / no / temporary
 POST {{base}}/ai/parse-text
 Authorization: Bearer {{anna}}
