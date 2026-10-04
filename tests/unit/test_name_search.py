@@ -65,3 +65,17 @@ async def test_geocode_retries_with_the_nominative():
     uc = make_use_cases(geocoder=geo)
     hits = await uc.geocode_live("Tauron Areny")
     assert geo.queries == ["Tauron Areny", "Tauron Arena"] and hits[0].label.startswith("TAURON Arena")
+
+
+async def test_an_address_next_to_a_known_place_is_still_found():
+    """F51: a geocoder hit is dropped only as a duplicate of a listed local hit, not of any place nearby."""
+    from app.domain.model import GeocodeHit, GeoPoint
+    from tests.conftest import make_use_cases
+
+    class Geo:
+        async def search(self, q):
+            return [GeocodeHit("3 Maja 1, Kraków", None, GeoPoint(50.0603, 19.9239))]  # next to plc_mnk
+
+    uc = make_use_cases(geocoder=Geo())
+    hits = await uc.geocode_live("3 Maja 1")
+    assert [h.label for h in hits] == ["3 Maja 1, Kraków"]
