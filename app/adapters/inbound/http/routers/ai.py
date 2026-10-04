@@ -12,9 +12,15 @@ from app.domain.enums import LABELS_PL, CurrentState, FeatureKey, NeedsProfile, 
 router = APIRouter(tags=["ai"])
 
 
+class ExpectedIn(BaseModel):
+    element: str
+    current_state: str | None = None
+
+
 class ImageTagsIn(BaseModel):
     photo_ids: list[str]
     place_id: str | None = None
+    expected: ExpectedIn | None = None  # F45: else the photos' upload metadata
 
 
 class ImageAnalysisOut(BaseModel):
@@ -87,11 +93,15 @@ def _image_tags_out(r) -> ImageTagsOut:
 
 @router.post("/ai/image-tags", response_model=ImageTagsOut)
 async def image_tags(body: ImageTagsIn, uc: UC, user: CurrentUser):
-    return _image_tags_out(await uc.analyze_image(user, body.photo_ids, body.place_id))
+    return _image_tags_out(await uc.analyze_image(user, body.photo_ids, body.place_id, expected=_expected(body)))
 
 
 # ---------------------------------------------------------------- F44 streamed image check
 KEEPALIVE_S = 10.0
+
+
+def _expected(body: ImageTagsIn) -> dict | None:
+    return body.expected.model_dump() if body.expected else None
 
 
 def _sse(event: str, data) -> str:
@@ -106,10 +116,14 @@ async def image_tags_stream(body: ImageTagsIn, uc: UC, user: CurrentUser):
 
     async def run():
         try:
-            r = await uc.analyze_image(user, body.photo_ids, body.place_id, on_step=steps.put_nowait)
+            r = await uc.analyze_image(user, body.photo_ids, body.place_id, on_step=steps.put_nowait,
+                                       expected=_expected(body))
             return _sse("result", _image_tags_out(r).model_dump(mode="json"))
         except DomainError as e:
-            return _sse("error", {"error": {"code": e.code, "message": str(e)}})
+            error = {"code": e.code, "message": str(e)}
+            if e.details:
+                error["details"] = e.details
+            return _sse("error", {"error": error})
         except Exception:  # noqa: BLE001 — the stream already started: report, never cut it
             return _sse("error", {"error": {"code": "INTERNAL_ERROR", "message": "image check failed"}})
 

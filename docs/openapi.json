@@ -1657,6 +1657,7 @@
           "media"
         ],
         "summary": "Upload Photo",
+        "description": "Optional metadata (F45): what the user says the photo shows; the AI check confirms it.",
         "operationId": "upload_photo_api_v1_uploads_post",
         "parameters": [
           {
@@ -5837,6 +5838,39 @@
             "type": "string",
             "contentMediaType": "application/octet-stream",
             "title": "File"
+          },
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id"
+          },
+          "element": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Element"
+          },
+          "current_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current State"
           }
         },
         "type": "object",
@@ -6284,6 +6318,30 @@
           "token"
         ],
         "title": "EmailVerifyIn"
+      },
+      "ExpectedIn": {
+        "properties": {
+          "element": {
+            "type": "string",
+            "title": "Element"
+          },
+          "current_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "element"
+        ],
+        "title": "ExpectedIn"
       },
       "Favorites": {
         "properties": {
@@ -6820,6 +6878,16 @@
               }
             ],
             "title": "Place Id"
+          },
+          "expected": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExpectedIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -8003,6 +8071,39 @@
           "url": {
             "type": "string",
             "title": "Url"
+          },
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id"
+          },
+          "element": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Element"
+          },
+          "current_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current State"
           }
         },
         "type": "object",

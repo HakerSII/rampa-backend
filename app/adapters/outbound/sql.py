@@ -84,7 +84,8 @@ reports = Table("reports", md, Column("id", String, primary_key=True), Column("s
                 Column("status", String), Column("observation_ids", JSON), Column("replies", JSON),
                 Column("owner_status", String))
 photos = Table("photos", md, Column("id", String, primary_key=True), Column("seq", Integer), Column("path", String),
-               Column("url", String), Column("original_name", String))
+               Column("url", String), Column("original_name", String), Column("place_id", String),
+               Column("element", String), Column("current_state", String))
 queue = Table("queue_items", md, Column("id", String, primary_key=True), Column("seq", Integer),
               Column("place_id", String), Column("feature", String), Column("created_at", String),
               Column("observation_ids", JSON), Column("type", String), Column("status", String),
@@ -243,7 +244,8 @@ class SqlRepo(InMemoryRepo):
                                 status=r.status, observation_ids=list(r.observation_ids), replies=list(r.replies),
                                 owner_status=r.owner_status)
         for i, p in enumerate(self.photos.values()):
-            yield photos, dict(id=p.id, seq=i, path=p.path, url=p.url, original_name=p.original_name)
+            yield photos, dict(id=p.id, seq=i, path=p.path, url=p.url, original_name=p.original_name,
+                               place_id=p.place_id, element=p.element, current_state=p.current_state)
         for i, q in enumerate(self.queue.values()):
             yield queue, dict(id=q.id, seq=i, place_id=q.place_id, feature=_s(q.feature),
                               created_at=_iso(q.created_at), observation_ids=list(q.observation_ids), type=q.type,
@@ -304,7 +306,8 @@ class SqlRepo(InMemoryRepo):
                     list(r["photo_ids"]), r["status"], list(r["observation_ids"]), list(r["replies"] or []),
                     r["owner_status"])
             for r in rows(photos):
-                self.photos[r["id"]] = Photo(r["id"], r["path"], r["url"], r["original_name"])
+                self.photos[r["id"]] = Photo(r["id"], r["path"], r["url"], r["original_name"],
+                                             r.get("place_id"), r.get("element"), r.get("current_state"))
             for r in rows(queue):
                 self.queue[r["id"]] = QueueItem(r["id"], r["place_id"], _e(FeatureKey, r["feature"]), _dt(r["created_at"]),
                                                 list(r["observation_ids"]), r["type"], QueueStatus(r["status"]),

@@ -1,9 +1,10 @@
 class DomainError(Exception):
     code = "DOMAIN_ERROR"
 
-    def __init__(self, message: str):
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(message)
         self.message = message
+        self.details = details
 
 
 class ValidationFailed(DomainError):
@@ -40,3 +41,8 @@ class RateLimited(DomainError):
 
 class NotARealPlace(DomainError):
     code = "NOT_A_REAL_PLACE"
+
+
+class PhotoMismatch(DomainError):
+    """F45: the model sees something else than the user said; the photo was deleted."""
+    code = "PHOTO_MISMATCH"

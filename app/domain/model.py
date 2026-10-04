@@ -217,6 +217,10 @@ class Photo:
     path: str
     url: str
     original_name: str = ""
+    # F45: what the user says the photo shows (optional upload metadata)
+    place_id: str | None = None
+    element: str | None = None
+    current_state: str | None = None
 
 
 @dataclass(slots=True)

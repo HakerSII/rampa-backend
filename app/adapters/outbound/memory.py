@@ -132,6 +132,9 @@ class InMemoryRepo:
     def get_photo(self, photo_id: str) -> Photo | None:
         return self.photos.get(photo_id)
 
+    def delete_photo(self, photo_id: str) -> None:
+        self.photos.pop(photo_id, None)
+
     # moderation queue
     def add_queue_item(self, item: QueueItem) -> None:
         self.queue[item.id] = item
