@@ -170,3 +170,17 @@ def test_tool_data_for_the_model_is_compact():
     assert compact_for_model("search_accessible_places", {"places": [{"id": "x", "name": "A", "address": "ul. 1",
                                                                       "accessibility_summary": {}}], "total": 1}) ==         {"razem": 1, "miejsca": [{"nazwa": "A", "adres": "ul. 1"}]}
     assert compact_for_model("check_accessibility", {"error": "x"}) == {"error": "x"}
+
+
+def test_rules_without_polish_letters():
+    assert choose_tool("wysoki prog", TOOLS) == ("search_accessible_places", {"features": ["step_free_entrance"]})
+    assert choose_tool("plywalnia akf", TOOLS)[1]["place_name"] == "plywalnia akf"
+
+
+@pytest.mark.parametrize("question", ["jakie miejsca znasz?", "Co potrafisz", "pomoc", "Jakie miejsca są w bazie?"])
+def test_general_questions_get_help_without_a_tool(question):
+    tools = FakeTools()
+    events = run(ChatAssistant(None, tools), question)
+    assert tools.calls == [] and "tool_call" not in names(events)
+    done = events[-1][1]
+    assert done["tool"] is None and done["model"] == "rules" and "Muzeum Narodowe" in done["answer"]
