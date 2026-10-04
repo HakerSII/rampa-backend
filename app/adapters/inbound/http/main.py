@@ -11,7 +11,8 @@ from app.adapters.inbound.http.routers import admin, ai, auth, me, observations,
 from app.application.ports import IdentityVerifier, StaleData
 from app.adapters.inbound.http.chat_tools import InProcessChatTools
 from app.application.chat import ChatAssistant
-from app.bootstrap import build_chat_model, build_use_cases
+from app.adapters.outbound import phi_onnx
+from app.bootstrap import build_chat_model, build_use_cases, local_model_path
 from app.config import Settings
 
 API_PREFIX = "/api/v1"
@@ -31,6 +32,10 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
                                    settings.chat_max_new_tokens)
     if chat_model is not None and settings.chat_preload:
         chat_model.start_loading()
+    # F48: the local model (download if missing + load) starts with the server when any AI setting uses it
+    model_path = local_model_path(settings)
+    if model_path and settings.chat_preload:
+        phi_onnx.preload(model_path)
 
     app.add_middleware(CleanJsonBodyMiddleware)     # F42: user text → plain text
     app.add_middleware(SecurityHeadersMiddleware)   # F42: nosniff, CSP, no framing
@@ -68,6 +73,7 @@ def create_app(settings: Settings | None = None, verifier: IdentityVerifier | No
     async def health():
         return {"status": "ok", "auth_mode": settings.auth_mode, "ai_mode": settings.ai_mode,
                 "chat": app.state.chat.status()["state"] if settings.chat_mode != "off" else "off",
+                "local_model": {"path": model_path, **phi_onnx.state(model_path)} if model_path else None,
                 "storage": settings.repo_mode,
                 "database": settings.db_dialect if settings.repo_mode == "sql" else None}
 

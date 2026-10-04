@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     ai_timeout_s: float = 60.0
     # F44: AI_MODE=gemini failure → local ONNX model (when installed + model folder present) → mock
     ai_vision_fallback: Literal["mock", "onnx"] = "mock"
+    # F48: the local model is downloaded at start when missing (Hugging Face, like get_model.py);
+    # not loaded with less free memory than this (an out-of-memory kill would take the server down)
+    ai_model_download: bool = True
+    ai_model_repo: str = "microsoft/Phi-3.5-vision-instruct-onnx"
+    ai_model_subfolder: str = "gpu/gpu-int4-rtn-block-32"
+    ai_model_min_ram_mb: int = 3500
     ai_onnx_timeout_s: float = 180.0
     # F46: chat assistant — rules (no model) | onnx (local Phi-3.5, loaded at start) | off
     chat_mode: Literal["off", "rules", "onnx"] = "rules"

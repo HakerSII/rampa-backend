@@ -56,6 +56,10 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `AI_MODEL_PATH` | `models/gpu/gpu-int4-rtn-block-32` | ONNX model folder (`onnx`); needs `uv sync --extra ai` |
 | `AI_VISION_FALLBACK` | `mock` | `gemini` failed → `onnx` = try the local model (`AI_MODEL_PATH`) before mock; skipped with a warning when onnxruntime-genai or the model folder is missing |
 | `AI_ONNX_TIMEOUT_S` | `180` | max time for the local fallback model (slow on CPU) |
+| `AI_MODEL_DOWNLOAD` | `true` | F48: a setting uses the local model (`AI_MODE=onnx`, `AI_VISION_FALLBACK=onnx`, `CHAT_MODE=onnx`, `AI_RECOMMENDER=onnx`) and `AI_MODEL_PATH` is missing → downloaded at start from Hugging Face (~2.6 GB, resumable), then loaded; state in `GET /health` → `local_model` |
+| `AI_MODEL_REPO` | `microsoft/Phi-3.5-vision-instruct-onnx` | Hugging Face repo of the model |
+| `AI_MODEL_SUBFOLDER` | `gpu/gpu-int4-rtn-block-32` | folder in the repo; `AI_MODEL_PATH` must end with it |
+| `AI_MODEL_MIN_RAM_MB` | `3500` | not loaded with less free memory (container limit or MemAvailable): state `error`, fallbacks answer — an out-of-memory kill would take the whole server down. `0` = no check |
 | `CHAT_MODE` | `rules` | F46 chat: `rules` (keyword rules + template, no model) · `onnx` (local Phi-3.5) · `off` (503) |
 | `CHAT_MODEL_PATH` | — | model folder for the chat; empty = `AI_MODEL_PATH` (one copy in memory, shared with photos and recommendations) |
 | `CHAT_PRELOAD` | `true` | start loading the local model in the background when the server starts (chat and `AI_RECOMMENDER=onnx`) |

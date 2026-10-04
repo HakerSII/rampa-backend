@@ -8,9 +8,10 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
-# dependencies first (cached layer); postgres extra = psycopg driver
+# dependencies first (cached layer); postgres extra = psycopg driver; ai extra = onnxruntime-genai + huggingface_hub
+# (the local model itself is downloaded at start when a setting uses it, F48 — not baked into the image)
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --extra postgres --no-install-project
+RUN uv sync --frozen --no-dev --extra postgres --extra ai --no-install-project
 
 # app code (.env, .venv, models/, media/, *.db excluded by .dockerignore)
 COPY . .

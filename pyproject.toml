@@ -16,7 +16,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-ai = ["onnxruntime-genai>=0.17"]
+ai = [
+    "huggingface-hub>=0.25",
+    "onnxruntime-genai>=0.17",
+]
 mcp = ["fastmcp>=2.10"]
 postgres = ["psycopg[binary]>=3.2"]
 
