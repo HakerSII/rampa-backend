@@ -1,0 +1,54 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F46 Chat assistant
+  version: 0.1.0-mvp
+  description: >
+    Chat on the server: local Phi-3.5 (loaded at start) or keyword rules, with the MCP tools
+    run in-process; the answer is streamed as Server-Sent Events.
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: ai
+paths:
+  /ai/chat/status:
+    get:
+      tags: [ai]
+      summary: Chat model state
+      operationId: chatStatus
+      responses:
+        "200":
+          description: State
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mode: { type: string, enum: [off, rules, onnx] }
+                  state: { type: string, enum: [off, loading, ready, error, rules] }
+                  model: { type: string }
+                  tools: { type: array, items: { type: string } }
+  /ai/chat/stream:
+    post:
+      tags: [ai]
+      summary: Ask the assistant (SSE)
+      operationId: chatStream
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question: { type: string, minLength: 1, maxLength: 500 }
+      responses:
+        "200":
+          description: >
+            text/event-stream: status, tool_call, tool_result, token events, keepalive comments,
+            then done {answer, model, tool} or error.
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "400": { description: Invalid question }
+        "429": { description: Rate limited }
+        "503": { description: CHAT_DISABLED }
