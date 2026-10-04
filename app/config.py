@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     # F46: chat assistant — rules (no model) | onnx (local Phi-3.5, loaded at start) | off
     chat_mode: Literal["off", "rules", "onnx"] = "rules"
     chat_model_path: str = ""  # empty → AI_MODEL_PATH (one model in memory shared with photo analysis)
-    chat_preload: bool = True
+    chat_preload: bool = False
     chat_timeout_s: float = 120.0
     chat_max_new_tokens: int = 160
     gemini_api_key: str = ""  # secret: only in .env (gitignored)
