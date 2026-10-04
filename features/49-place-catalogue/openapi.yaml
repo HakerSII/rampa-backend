@@ -1,0 +1,31 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F49 Place catalogue import
+  version: 0.1.0-mvp
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: admin
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+security: [{ bearer: [] }]
+paths:
+  /admin/imports:
+    post:
+      tags: [admin]
+      summary: Import places (osm_file | overpass | catalog)
+      operationId: importCatalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source]
+              properties:
+                source: { type: string, enum: [osm_file, overpass, catalog] }
+      responses:
+        "200": { description: "{source, points, places_created, places_matched, observations, skipped_unnamed, skipped_no_data}" }
+        "400": { description: Unknown source / catalog file not readable }
+        "403": { description: Admin only }

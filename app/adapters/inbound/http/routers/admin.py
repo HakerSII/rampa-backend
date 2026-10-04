@@ -1,7 +1,11 @@
-from fastapi import APIRouter, Response
+import json
+from pathlib import Path
+
+from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel
 
 from app.adapters.inbound.http.deps import UC, AdminUser, OptionalUser
+from app.domain.errors import ValidationFailed
 from app.adapters.inbound.http.schemas import (
     DecisionIn,
     DecisionOut,
@@ -90,9 +94,23 @@ class ImportOut(BaseModel):
     skipped_no_data: int
 
 
+def _load_catalog(path: str) -> list[dict]:
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise ValidationFailed(f"catalog file not readable: {path}") from e
+    if not isinstance(data, list):
+        raise ValidationFailed("catalog file must be a JSON list")
+    return data
+
+
 @router.post("/admin/imports", response_model=ImportOut)
-async def run_import(body: ImportIn, uc: UC, admin: AdminUser):
-    r = await uc.import_osm(admin, body.source)
+async def run_import(body: ImportIn, uc: UC, admin: AdminUser, request: Request):
+    """source: osm_file (snapshot) | overpass (live) | catalog (F49: CATALOG_FILE, the full place catalogue)."""
+    if body.source == "catalog":
+        r = await uc.import_catalog(admin, _load_catalog(request.app.state.settings.catalog_file))
+    else:
+        r = await uc.import_osm(admin, body.source)
     return ImportOut(**{f: getattr(r, f) for f in ImportOut.model_fields})
 
 

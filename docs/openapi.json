@@ -4516,6 +4516,7 @@
           "admin"
         ],
         "summary": "Run Import",
+        "description": "source: osm_file (snapshot) | overpass (live) | catalog (F49: CATALOG_FILE, the full place catalogue).",
         "operationId": "run_import_api_v1_admin_imports_post",
         "parameters": [
           {

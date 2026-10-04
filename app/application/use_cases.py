@@ -957,6 +957,56 @@ class UseCases:
             self.recompute(place_id, feature)
         return result
 
+    async def import_catalog(self, admin: User | None, entries: list[dict]) -> ImportResult:
+        """F49: catalogue entries (app/domain/catalog.py) → places (every named one, also without facts), their
+        address/contact, and OSM facts as open-data observations. Idempotent: same external id, or the same name
+        within 50 m. Indexed lookups: the full city catalogue has ~6,500 places."""
+        self._require_admin(admin)
+        result = ImportResult("catalog", points=len(entries))
+        osm_user = self.repo.get_user(OSM_AUTHOR_ID)
+        by_ref: dict[str, Place] = {}
+        by_name: dict[str, list[Place]] = {}
+        for place in self.repo.list_places():
+            if place.external_id:
+                by_ref[place.external_id] = place
+            by_name.setdefault(place.name.lower(), []).append(place)
+        touched: set[tuple[str, FeatureKey]] = set()
+        for e in entries:
+            name = clean_text(str(e.get("name") or ""))[:MAX_PLACE_NAME]
+            if not name:
+                result.skipped_unnamed += 1
+                continue
+            here = GeoPoint(float(e["lat"]), float(e["lon"]))
+            place = by_ref.get(e.get("ref")) or next(
+                (p for p in by_name.get(name.lower(), []) if haversine_m(p.location, here) <= domain_osm.MATCH_RADIUS_M),
+                None)
+            if place:
+                result.places_matched += 1
+            else:
+                contact = {k: str(e[k]) for k in ("phone", "website") if e.get(k)}
+                place = Place(self.ids.new("plc_osm"), name, str(e.get("category") or "other"), here,
+                              address=clean_text(str(e.get("address") or "")), external_id=e.get("ref"),
+                              contact=contact)
+                self.repo.add_place(place)
+                if place.external_id:
+                    by_ref[place.external_id] = place
+                by_name.setdefault(name.lower(), []).append(place)
+                result.places_created += 1
+            for key, raw in (e.get("features") or {}).items():
+                try:
+                    feature, value = FeatureKey(key), ObservationValue(raw)
+                except ValueError:
+                    continue  # not a Rampa feature / value
+                if self._has_open_data(place.id, feature, value):
+                    continue
+                self._new_observation(osm_user, place.id, feature, value, temporary=False,
+                                      comment="OpenStreetMap", photo_ids=[], source=ObservationSource.OPEN_DATA)
+                result.observations += 1
+                touched.add((place.id, feature))
+        for place_id, feature in touched:
+            self.recompute(place_id, feature)
+        return result
+
     def _find_place(self, name: str, here: GeoPoint, external_id: str | None = None) -> Place | None:
         """Same external id, or the same name (case-insensitive) within MATCH_RADIUS_M."""
         for place in self.repo.list_places():

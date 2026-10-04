@@ -30,19 +30,20 @@ def app(tmp_path, **kw):
     {"ai_recommender": "onnx"},
 ])
 def test_preloads_when_a_setting_uses_the_local_model(tmp_path, preloads, kw):
-    app(tmp_path, ai_model_path="models/m", **kw)
+    app(tmp_path, ai_model_path="models/m", chat_preload=True, **kw)
     assert preloads == ["models/m"]
 
 
 def test_no_preload_without_local_model_or_when_disabled(tmp_path, preloads):
-    app(tmp_path)  # mock / rules everywhere
+    app(tmp_path, chat_preload=True)  # mock / rules everywhere
+    app(tmp_path, ai_mode="onnx")  # CHAT_PRELOAD defaults to false
     app(tmp_path, ai_mode="onnx", chat_preload=False)
     assert preloads == []
 
 
 def test_health_shows_the_local_model(tmp_path, preloads, monkeypatch):
     monkeypatch.setattr(phi_onnx, "state", lambda path: {"state": "downloading", "detail": "1.2 / 2.6 GB"})
-    body = TestClient(app(tmp_path, ai_mode="onnx", ai_model_path="models/m")).get("/health").json()
+    body = TestClient(app(tmp_path, ai_mode="onnx", ai_model_path="models/m", chat_preload=True)).get("/health").json()
     assert body["local_model"] == {"path": "models/m", "state": "downloading", "detail": "1.2 / 2.6 GB"}
 
 
