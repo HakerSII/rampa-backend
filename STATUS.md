@@ -102,6 +102,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 ## Log (newest first)
 
 - 2026-10-04 · F56 green: per-place observation index (production hung after the catalogue import)
+- 2026-10-04 · F49 catalogue: city disabled parking within 100 m → `disabled_parking: yes` (3062 places, as Accessly main's sync_snapshot); production needs the catalogue re-import after the deploy
 - 2026-10-04 · F54/F55 green: account settings + reviews (forms as on Accessly main)
 - 2026-10-04 · F53 green: main catalogue features + report types
 - 2026-10-04 · F52: GET /observations exclude_source=open_data (imported facts are not barrier reports)

@@ -103,3 +103,17 @@ def test_reimport_fills_missing_kind_hours_address_and_contact():
     assert r.places_matched == 1
     assert p.kind == "park rozrywki" and p.opening_hours == [{"text": "Sa,Su 10:00-19:00"}]
     assert p.address == "Al. Pokoju 68" and p.contact == {"phone": "+48 1"}
+
+
+# --- city disabled parking (as Accessly main's sync_snapshot: a city space within 100 m = "parking nearby") ---
+
+def test_city_parking_within_100_m_marks_disabled_parking():
+    from app.domain.catalog import add_city_parking
+    entries = [{"name": "A", "lat": 50.0650, "lon": 19.9380, "features": {}},
+               {"name": "B", "lat": 50.0700, "lon": 19.9500, "features": {}},  # ~1 km away
+               {"name": "C", "lat": 50.0650, "lon": 19.9380, "features": {"disabled_parking": "no"}}]  # OSM wins
+    n = add_city_parking(entries, [{"lat": 50.0655, "lng": 19.9385}])  # ~65 m from A and C
+    assert n == 1
+    assert entries[0]["features"] == {"disabled_parking": "yes"}
+    assert entries[1]["features"] == {}
+    assert entries[2]["features"] == {"disabled_parking": "no"}

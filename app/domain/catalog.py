@@ -2,6 +2,8 @@
 OSM accessibility tags) → Rampa catalogue entries (data/krakow_catalog.json, imported by POST /admin/imports
 {"source": "catalog"}). Pure mapping; the keys follow Accessly's rampa.js (ATTR_TO_RAMPA, CATEGORY_TO_RAMPA)."""
 from app.domain.city import load_city
+from app.domain.geo import haversine_m
+from app.domain.model import GeoPoint
 
 ATTR_TO_RAMPA = {
     "step_free": "step_free_entrance", "ramp": "ramp", "elevator": "elevator", "door_width": "wide_doors",
@@ -51,3 +53,26 @@ def from_accessly(items: list[dict], kinds: set[str] | None = None) -> list[dict
         entry["features"] = features
         out.append(entry)
     return out
+
+
+PARKING_NEAR_M = 100  # Accessly main: places.PARKING_NEAR
+_CELL = 0.005  # degrees; grid of parking spaces for "nearest within N m"
+
+
+def add_city_parking(entries: list[dict], parking: list[dict], max_m: float = PARKING_NEAR_M) -> int:
+    """Accessly main's sync_snapshot: a city disabled-parking space ({lat, lng}, its parking layer) within ``max_m``
+    makes "disabled_parking" yes, unless OSM already says something. Changes ``entries``; returns how many got it."""
+    cells: dict[tuple[int, int], list[GeoPoint]] = {}
+    for p in parking:
+        cells.setdefault((int(p["lat"] // _CELL), int(p["lng"] // _CELL)), []).append(GeoPoint(p["lat"], p["lng"]))
+    span = int(max_m / (111_320 * _CELL * 0.6)) + 1
+    added = 0
+    for e in entries:
+        if "disabled_parking" in e["features"]:
+            continue
+        here, ci, cj = GeoPoint(e["lat"], e["lon"]), int(e["lat"] // _CELL), int(e["lon"] // _CELL)
+        if any(haversine_m(here, q) <= max_m for i in range(ci - span, ci + span + 1)
+               for j in range(cj - span, cj + span + 1) for q in cells.get((i, j), ())):
+            e["features"]["disabled_parking"] = "yes"
+            added += 1
+    return added
