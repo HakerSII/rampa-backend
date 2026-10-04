@@ -68,7 +68,8 @@ def names(events):
     ("Wawel", "Wawel"),
 ])
 def test_rules_pick_check_accessibility_with_the_place(question, place):
-    assert choose_tool(question, TOOLS) == ("check_accessibility", {"place_name": place})
+    name, args = choose_tool(question, TOOLS)
+    assert (name, args["place_name"]) == ("check_accessibility", place)
 
 
 def test_rules_pick_search_for_features_without_a_place():

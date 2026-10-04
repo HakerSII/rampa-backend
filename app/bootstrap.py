@@ -42,6 +42,14 @@ def _gemini_fallback(settings: Settings, mock):
                                   settings.ai_onnx_timeout_s)
 
 
+def build_chat_model(settings: Settings):
+    """F46: None = rules answers (CHAT_MODE=rules|off); onnx → local Phi-3.5 (loading starts in create_app)."""
+    if settings.chat_mode != "onnx":
+        return None
+    from app.adapters.outbound.chat_onnx import OnnxPhiChatModel
+    return OnnxPhiChatModel(settings.chat_model_path or settings.ai_model_path, settings.chat_timeout_s)
+
+
 def build_geocoder(settings: Settings, city: City):
     if settings.geocoder != "nominatim":
         return None

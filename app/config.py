@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     # F44: AI_MODE=gemini failure → local ONNX model (when installed + model folder present) → mock
     ai_vision_fallback: Literal["mock", "onnx"] = "mock"
     ai_onnx_timeout_s: float = 180.0
+    # F46: chat assistant — rules (no model) | onnx (local Phi-3.5, loaded at start) | off
+    chat_mode: Literal["off", "rules", "onnx"] = "rules"
+    chat_model_path: str = ""  # empty → AI_MODEL_PATH (one model in memory shared with photo analysis)
+    chat_preload: bool = True
+    chat_timeout_s: float = 120.0
+    chat_max_new_tokens: int = 160
     gemini_api_key: str = ""  # secret: only in .env (gitignored)
     gemini_model: str = "gemini-3.8-flash"
     gemini_api_url: str = "https://generativelanguage.googleapis.com/v1beta"
