@@ -10,22 +10,31 @@ from collections.abc import Callable
 from typing import Protocol
 
 from app.domain.enums import LABELS_PL
+from app.domain.text import fold
 
 log = logging.getLogger(__name__)
 
 MAX_TOOL_CHARS = 2500  # tool data in the answer prompt (short context = fast on CPU)
 CHOICE_TOKENS = 60
 
+# patterns match the folded question (lower case, no diacritics): "prog" and "próg" alike
 FEATURE_WORDS = [
-    (r"wind", "elevator"), (r"toalet|\bwc\b|łazienk", "accessible_toilet"), (r"podjazd|ramp", "ramp"),
-    (r"bez schod|bez progu|schod", "step_free_entrance"), (r"pętl|aparat słuch|niedosłysz", "induction_loop"),
+    (r"wind", "elevator"), (r"toalet|\bwc\b|lazienk", "accessible_toilet"), (r"podjazd|ramp", "ramp"),
+    (r"schod|\bprog", "step_free_entrance"), (r"petl|aparat sluch|niedoslysz", "induction_loop"),
     (r"przewij", "baby_changing_table"), (r"\bpies|\bpsa\b|\bpsem\b", "assistance_dog_allowed"),
 ]
 PROFILE_WORDS = [
-    (r"wózk\w* dziecięc|wózek dziecięcy", "stroller"), (r"\bkul\b|o kulach|kulach", "crutches"),
-    (r"niewidom", "blind"), (r"słabowid|niedowid", "low_vision"), (r"głuch|niesłysz", "deaf"),
+    (r"wozk\w* dzieci|wozek dzieci", "stroller"), (r"\bkul\b|o kulach|kulach", "crutches"),
+    (r"niewidom", "blind"), (r"slabowid|niedowid", "low_vision"), (r"gluch|niesl?ysz", "deaf"),
     (r"pies asystu|psem asystu|psa asystu", "assistance_dog"),
 ]
+# general questions ("jakie miejsca znasz", "pomoc"): no tool, a short guide what to ask
+GENERAL = re.compile(r"^(jakie|ktore|co) (miejsca|wiesz|znasz|umiesz|potrafisz)|\bpomoc\b|\bhelp\b|"
+                     r"co potrafisz|co umiesz|jak (dzialasz|to dziala|cie uzywac)|\bw bazie\b")
+HELP_ANSWER = ("Znam miejsca w Krakowie z bazy Kraków bez barier: restauracje, kawiarnie, muzea, teatry, hotele, "
+               "apteki, urzędy i wiele innych, z danymi o dostępności (wejście bez schodów, winda, toaleta…). "
+               "Zapytaj o konkretne miejsce, np. „Czy Muzeum Narodowe jest dostępne na wózku?”, albo o udogodnienia: "
+               "„Gdzie jest winda i toaleta dla niepełnosprawnych?”.")
 VERBS = r"\s+(jest|są|ma|mają|da się|wejdę|wjadę|dostanę|można|posiada)(?=\s|$).*$"
 ANSWER_PL = {"yes": "tak", "partial": "częściowo", "no": "nie", "unknown": "brak pewnych danych"}
 
@@ -58,17 +67,23 @@ def _place_name(question: str) -> str:
 def _names_a_place(question: str) -> bool:
     words = question.split()[1:]  # the first word is capitalised anyway
     return any(w[:1].isupper() for w in words) or bool(
-        re.search(r"muzeum|teatr|kino|hotel|restaurac|kawiarni|galeri|dworzec|szpital|urząd|kości|zamek|wawel",
-                  question, re.I))
+        re.search(r"muzeum|teatr|kino|hotel|restaurac|kawiarni|galeri|dworzec|szpital|urzad|kosci|zamek|wawel|"
+                  r"plywalni|basen|park|sklep|apteka|bank|poczta", fold(question)))
+
+
+def is_general(question: str) -> bool:
+    """'jakie miejsca znasz', 'co potrafisz', 'pomoc' — a question about the assistant, not about a place."""
+    return bool(GENERAL.search(fold(question).strip()))
 
 
 def choose_tool(question: str, tool_names: list[str]) -> tuple[str, dict]:
     """Keyword rules: features without a named place → search, else check the place by name (+ profile)."""
-    features = list(dict.fromkeys(f for pattern, f in FEATURE_WORDS if re.search(pattern, question, re.I)))
+    folded = fold(question)
+    features = list(dict.fromkeys(f for pattern, f in FEATURE_WORDS if re.search(pattern, folded)))
     if features and not _names_a_place(question) and "search_accessible_places" in tool_names:
         return "search_accessible_places", {"features": features}
     args = {"place_name": _place_name(question)}
-    profile = next((p for pattern, p in PROFILE_WORDS if re.search(pattern, question, re.I)), None)
+    profile = next((p for pattern, p in PROFILE_WORDS if re.search(pattern, folded)), None)
     if profile:
         args["profile"] = profile
     return "check_accessibility", args
@@ -186,6 +201,10 @@ class ChatAssistant:
 
     async def ask(self, question: str, emit: Callable[[tuple[str, dict]], None]) -> None:
         emit(("status", {"stage": "received"}))
+        if is_general(question):
+            emit(("token", {"text": HELP_ANSWER}))
+            emit(("done", {"answer": HELP_ANSWER, "model": "rules", "tool": None}))
+            return
         definitions = self.tools.definitions
         model = self.model
         if model is not None and model.state() == "off" and hasattr(model, "start_loading"):

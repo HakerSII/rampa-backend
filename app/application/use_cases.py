@@ -27,7 +27,7 @@ from app.domain import check as domain_check, osm as domain_osm, suggestions, tr
 from app.domain.geo import haversine_m, in_bbox, parse_bbox
 from app.domain import recommend as recommend_domain
 from app.domain.city import City
-from app.domain.text import clean_text, is_email, is_http_url, is_phone
+from app.domain.text import clean_text, is_email, is_http_url, is_phone, name_matches
 from app.domain.recommend import Intent, Recommendation
 from app.domain.route import RouteResult, plan_route
 from app.domain.text_parse import TextSuggestion, parse_text
@@ -441,7 +441,7 @@ class UseCases:
         for place in self.repo.list_places():
             if category and place.category != category:
                 continue
-            if q and q.lower() not in place.name.lower():
+            if q and not name_matches(q, place.name):  # F50: no diacritics / inflection needed
                 continue
             self._refresh_expired(place.id)
             states = self.repo.states_for(place.id)
