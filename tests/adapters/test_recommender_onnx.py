@@ -86,3 +86,15 @@ def test_prompt_is_short_with_examples(city):
     asyncio.run(OnnxQueryInterpreter(model, city).interpret("x"))
     system = model.prompts[0][0]["content"]
     assert len(system) < 1500 and "->" in system and '"type"' not in system
+
+
+def test_copying_the_vocabulary_counts_as_failure(city):
+    reply = ('{"profiles": ["wheelchair"], "features": ["step_free_entrance", "ramp", "lowered_curb", "wide_doors", '
+             '"baby_changing_table"], "categories": []}')
+    with pytest.raises(ValueError):
+        asyncio.run(OnnxQueryInterpreter(FakeModel(reply), city).interpret("x"))
+
+
+def test_recommender_uses_the_ai_timeout(city):
+    r = build_recommender(Settings(ai_recommender="onnx", ai_timeout_s=33, chat_preload=False, _env_file=None), city)
+    assert r.llm.timeout_s == 33
