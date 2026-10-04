@@ -18,7 +18,7 @@ def test_status_rules_mode(tmp_path):
     r = client(tmp_path).get("/api/v1/ai/chat/status")
     assert r.status_code == 200
     assert r.json() == {"mode": "rules", "state": "rules", "model": "rules",
-                        "tools": ["check_accessibility", "search_accessible_places"]}
+                        "tools": ["check_accessibility", "search_accessible_places", "find_location", "places_nearby"]}
 
 
 def test_stream_answers_from_the_database_as_a_guest(tmp_path):

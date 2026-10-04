@@ -141,6 +141,8 @@ Exceeded → `429 {"error": {"code": "RATE_LIMITED", …}}` with a `Retry-After`
 | GET | `/public/v1/places/{id}` | API key | Open API place |
 | GET | `/public/v1/places/{id}/accessibility` | API key | Open API flat accessibility |
 | GET | `/public/v1/places/{id}/check` | API key | Open API "can I get in?" |
+| GET | `/public/v1/geocode?q=` | API key | Coordinates of a place or address (F51) |
+| GET | `/public/v1/places/nearby?lat&lon&radius_m=500` | API key | Places within 50–2000 m, nearest first (F51) |
 | GET | `/api/v1/me/favorites` | user | My favourite places |
 | PUT | `/api/v1/me/favorites/{id}` | user | Add favourite (idempotent) |
 | DELETE | `/api/v1/me/favorites/{id}` | user | Remove favourite (idempotent) |
@@ -473,6 +475,19 @@ event: done        data: {"answer": "Tak, Muzeum Narodowe jest dostępne…", "m
 `: keepalive` every 10 s. Without a usable model (rules mode, still loading, error, timeout) the rules pick the tool and
 a template writes the answer (`"model": "rules"`, one `token` event). Local Phi-3.5 on CPU: ~30–40 s to pick the tool,
 first answer token after ~15–20 s more, then ~0.7 s per token.
+
+### Search by name (F50) and location (F51)
+- Place names match without diacritics and with Polish endings: `q=teatru slowackiego` finds
+  "Teatr im. Juliusza Słowackiego", `plywalnia akf` finds "Pływalnia AKF" (every query word starts a word of the
+  name; linking words like *na*, *do* are ignored). Applies to `/places?q=`, `/public/v1/places?q=` and `/geocode`.
+- `GET /api/v1/geocode?q=` and `/public/v1/geocode?q=` (Open API: `{items: [{label, lat, lon, place_id}]}`): places
+  of the database first, then the geocoder (`GEOCODER=nominatim`, city viewbox, `countrycodes=pl`, at most 1 request/s).
+  No hit → one more try with the nominative ("Tauron Areny" → "Tauron Arena", "ulicy Lea 120" → "Lea 120").
+  A geocoder hit is dropped only as a duplicate of a listed local hit. The app's search box uses this endpoint.
+- `GET /public/v1/places/nearby?lat=50.0677&lon=19.9915&radius_m=500&features=` →
+  `{items: [PublicPlace + distance_m], total, radius_m}`, nearest first; radius 50–2000 (else 400).
+- Chat (F46): "co jest w pobliżu / koło / blisko X" → `find_location` then `places_nearby` (500 m); a place not found by
+  name → its location and surroundings; "jakie miejsca znasz", "pomoc" → a short guide, no tool.
 
 ### `POST /api/v1/reports`
 Creates the report **and** one observation (`works` → `yes`, `not_working` → `no`; `nature=temporary` → `temporary: true`). Photos become evidence. The state is recomputed immediately.

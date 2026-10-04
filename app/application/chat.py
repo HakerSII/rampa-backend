@@ -10,22 +10,31 @@ from collections.abc import Callable
 from typing import Protocol
 
 from app.domain.enums import LABELS_PL
+from app.domain.text import fold
 
 log = logging.getLogger(__name__)
 
 MAX_TOOL_CHARS = 2500  # tool data in the answer prompt (short context = fast on CPU)
 CHOICE_TOKENS = 60
 
+# patterns match the folded question (lower case, no diacritics): "prog" and "próg" alike
 FEATURE_WORDS = [
-    (r"wind", "elevator"), (r"toalet|\bwc\b|łazienk", "accessible_toilet"), (r"podjazd|ramp", "ramp"),
-    (r"bez schod|bez progu|schod", "step_free_entrance"), (r"pętl|aparat słuch|niedosłysz", "induction_loop"),
+    (r"wind", "elevator"), (r"toalet|\bwc\b|lazienk", "accessible_toilet"), (r"podjazd|ramp", "ramp"),
+    (r"schod|\bprog", "step_free_entrance"), (r"petl|aparat sluch|niedoslysz", "induction_loop"),
     (r"przewij", "baby_changing_table"), (r"\bpies|\bpsa\b|\bpsem\b", "assistance_dog_allowed"),
 ]
 PROFILE_WORDS = [
-    (r"wózk\w* dziecięc|wózek dziecięcy", "stroller"), (r"\bkul\b|o kulach|kulach", "crutches"),
-    (r"niewidom", "blind"), (r"słabowid|niedowid", "low_vision"), (r"głuch|niesłysz", "deaf"),
+    (r"wozk\w* dzieci|wozek dzieci", "stroller"), (r"\bkul\b|o kulach|kulach", "crutches"),
+    (r"niewidom", "blind"), (r"slabowid|niedowid", "low_vision"), (r"gluch|niesl?ysz", "deaf"),
     (r"pies asystu|psem asystu|psa asystu", "assistance_dog"),
 ]
+# general questions ("jakie miejsca znasz", "pomoc"): no tool, a short guide what to ask
+GENERAL = re.compile(r"^(jakie|ktore|co) (miejsca|wiesz|znasz|umiesz|potrafisz)|\bpomoc\b|\bhelp\b|"
+                     r"co potrafisz|co umiesz|jak (dzialasz|to dziala|cie uzywac)|\bw bazie\b")
+HELP_ANSWER = ("Znam miejsca w Krakowie z bazy Kraków bez barier: restauracje, kawiarnie, muzea, teatry, hotele, "
+               "apteki, urzędy i wiele innych, z danymi o dostępności (wejście bez schodów, winda, toaleta…). "
+               "Zapytaj o konkretne miejsce, np. „Czy Muzeum Narodowe jest dostępne na wózku?”, albo o udogodnienia: "
+               "„Gdzie jest winda i toaleta dla niepełnosprawnych?”.")
 VERBS = r"\s+(jest|są|ma|mają|da się|wejdę|wjadę|dostanę|można|posiada)(?=\s|$).*$"
 ANSWER_PL = {"yes": "tak", "partial": "częściowo", "no": "nie", "unknown": "brak pewnych danych"}
 
@@ -46,29 +55,52 @@ class ChatTools(Protocol):
 
 
 # ----------------------------------------------------------------- rules
+# words of a question that are not part of a place name (folded): question words, linking words, verbs of getting
+# in, "dostępne", and the visitor's means ("wózkiem", "o kulach") — removed wherever they stand
+NOT_NAME = re.compile(
+    r"(czy|gdzie|jak|a|do|w|we|na|z|ze|o|i|jest|sa|ma|maja|da|sie|mozna|moge|posiada|wejde|wjade|wejsc|wjechac|"
+    r"dostane|dojade|dostac|tam|tu|mnie|ja|dostepn\w*|przystosowan\w*|wozk\w*|wozek|dzieci\w*|inwalidz\w*|"
+    r"kul\w*|osob\w*|niepelnospraw\w*|niewidom\w*|gluch\w*|psem|pies|psa)")
+
+
 def _place_name(question: str) -> str:
-    """'Czy do Teatru Słowackiego wejdę z wózkiem?' → 'Teatru Słowackiego'."""
-    q = re.sub(r"[?.!]+$", "", question.strip())
-    q = re.sub(VERBS, "", q, flags=re.I)
-    q = re.sub(r"^(czy|gdzie|jak|a)\s+", "", q, flags=re.I)
-    q = re.sub(r"^(do|w|we|na|z)\s+", "", q, flags=re.I)
-    return q.strip() or question.strip()
+    """'czy do teatru na słowackiego wjade wozkiem ?' → 'teatru słowackiego' (search ignores endings/diacritics)."""
+    words = [w for w in re.split(r"\s+", question.strip()) if w]
+    kept = [w for w in words if not NOT_NAME.fullmatch(fold(w).strip("?.!,;:()\"'„”"))]
+    name = " ".join(kept).strip(" ?.!,;:")
+    return name or question.strip(" ?.!")
 
 
 def _names_a_place(question: str) -> bool:
     words = question.split()[1:]  # the first word is capitalised anyway
     return any(w[:1].isupper() for w in words) or bool(
-        re.search(r"muzeum|teatr|kino|hotel|restaurac|kawiarni|galeri|dworzec|szpital|urząd|kości|zamek|wawel",
-                  question, re.I))
+        re.search(r"muzeum|teatr|kino|hotel|restaurac|kawiarni|galeri|dworzec|szpital|urzad|kosci|zamek|wawel|"
+                  r"plywalni|basen|park|sklep|apteka|bank|poczta", fold(question)))
+
+
+def is_general(question: str) -> bool:
+    """'jakie miejsca znasz', 'co potrafisz', 'pomoc' — a question about the assistant, not about a place."""
+    return bool(GENERAL.search(fold(question).strip()))
+
+
+# F51 "co jest w pobliżu X" / "koło X" / "blisko X" → the location of X, then what is within 500 m
+NEARBY = re.compile(r"\b(w poblizu|w okolicy|w okolicach|kolo|blisko|niedaleko|obok)\s+(.+)")
+NEARBY_RADIUS_M = 500
 
 
 def choose_tool(question: str, tool_names: list[str]) -> tuple[str, dict]:
-    """Keyword rules: features without a named place → search, else check the place by name (+ profile)."""
-    features = list(dict.fromkeys(f for pattern, f in FEATURE_WORDS if re.search(pattern, question, re.I)))
+    """Keyword rules: "w pobliżu X" → location of X; features without a named place → search; else check the place
+    by name (+ profile)."""
+    folded = fold(question)
+    near = NEARBY.search(folded)
+    if near and "find_location" in tool_names:
+        # fold() keeps the length of Polish text, so the match positions cut the original question
+        return "find_location", {"query": question[near.start(2):].strip(" ?.!,")}
+    features = list(dict.fromkeys(f for pattern, f in FEATURE_WORDS if re.search(pattern, folded)))
     if features and not _names_a_place(question) and "search_accessible_places" in tool_names:
         return "search_accessible_places", {"features": features}
     args = {"place_name": _place_name(question)}
-    profile = next((p for pattern, p in PROFILE_WORDS if re.search(pattern, question, re.I)), None)
+    profile = next((p for pattern, p in PROFILE_WORDS if re.search(pattern, folded)), None)
     if profile:
         args["profile"] = profile
     return "check_accessibility", args
@@ -100,10 +132,32 @@ def _label(feature: str) -> str:
     return LABELS_PL.get(feature, feature).lower()
 
 
+def _yes_labels(summary) -> list[str]:
+    keys = [k for k, v in summary.items() if v] if isinstance(summary, dict) else list(summary or [])
+    return [_label(k) for k in keys]
+
+
+def _nearby_line(place: dict) -> str:
+    """'Teatr im. Juliusza Słowackiego (Plac Świętego Ducha 1, 12 m, wejście bez schodów)'."""
+    details = [place.get("address") or "", f"{place.get('distance_m')} m", *_yes_labels(place.get("accessibility_summary"))]
+    return f"{place['name']} ({', '.join(d for d in details if d)})"
+
+
 def answer_from_data(tool: str, data: dict) -> str:
     """Template answer (Polish) from a tool's result — used without a model and as the model's fallback."""
     if "error" in data:
         return f"Nie udało się pobrać danych: {data['error']}"
+    if tool == "find_location":
+        return data.get("message") or f"Nie znaleziono lokalizacji „{data.get('query', '')}”."
+    if tool == "places_nearby":
+        where = (data.get("location") or {}).get("label") or f"{data.get('lat')}, {data.get('lon')}"
+        places = data.get("places") or []
+        radius = data.get("radius_m", NEARBY_RADIUS_M)
+        lead = f"{data['not_found']} " if data.get("not_found") else ""
+        if not places:
+            return f"{lead}W promieniu {radius} m od: {where} nie mam miejsc w bazie."
+        listed = "; ".join(_nearby_line(p) for p in places[:5])
+        return f"{lead}W promieniu {radius} m od: {where} jest {data.get('total', len(places))} miejsc. Najbliżej: {listed}."
     if tool == "search_accessible_places":
         places = data.get("places") or []
         wanted = ", ".join(_label(f) for f in data.get("features", []))
@@ -148,6 +202,11 @@ def compact_for_model(tool: str, data: dict) -> dict:
     """Only what the answer needs (no ids, dates, per-feature confidence): a short prompt is much faster on CPU."""
     if "error" in data:
         return data
+    if tool == "places_nearby":
+        return {"lokalizacja": (data.get("location") or {}).get("label"), "promien_m": data.get("radius_m"),
+                "uwaga": data.get("not_found", ""),
+                "miejsca": [{"nazwa": p["name"], "adres": p.get("address"), "odleglosc_m": p.get("distance_m"),
+                             "jest": _yes_labels(p.get("accessibility_summary"))} for p in (data.get("places") or [])[:5]]}
     if tool == "search_accessible_places":
         return {"razem": data.get("total", 0),
                 "miejsca": [{"nazwa": p["name"], "adres": p.get("address")} for p in (data.get("places") or [])[:5]]}
@@ -165,7 +224,8 @@ def answer_messages(question: str, tool: str, data: dict) -> list[dict]:
     return [
         {"role": "system", "content": "Jesteś asystentem dostępności Krakowa. Odpowiadaj po polsku, krótko (2-4 zdania), "
                                       "wyłącznie na podstawie danych z narzędzia. Cecha 'tak' znaczy, że udogodnienie jest; "
-                                      "nie, że go nie ma; brak cechy = brak danych. Nie zgaduj. Podaj pewność danych (0-1)."},
+                                      "nie, że go nie ma; brak cechy = brak danych. Nie zgaduj. Podaj pewność danych (0-1). "
+                                      "Zacznij od nazwy i adresu znalezionego miejsca."},
         {"role": "user", "content": f"Pytanie: {question}\n\nDane z narzędzia {tool}:\n"
                                     f"{json.dumps(compact_for_model(tool, data), ensure_ascii=False)[:MAX_TOOL_CHARS]}"},
     ]
@@ -184,8 +244,39 @@ class ChatAssistant:
             return {"state": "rules", "model": "rules", "tools": names}
         return {"state": self.model.state(), "model": self.model.name, "tools": names}
 
+    async def _call(self, name: str, args: dict, emit) -> dict:
+        emit(("tool_call", {"name": name, "arguments": args, "chosen_by": "chain"}))
+        data = await self.tools.call(name, args)
+        emit(("tool_result", {"name": name, "result": data}))
+        return data
+
+    async def _follow_up(self, name: str, args: dict, data: dict, emit) -> tuple[str, dict]:
+        """F51: a location → what is within 500 m of it (the MCP tools again); a place missing by name → its
+        location and surroundings. Returns the tool and data the answer is written from."""
+        tools = {t["name"] for t in self.tools.definitions}
+        not_found = ""
+        if (name == "check_accessibility" and not data.get("matches") and "error" not in data
+                and "find_location" in tools):
+            not_found = data.get("message") or ""
+            name, data = "find_location", await self._call("find_location", {"query": args["place_name"]}, emit)
+            if not data.get("locations"):
+                return "check_accessibility", {"matches": [], "message": not_found}
+        if name == "find_location" and data.get("locations") and "places_nearby" in tools:
+            location = data["locations"][0]
+            nearby = await self._call("places_nearby", {"lat": location["lat"], "lon": location["lon"],
+                                                        "radius_m": NEARBY_RADIUS_M}, emit)
+            if "error" in nearby:
+                return "places_nearby", nearby
+            note = (f"{not_found} Pokazuję okolicę tej lokalizacji." if not_found else "")
+            return "places_nearby", {**nearby, "location": location, "not_found": note}
+        return name, data
+
     async def ask(self, question: str, emit: Callable[[tuple[str, dict]], None]) -> None:
         emit(("status", {"stage": "received"}))
+        if is_general(question):
+            emit(("token", {"text": HELP_ANSWER}))
+            emit(("done", {"answer": HELP_ANSWER, "model": "rules", "tool": None}))
+            return
         definitions = self.tools.definitions
         model = self.model
         if model is not None and model.state() == "off" and hasattr(model, "start_loading"):
@@ -208,6 +299,7 @@ class ChatAssistant:
         emit(("tool_call", {"name": name, "arguments": args, "chosen_by": chosen_by}))
         data = await self.tools.call(name, args)
         emit(("tool_result", {"name": name, "result": data}))
+        name, data = await self._follow_up(name, args, data, emit)
 
         answer, answered_by = "", "rules"
         if use_model:

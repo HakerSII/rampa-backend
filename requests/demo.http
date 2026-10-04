@@ -468,6 +468,21 @@ Content-Type: application/json
 
 {"source": "catalog"}
 
+### F51a. Open API: coordinates of a place or address (database first, then Nominatim with GEOCODER=nominatim)
+GET http://localhost:8000/public/v1/geocode?q=teatru slowackiego
+X-Api-Key: demo-key
+
+### F51b. Open API: places within 500 m, nearest first
+GET http://localhost:8000/public/v1/places/nearby?lat=50.0603&lon=19.9238&radius_m=500
+X-Api-Key: demo-key
+
+### F51c. Chat: location → surroundings (find_location, then places_nearby)
+POST {{base}}/ai/chat/stream
+Content-Type: application/json
+Accept: text/event-stream
+
+{"question": "co jest w pobliżu Muzeum Narodowego?"}
+
 ### 4a-TXT. AI from text: "winda od dwóch tygodni nie działa" → elevator / no / temporary
 POST {{base}}/ai/parse-text
 Authorization: Bearer {{anna}}

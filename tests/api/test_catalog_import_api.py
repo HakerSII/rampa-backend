@@ -37,3 +37,16 @@ def test_shipped_catalog_is_the_full_main_branch_catalogue():
     assert len(data) > 6000
     assert sum(1 for e in data if e["features"]) > 1400
     assert {"ref", "name", "category", "lat", "lon", "features"} <= set(data[0])
+
+
+def test_place_card_has_kind_and_hours(tmp_path):
+    f = tmp_path / "catalog.json"
+    f.write_text(json.dumps([{"ref": "osm:node/8", "name": "Ogród", "category": "culture", "kind": "theme_park",
+                              "lat": 50.07, "lon": 19.99, "opening_hours": "Sa,Su 10:00-19:00", "features": {}}]),
+                 encoding="utf-8")
+    c = client(tmp_path, catalog_file=str(f))
+    c.post("/api/v1/admin/imports", headers=ADMIN, json={"source": "catalog"})
+    pid = c.get("/api/v1/places", params={"q": "Ogród", "lat": 50.07, "lon": 19.99}).json()["items"][0]["id"]
+    card = c.get(f"/api/v1/places/{pid}").json()
+    assert card["kind"] == "theme_park" and card["opening_hours"] == [{"text": "Sa,Su 10:00-19:00"}]
+    assert card["category"]["key"] == "culture"

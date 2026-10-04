@@ -33,7 +33,7 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `TRUSTED_PROXY_HOPS` | `0` | `0` = socket IP (X-Forwarded-For ignored, cannot be spoofed) · **Render: `1`** = the address Render's proxy appended to X-Forwarded-For |
 | **OSM** | | |
 | `OSM_FILE` | `data/osm_krakow_tauron.json` | snapshot used by `POST /admin/imports {"source":"osm_file"}` and as the Overpass fallback |
-| `GEOCODER` | `local` | `local` = place index only (offline, deterministic) · `nominatim` = local places first, then Nominatim hits in Kraków; failure → local |
+| `GEOCODER` | `local` | `local` = place index only (offline, deterministic) · `nominatim` = local places first, then Nominatim hits in Kraków (1 request/s, nominative retry); failure → local. **Set `nominatim` in production**: the app's search box and the chat's `find_location` use it for addresses (F51) |
 | `NOMINATIM_URL` | `https://nominatim.openstreetmap.org/search` | Nominatim search endpoint |
 | `OVERPASS_URL` | `https://overpass-api.de/api/interpreter` | used by `POST /admin/imports {"source":"overpass"}`; failure / empty → `OSM_FILE` |
 | `CITY_CONFIG` | `data/cities/krakow.json` | city JSON (F37): name, `viewbox`, `center`, `osm_radius_m`, named `areas` with keywords, `category_groups` with categories + keywords. Invalid file → the app does not start |

@@ -109,6 +109,7 @@ class Place:
     contact: dict = field(default_factory=dict)  # {phone, website, email}
     photo_ids: list[str] = field(default_factory=list)  # owner/presentation photos
     place_type: str = "venue"  # PlaceType value
+    kind: str = ""  # F49: OSM subtype (theme_park, cafe …) shown on the card; category stays the filter key
 
 
 @dataclass(slots=True)

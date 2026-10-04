@@ -5308,6 +5308,159 @@
         }
       }
     },
+    "/public/v1/geocode": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Geocode",
+        "description": "F51: coordinates of a place or address, like the app's search box: places of the database first, then the\ngeocoder (GEOCODER=nominatim, bounded to the city).",
+        "operationId": "geocode_public_v1_geocode_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicGeoPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/v1/places/nearby": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Places Nearby",
+        "description": "F51: places within radius_m (50–2000, default 500) of the point, nearest first.",
+        "operationId": "places_nearby_public_v1_places_nearby_get",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "title": "Lon"
+            }
+          },
+          {
+            "name": "radius_m",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 500,
+              "title": "Radius M"
+            }
+          },
+          {
+            "name": "features",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Features"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicNearbyPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/public/v1/places/{place_id}": {
       "get": {
         "tags": [
@@ -8329,6 +8482,11 @@
             ],
             "title": "Match"
           },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": ""
+          },
           "short_description": {
             "type": "string",
             "title": "Short Description"
@@ -8521,6 +8679,11 @@
               }
             ],
             "title": "Match"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": ""
           }
         },
         "type": "object",
@@ -8629,6 +8792,128 @@
           "last_verified"
         ],
         "title": "PublicFeature"
+      },
+      "PublicGeoHit": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "lat",
+          "lon",
+          "place_id"
+        ],
+        "title": "PublicGeoHit"
+      },
+      "PublicGeoPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PublicGeoHit"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "PublicGeoPage"
+      },
+      "PublicNearbyPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PublicNearbyPlace"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "radius_m": {
+            "type": "integer",
+            "title": "Radius M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "radius_m"
+        ],
+        "title": "PublicNearbyPage"
+      },
+      "PublicNearbyPlace": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "accessibility_summary": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureKey"
+            },
+            "type": "array",
+            "title": "Accessibility Summary"
+          },
+          "distance_m": {
+            "type": "integer",
+            "title": "Distance M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "category",
+          "address",
+          "location",
+          "accessibility_summary",
+          "distance_m"
+        ],
+        "title": "PublicNearbyPlace"
       },
       "PublicPlace": {
         "properties": {

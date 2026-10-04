@@ -27,7 +27,7 @@ from app.domain import check as domain_check, osm as domain_osm, suggestions, tr
 from app.domain.geo import haversine_m, in_bbox, parse_bbox
 from app.domain import recommend as recommend_domain
 from app.domain.city import City
-from app.domain.text import clean_text, is_email, is_http_url, is_phone
+from app.domain.text import clean_text, is_email, is_http_url, is_phone, name_matches, nominative
 from app.domain.recommend import Intent, Recommendation
 from app.domain.route import RouteResult, plan_route
 from app.domain.text_parse import TextSuggestion, parse_text
@@ -441,7 +441,7 @@ class UseCases:
         for place in self.repo.list_places():
             if category and place.category != category:
                 continue
-            if q and q.lower() not in place.name.lower():
+            if q and not name_matches(q, place.name):  # F50: no diacritics / inflection needed
                 continue
             self._refresh_expired(place.id)
             states = self.repo.states_for(place.id)
@@ -519,8 +519,30 @@ class UseCases:
             raise ValidationFailed("q: at least 2 characters")
         hits = [GeocodeHit(f"{p.name}, {p.address}" if p.address else p.name, p.id, p.location)
                 for p in self.repo.list_places()
-                if needle in p.name.casefold() or needle in (p.address or "").casefold()]
+                if name_matches(q, p.name) or needle in (p.address or "").casefold()]  # F50/F51: like the search
         return hits[:10]
+
+    def places_nearby(self, lat: float, lon: float, radius_m: int = 500,
+                      features: list[FeatureKey] | None = None, limit: int = 50) -> list[tuple[Place, int]]:
+        """F51: places within radius_m of a point (50–2000 m), nearest first, with the distance in metres."""
+        if not 50 <= radius_m <= 2000:
+            raise ValidationFailed("radius_m: 50..2000")
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            raise ValidationFailed("lat/lon out of range")
+        here = GeoPoint(lat, lon)
+        found = []
+        for place in self.repo.list_places():
+            distance = haversine_m(place.location, here)
+            if distance > radius_m:
+                continue
+            if features:
+                self._refresh_expired(place.id)
+                states = self.repo.states_for(place.id)
+                if not all(f in states and states[f].state == StateValue.YES for f in features):
+                    continue
+            found.append((place, round(distance)))
+        found.sort(key=lambda x: x[1])
+        return found[:limit]
 
     async def geocode_live(self, q: str) -> list[GeocodeHit]:
         """F27: local places first (they have data), then live geocoder hits; geocoder failure → local only."""
@@ -529,12 +551,18 @@ class UseCases:
             return local
         try:
             external = await self.geocoder.search(q.strip())
+            variant = nominative(q.strip())
+            if not local and not external and variant and variant != q.strip():
+                # F51: the geocoder does not decline Polish ("Tauron Areny"): one more try with the nominative
+                local = self.geocode(variant)
+                external = await self.geocoder.search(variant)
         except Exception as e:  # noqa: BLE001 — network / quota / parse → offline answer
             log.warning("geocoder failed (%s) → local only", e)
             return local
-        places = self.repo.list_places()
+        # a geocoder hit duplicates a listed local hit (same spot) → dropped; next to any other place it stays (F51:
+        # with the full catalogue almost every address has some place within 50 m)
         fresh = [h for h in external
-                 if not any(haversine_m(p.location, h.location) <= domain_osm.MATCH_RADIUS_M for p in places)]
+                 if not any(haversine_m(l.location, h.location) <= domain_osm.MATCH_RADIUS_M for l in local)]
         return (local + fresh)[:10]
 
     def get_place(self, place_id: str) -> Place:
@@ -980,13 +1008,23 @@ class UseCases:
             place = by_ref.get(e.get("ref")) or next(
                 (p for p in by_name.get(name.lower(), []) if haversine_m(p.location, here) <= domain_osm.MATCH_RADIUS_M),
                 None)
+            contact = {k: str(e[k]) for k in ("phone", "website") if e.get(k)}
+            hours = clean_text(str(e.get("opening_hours") or ""))
             if place:
                 result.places_matched += 1
+                # fill what is missing (catalogue imported before kind/hours existed); values already set stay
+                if not place.kind and e.get("kind"):
+                    place.kind = clean_text(str(e["kind"]))[:40]
+                if not place.opening_hours and hours:
+                    place.opening_hours = [{"text": hours}]
+                if not place.address and e.get("address"):
+                    place.address = clean_text(str(e["address"]))
+                place.contact = {**contact, **place.contact}
             else:
-                contact = {k: str(e[k]) for k in ("phone", "website") if e.get(k)}
                 place = Place(self.ids.new("plc_osm"), name, str(e.get("category") or "other"), here,
                               address=clean_text(str(e.get("address") or "")), external_id=e.get("ref"),
-                              contact=contact)
+                              contact=contact, opening_hours=[{"text": hours}] if hours else [],
+                              kind=clean_text(str(e.get("kind") or ""))[:40])
                 self.repo.add_place(place)
                 if place.external_id:
                     by_ref[place.external_id] = place

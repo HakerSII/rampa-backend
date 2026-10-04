@@ -35,7 +35,7 @@ def test_conversion_maps_categories_and_features():
                                            "baby_changing_table": "yes"}  # open_24h: no Rampa feature
     assert e["osm:node/2"] | {} == {"ref": "osm:node/2", "name": "Kawiarnia Bez Danych", "category": "cafe",
                                     "lat": 50.06, "lon": 19.94, "address": "Rynek 1", "phone": "+48 12 000 00 00",
-                                    "website": "https://kawa.example", "features": {}}
+                                    "website": "https://kawa.example", "kind": "cafe", "features": {}}
     assert "osm:node/4" not in e  # unnamed
 
 
@@ -79,3 +79,27 @@ def test_only_admin():
     with pytest.raises(Forbidden):
         run_as = asyncio.run(uc.import_catalog(user(uc, "anna"), entries()))
         assert run_as is None
+
+
+def test_kind_and_opening_hours_are_kept():
+    data = from_accessly([{"ref": "node/5", "name": "Ogród Doświadczeń", "category": "kultura", "kind": "theme_park",
+                           "lat": 50.07, "lng": 19.99, "openingHours": "Sa,Su 10:00-19:00"}])
+    assert data[0]["kind"] == "theme_park" and data[0]["opening_hours"] == "Sa,Su 10:00-19:00"
+    uc = make_use_cases()
+    run(uc, data)
+    p = next(p for p in uc.repo.list_places() if p.name == "Ogród Doświadczeń")
+    assert p.kind == "theme_park" and p.opening_hours == [{"text": "Sa,Su 10:00-19:00"}]
+
+
+def test_reimport_fills_missing_kind_hours_address_and_contact():
+    """A place imported before kind/hours existed gets them on the next import; values already set stay."""
+    uc = make_use_cases()
+    run(uc, [{"ref": "osm:node/6", "name": "Ogród", "category": "culture", "lat": 50.07, "lon": 19.99, "features": {}}])
+    p = next(p for p in uc.repo.list_places() if p.name == "Ogród")
+    p.address = "Al. Pokoju 68"  # set meanwhile (e.g. by the owner): kept
+    r = run(uc, [{"ref": "osm:node/6", "name": "Ogród", "category": "culture", "lat": 50.07, "lon": 19.99,
+                  "kind": "park rozrywki", "opening_hours": "Sa,Su 10:00-19:00", "address": "inny",
+                  "phone": "+48 1", "features": {}}])
+    assert r.places_matched == 1
+    assert p.kind == "park rozrywki" and p.opening_hours == [{"text": "Sa,Su 10:00-19:00"}]
+    assert p.address == "Al. Pokoju 68" and p.contact == {"phone": "+48 1"}

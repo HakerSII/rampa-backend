@@ -89,3 +89,23 @@ async def test_fallback_uses_file_when_live_fails_or_is_empty():
 
 def test_overpass_payload_fixture_is_json():
     json.dumps(OVERPASS)  # keeps the fixture honest
+
+
+async def test_nominatim_waits_between_requests_usage_policy():
+    """F51: at most one request per min_interval_s (Nominatim policy: 1/s); the chat may ask twice in a row."""
+    import time
+
+    import httpx
+
+    from app.adapters.outbound.osm_live import NominatimGeocoder
+    stamps = []
+
+    def handler(request):
+        stamps.append(time.monotonic())
+        return httpx.Response(200, json=[])
+
+    geo = NominatimGeocoder("https://n.example/search", "test", transport=httpx.MockTransport(handler),
+                            min_interval_s=0.2)
+    await geo.search("a")
+    await geo.search("b")
+    assert stamps[1] - stamps[0] >= 0.19

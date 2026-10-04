@@ -39,6 +39,10 @@ def from_accessly(items: list[dict], kinds: set[str] | None = None) -> list[dict
         for key in ("address", "phone", "website"):
             if i.get(key):
                 entry[key] = str(i[key])
+        if kind:
+            entry["kind"] = kind  # OSM subtype (theme_park, cafe …): the card's label, the category stays for filters
+        if i.get("openingHours"):
+            entry["opening_hours"] = str(i["openingHours"])  # OSM opening_hours text
         entry["features"] = features
         out.append(entry)
     return out

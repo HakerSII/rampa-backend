@@ -69,6 +69,7 @@ class PlaceSummary(BaseModel):
     distance_m: int | None = None
     place_type: str = "venue"
     match: str | None = None  # F31: yes | partial | unknown | no for the requested / stored profile
+    kind: str = ""  # F49: OSM subtype (theme_park, cafe …), "" if none
 
 
 class PlaceOut(PlaceSummary):
@@ -168,6 +169,7 @@ def place_summary(place: Place, yes_features: list[FeatureKey], verification=Non
     return PlaceSummary(
         distance_m=distance,
         place_type=place.place_type,
+        kind=place.kind,
         verification=verification_out(verification) if verification else None,
         id=place.id, name=place.name,
         category=Category(key=place.category, label=CATEGORY_LABELS.get(place.category, place.category)),
