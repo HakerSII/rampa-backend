@@ -218,6 +218,105 @@
             }
           }
         }
+      },
+      "patch": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Update Me",
+        "description": "F54: change the display name (1–60 characters, plain text).",
+        "operationId": "update_me_api_v1_me_patch",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MePatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Delete Me",
+        "description": "F54: delete the account — signed out everywhere; contributions stay without the person.",
+        "operationId": "delete_me_api_v1_me_delete",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/auth/email/request": {
@@ -1243,6 +1342,183 @@
         }
       }
     },
+    "/api/v1/places/{place_id}/reviews": {
+      "get": {
+        "tags": [
+          "places"
+        ],
+        "summary": "List Reviews",
+        "description": "F55: newest first, the average and the caller's own review (guest: null).",
+        "operationId": "list_reviews_api_v1_places__place_id__reviews_get",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/places/{place_id}/reviews/me": {
+      "put": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Save Review",
+        "description": "F55: add or replace my review (an account needed: this device's anonymous identity → 403).",
+        "operationId": "save_review_api_v1_places__place_id__reviews_me_put",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Delete Review",
+        "operationId": "delete_review_api_v1_places__place_id__reviews_me_delete",
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/places/{place_id}/accessibility": {
       "get": {
         "tags": [
@@ -2055,6 +2331,22 @@
               "type": "integer",
               "default": 200,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "exclude_source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exclude Source"
             }
           },
           {
@@ -6750,7 +7042,20 @@
           "baby_changing_table",
           "stroller_space",
           "rest_areas",
-          "luggage_storage"
+          "luggage_storage",
+          "quiet_space",
+          "accessible_room",
+          "roll_in_shower",
+          "grab_bars",
+          "reception_24h",
+          "medical_equipment_allowed",
+          "kitchenette",
+          "open_24h",
+          "staff_english",
+          "staff_german",
+          "staff_ukrainian",
+          "information_sign",
+          "other_barrier"
         ],
         "title": "FeatureKey"
       },
@@ -7561,6 +7866,19 @@
           "marked"
         ],
         "title": "MarkedOut"
+      },
+      "MePatch": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "display_name"
+        ],
+        "title": "MePatch"
       },
       "MergeIn": {
         "properties": {
@@ -8482,6 +8800,18 @@
             ],
             "title": "Match"
           },
+          "rating": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
           "kind": {
             "type": "string",
             "title": "Kind",
@@ -8679,6 +9009,18 @@
               }
             ],
             "title": "Match"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
           },
           "kind": {
             "type": "string",
@@ -9997,6 +10339,108 @@
           "features"
         ],
         "title": "RevalidateOut"
+      },
+      "ReviewIn": {
+        "properties": {
+          "rating": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rating"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Text",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "rating"
+        ],
+        "title": "ReviewIn"
+      },
+      "ReviewOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "author": {
+            "$ref": "#/components/schemas/AuthorOut"
+          },
+          "rating": {
+            "type": "integer",
+            "title": "Rating"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "author",
+          "rating",
+          "text",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ReviewOut"
+      },
+      "ReviewPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average"
+          },
+          "mine": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "count",
+          "average",
+          "mine"
+        ],
+        "title": "ReviewPage"
       },
       "Role": {
         "type": "string",

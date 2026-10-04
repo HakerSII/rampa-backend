@@ -42,6 +42,20 @@ class FeatureKey(StrEnum):
     STROLLER_SPACE = "stroller_space"
     REST_AREAS = "rest_areas"
     LUGGAGE_STORAGE = "luggage_storage"
+    # F53: the Accessly catalogue (hotel rooms, opening hours, languages, quiet) + its report types
+    QUIET_SPACE = "quiet_space"
+    ACCESSIBLE_ROOM = "accessible_room"
+    ROLL_IN_SHOWER = "roll_in_shower"
+    GRAB_BARS = "grab_bars"
+    RECEPTION_24H = "reception_24h"
+    MEDICAL_EQUIPMENT_ALLOWED = "medical_equipment_allowed"
+    KITCHENETTE = "kitchenette"
+    OPEN_24H = "open_24h"
+    STAFF_ENGLISH = "staff_english"
+    STAFF_GERMAN = "staff_german"
+    STAFF_UKRAINIAN = "staff_ukrainian"
+    INFORMATION_SIGN = "information_sign"
+    OTHER_BARRIER = "other_barrier"
 
 
 class FeatureGroupKey(StrEnum):
@@ -189,6 +203,19 @@ FEATURE_GROUP: dict[FeatureKey, FeatureGroupKey] = {
     FeatureKey.STROLLER_SPACE: FeatureGroupKey.INSIDE,
     FeatureKey.REST_AREAS: FeatureGroupKey.INSIDE,
     FeatureKey.LUGGAGE_STORAGE: FeatureGroupKey.OTHER,
+    FeatureKey.QUIET_SPACE: FeatureGroupKey.OTHER,
+    FeatureKey.ACCESSIBLE_ROOM: FeatureGroupKey.INSIDE,
+    FeatureKey.ROLL_IN_SHOWER: FeatureGroupKey.TOILET,
+    FeatureKey.GRAB_BARS: FeatureGroupKey.TOILET,
+    FeatureKey.RECEPTION_24H: FeatureGroupKey.OTHER,
+    FeatureKey.MEDICAL_EQUIPMENT_ALLOWED: FeatureGroupKey.OTHER,
+    FeatureKey.KITCHENETTE: FeatureGroupKey.INSIDE,
+    FeatureKey.OPEN_24H: FeatureGroupKey.OTHER,
+    FeatureKey.STAFF_ENGLISH: FeatureGroupKey.OTHER,
+    FeatureKey.STAFF_GERMAN: FeatureGroupKey.OTHER,
+    FeatureKey.STAFF_UKRAINIAN: FeatureGroupKey.OTHER,
+    FeatureKey.INFORMATION_SIGN: FeatureGroupKey.VISION,
+    FeatureKey.OTHER_BARRIER: FeatureGroupKey.OTHER,
 }
 
 LABELS_PL: dict[str, str] = {
@@ -239,4 +266,17 @@ LABELS_PL: dict[str, str] = {
     FeatureKey.STROLLER_SPACE: "Miejsce na wózek dziecięcy",
     FeatureKey.REST_AREAS: "Miejsca odpoczynku",
     FeatureKey.LUGGAGE_STORAGE: "Przechowalnia bagażu",
+    FeatureKey.QUIET_SPACE: "Ciche miejsce",
+    FeatureKey.ACCESSIBLE_ROOM: "Pokój dostosowany dla osób z niepełnosprawnościami",
+    FeatureKey.ROLL_IN_SHOWER: "Prysznic bez progu",
+    FeatureKey.GRAB_BARS: "Uchwyty w łazience",
+    FeatureKey.RECEPTION_24H: "Recepcja całodobowa",
+    FeatureKey.MEDICAL_EQUIPMENT_ALLOWED: "Można przywieźć sprzęt medyczny (wózek, balkonik)",
+    FeatureKey.KITCHENETTE: "Aneks kuchenny",
+    FeatureKey.OPEN_24H: "Czynne całą dobę",
+    FeatureKey.STAFF_ENGLISH: "Obsługa po angielsku",
+    FeatureKey.STAFF_GERMAN: "Obsługa po niemiecku",
+    FeatureKey.STAFF_UKRAINIAN: "Obsługa po ukraińsku",
+    FeatureKey.INFORMATION_SIGN: "Tablica, komunikat",
+    FeatureKey.OTHER_BARRIER: "Inna bariera",
 }

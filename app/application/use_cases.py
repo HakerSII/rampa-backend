@@ -79,6 +79,7 @@ from app.domain.model import (
     Report,
     Session,
     User,
+    Review,
 )
 from app.seed import OSM_AUTHOR_ID, SEED_AUTHOR_ID, load_seed
 
@@ -1045,6 +1046,66 @@ class UseCases:
             self.recompute(place_id, feature)
         return result
 
+    # ------------------------------------------------------------------ F54 account settings
+    DELETED_NAME = "Usunięty użytkownik"
+
+    def update_me(self, user: User | None, display_name: str) -> User:
+        self._require_user(user)
+        name = clean_text(display_name or "").strip()
+        if not 1 <= len(name) <= 60:
+            raise ValidationFailed("display_name: 1..60 characters")
+        user.display_name = name
+        return user
+
+    def delete_account(self, user: User | None) -> None:
+        """Forget the person: sessions, favourites, needs, reviews, e-mail / Google / demo login. Observations,
+        reports and questions stay (the community's data), shown as DELETED_NAME."""
+        self._require_user(user)
+        for review in [r for r in self.repo.list_reviews() if r.author_id == user.id]:
+            self.repo.delete_review(review.place_id, user.id)
+        user.favorite_place_ids, user.needs, user.pref_features = [], [], []
+        user.email = user.google_sub = user.username = None
+        user.display_name = self.DELETED_NAME
+        self.repo.delete_sessions_of(user.id)
+
+    # ------------------------------------------------------------------ F55 reviews
+    @staticmethod
+    def _require_account(user: User | None) -> None:
+        if user is None:
+            raise Unauthorized("login required")
+        if not (user.email or user.google_sub or user.username):
+            raise Forbidden("an account is needed for reviews (sign in with e-mail)")
+
+    def save_review(self, user: User | None, place_id: str, rating: int, text: str = "") -> Review:
+        self._require_account(user)
+        self.get_place(place_id)
+        if not 1 <= int(rating) <= 5:
+            raise ValidationFailed("rating: 1..5")
+        text = clean_text(text or "").strip()
+        if len(text) > 500:
+            raise ValidationFailed("text: at most 500 characters")
+        now = self.clock.now()
+        old = self.repo.get_review(place_id, user.id)
+        review = Review(old.id if old else self.ids.new("rev"), place_id, user.id, int(rating), text,
+                        old.created_at if old else now, now)
+        self.repo.save_review(review)
+        return review
+
+    def delete_review(self, user: User | None, place_id: str) -> None:
+        self._require_user(user)
+        self.repo.delete_review(place_id, user.id)
+
+    def list_reviews(self, place_id: str, user: User | None = None) -> tuple[list[Review], Review | None]:
+        self.get_place(place_id)
+        items = sorted(self.repo.list_reviews(place_id), key=lambda r: r.updated_at, reverse=True)
+        mine = next((r for r in items if user and r.author_id == user.id), None)
+        return items, mine
+
+    def rating_for(self, place_id: str) -> dict | None:
+        """{avg (1 decimal), count} of a place's reviews, or None without any."""
+        stars = [r.rating for r in self.repo.list_reviews(place_id)]
+        return {"avg": round(sum(stars) / len(stars), 1), "count": len(stars)} if stars else None
+
     def _find_place(self, name: str, here: GeoPoint, external_id: str | None = None) -> Place | None:
         """Same external id, or the same name (case-insensitive) within MATCH_RADIUS_M."""
         for place in self.repo.list_places():
@@ -1811,8 +1872,9 @@ class UseCases:
 
     def map_observations(self, *, bbox: str | None = None, active: bool = True, feature: str | None = None,
                          value: str | None = None, current: bool = False, since: str | None = None,
-                         limit: int = 200) -> list[tuple[Observation, Place, str | None]]:
-        """F24: observations across places for the map, newest first, with place + report severity."""
+                         limit: int = 200, exclude_source: str | None = None) -> list[tuple[Observation, Place, str | None]]:
+        """F24: observations across places for the map, newest first, with place + report severity.
+        exclude_source (F52): e.g. open_data — imported facts are place features, not barrier reports."""
         if not 1 <= limit <= 500:
             raise ValidationFailed("limit: 1..500")
         try:
@@ -1821,6 +1883,7 @@ class UseCases:
             raise ValidationFailed(str(e)) from e
         feature_v = _enum(FeatureKey, feature, "feature") if feature else None
         value_v = _enum(ObservationValue, value, "value") if value else None
+        excluded = _enum(ObservationSource, exclude_source, "exclude_source") if exclude_source else None
         since_dt = None
         if since:
             try:  # "+01:00" often arrives as " 01:00" when not URL-encoded
@@ -1842,6 +1905,8 @@ class UseCases:
                 if active and (not validation.is_active(o) or trust.is_expired(o, now)):
                     continue
                 if value_v and o.value != value_v:
+                    continue
+                if excluded and o.source == excluded:
                     continue
                 if since_dt and o.created_at < since_dt:
                     continue

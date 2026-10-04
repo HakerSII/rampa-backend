@@ -69,6 +69,7 @@ class PlaceSummary(BaseModel):
     distance_m: int | None = None
     place_type: str = "venue"
     match: str | None = None  # F31: yes | partial | unknown | no for the requested / stored profile
+    rating: dict | None = None  # F55: {avg, count} of the reviews, null without any
     kind: str = ""  # F49: OSM subtype (theme_park, cafe …), "" if none
 
 
@@ -523,7 +524,9 @@ def user_out(user: User) -> UserOut:
 
 
 def public_name(display_name: str) -> str:
-    """'Anna Kowalska' → 'Anna K.' (privacy rule from mockups)."""
+    """'Anna Kowalska' → 'Anna K.' (privacy rule from mockups); a deleted account's placeholder stays whole."""
+    if display_name == "Usunięty użytkownik":  # UseCases.DELETED_NAME (F54)
+        return display_name
     parts = display_name.split()
     return f"{parts[0]} {parts[-1][0]}." if len(parts) > 1 else display_name
 

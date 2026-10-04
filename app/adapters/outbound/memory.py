@@ -11,6 +11,7 @@ from app.domain.model import (
     Observation,
     OwnershipRequest,
     Photo,
+    Review,
     Place,
     QueueItem,
     Report,
@@ -29,6 +30,7 @@ class InMemoryRepo:
         self.login_tokens: dict[str, LoginToken] = {}
         self.questions: dict[str, Question] = {}
         self.notifications: dict[str, Notification] = {}
+        self.reviews: dict[tuple[str, str], Review] = {}  # (place_id, author_id) → review (F55)
         self.places: dict[str, Place] = {}
         self.states: dict[str, dict[FeatureKey, FeatureStateRecord]] = defaultdict(dict)
         self.observations: dict[str, Observation] = {}  # insertion order = creation order
@@ -48,7 +50,8 @@ class InMemoryRepo:
 
     def all_ids(self) -> list[str]:
         return [*self.users, *self.places, *self.observations, *self.reports, *self.photos, *self.queue,
-                *self.ownership_requests, *self.questions, *self.notifications]
+                *self.ownership_requests, *self.questions, *self.notifications,
+                *(r.id for r in self.reviews.values())]
 
     # users / sessions
     def add_user(self, user: User) -> None:
@@ -134,6 +137,23 @@ class InMemoryRepo:
 
     def delete_photo(self, photo_id: str) -> None:
         self.photos.pop(photo_id, None)
+
+    # F55 reviews / F54 account deletion
+    def save_review(self, review: Review) -> None:
+        self.reviews[(review.place_id, review.author_id)] = review
+
+    def get_review(self, place_id: str, author_id: str) -> Review | None:
+        return self.reviews.get((place_id, author_id))
+
+    def list_reviews(self, place_id: str | None = None) -> list[Review]:
+        return [r for r in self.reviews.values() if place_id is None or r.place_id == place_id]
+
+    def delete_review(self, place_id: str, author_id: str) -> None:
+        self.reviews.pop((place_id, author_id), None)
+
+    def delete_sessions_of(self, user_id: str) -> None:
+        for token in [t for t, s in self.sessions.items() if s.user_id == user_id]:
+            del self.sessions[token]
 
     # moderation queue
     def add_queue_item(self, item: QueueItem) -> None:

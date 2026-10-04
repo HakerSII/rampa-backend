@@ -32,7 +32,7 @@ def test_conversion_maps_categories_and_features():
     assert e["osm:node/3"]["category"] == "hotel"
     assert e["osm:node/1"]["features"] == {"step_free_entrance": "yes"}
     assert e["osm:node/3"]["features"] == {"step_free_entrance": "no", "accessible_toilet": "partial",
-                                           "baby_changing_table": "yes"}  # open_24h: no Rampa feature
+                                           "baby_changing_table": "yes", "open_24h": "yes"}  # open_24h: F53
     assert e["osm:node/2"] | {} == {"ref": "osm:node/2", "name": "Kawiarnia Bez Danych", "category": "cafe",
                                     "lat": 50.06, "lon": 19.94, "address": "Rynek 1", "phone": "+48 12 000 00 00",
                                     "website": "https://kawa.example", "kind": "cafe", "features": {}}
@@ -47,7 +47,7 @@ def test_import_creates_every_named_place_with_facts_and_contact():
     uc = make_use_cases()
     before = len(uc.repo.list_places())
     r = run(uc, entries())
-    assert (r.places_created, r.places_matched, r.observations) == (3, 0, 4)
+    assert (r.places_created, r.places_matched, r.observations) == (3, 0, 5)
     assert len(uc.repo.list_places()) == before + 3
     kawa = next(p for p in uc.repo.list_places() if p.name == "Kawiarnia Bez Danych")
     assert kawa.address == "Rynek 1" and kawa.contact == {"phone": "+48 12 000 00 00", "website": "https://kawa.example"}

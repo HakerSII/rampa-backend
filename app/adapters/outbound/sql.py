@@ -33,6 +33,7 @@ from app.domain.model import (
     Observation,
     OwnershipRequest,
     Photo,
+    Review,
     Place,
     QueueItem,
     Report,
@@ -62,6 +63,9 @@ notifications = Table("notifications", md, Column("id", String, primary_key=True
                       Column("user_id", String), Column("kind", String), Column("text", String),
                       Column("created_at", String), Column("place_id", String), Column("ref_id", String),
                       Column("read", Boolean))
+reviews = Table("reviews", md, Column("id", String, primary_key=True), Column("seq", Integer),  # F55
+                Column("place_id", String), Column("author_id", String), Column("rating", Integer),
+                Column("text", String), Column("created_at", String), Column("updated_at", String))
 places = Table("places", md, Column("id", String, primary_key=True), Column("seq", Integer), Column("name", String),
                Column("category", String), Column("lat", Float), Column("lon", Float),
                Column("short_description", String), Column("address", String), Column("owner_id", String),
@@ -213,6 +217,9 @@ class SqlRepo(InMemoryRepo):
                                   created_at=_iso(q.created_at), feature=_s(q.feature), status=q.status,
                                   answer_text=q.answer_text, answered_by=q.answered_by,
                                   answered_at=_iso(q.answered_at), outcome=q.outcome)
+        for i, r in enumerate(self.reviews.values()):
+            yield reviews, dict(id=r.id, seq=i, place_id=r.place_id, author_id=r.author_id, rating=r.rating,
+                                text=r.text, created_at=_iso(r.created_at), updated_at=_iso(r.updated_at))
         for i, n in enumerate(self.notifications.values()):
             yield notifications, dict(id=n.id, seq=i, user_id=n.user_id, kind=n.kind, text=n.text,
                                       created_at=_iso(n.created_at), place_id=n.place_id, ref_id=n.ref_id,
@@ -276,6 +283,10 @@ class SqlRepo(InMemoryRepo):
                     r["id"], r["place_id"], r["author_id"], r["text"], _dt(r["created_at"]),
                     _e(FeatureKey, r["feature"]), r["status"], r["answer_text"], r["answered_by"],
                     _dt(r["answered_at"]), r["outcome"])
+            for r in rows(reviews):
+                self.reviews[(r["place_id"], r["author_id"])] = Review(
+                    r["id"], r["place_id"], r["author_id"], int(r["rating"]), r["text"] or "",
+                    _dt(r["created_at"]), _dt(r["updated_at"]))
             for r in rows(notifications):
                 self.notifications[r["id"]] = Notification(r["id"], r["user_id"], r["kind"], r["text"],
                                                            _dt(r["created_at"]), r["place_id"], r["ref_id"],

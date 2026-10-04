@@ -1,0 +1,60 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F54/F55 account settings + reviews
+  version: 0.1.0-mvp
+servers:
+  - url: http://localhost:8000/api/v1
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+security: [{ bearer: [] }]
+paths:
+  /me:
+    patch:
+      summary: Change the display name
+      operationId: updateMe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [display_name], properties: { display_name: { type: string, minLength: 1, maxLength: 60 } } }
+      responses:
+        "200": { description: User }
+        "400": { description: Invalid name }
+        "401": { description: Login required }
+    delete:
+      summary: Delete the account (contributions stay, anonymised)
+      operationId: deleteMe
+      responses:
+        "204": { description: "Deleted, signed out" }
+        "401": { description: Login required }
+  /places/{placeId}/reviews:
+    get:
+      summary: Reviews of a place
+      operationId: listReviews
+      security: []
+      parameters: [{ name: placeId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: "{items: [{id, author, rating, text, created_at}], count, average, mine}" }
+  /places/{placeId}/reviews/me:
+    put:
+      summary: Add or change my review
+      operationId: saveReview
+      parameters: [{ name: placeId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [rating], properties: { rating: { type: integer, minimum: 1, maximum: 5 }, text: { type: string, maxLength: 500 } } }
+      responses:
+        "200": { description: Review }
+        "400": { description: Invalid }
+        "401": { description: Login required }
+        "403": { description: An account is needed (not an anonymous device) }
+        "404": { description: Unknown place }
+    delete:
+      summary: Delete my review
+      operationId: deleteReview
+      parameters: [{ name: placeId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Deleted }

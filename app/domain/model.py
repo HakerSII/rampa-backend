@@ -42,6 +42,18 @@ class User:
 
 
 @dataclass(slots=True)
+class Review:
+    """F55: one account's stars (1–5) and text for a place; PUT again replaces it."""
+    id: str
+    place_id: str
+    author_id: str
+    rating: int
+    text: str
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass(slots=True)
 class Session:
     token: str
     user_id: str

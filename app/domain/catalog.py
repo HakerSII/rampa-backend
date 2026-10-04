@@ -10,6 +10,11 @@ ATTR_TO_RAMPA = {
     "digital_materials": "accessible_digital_materials", "dogs": "pets_allowed",
     "assistance_dogs": "assistance_dog_allowed", "pram_space": "stroller_space", "luggage": "luggage_storage",
     "rest_area": "rest_areas", "disabled_parking": "disabled_parking",
+    # F53
+    "quiet": "quiet_space", "accessible_room": "accessible_room", "roll_in_shower": "roll_in_shower",
+    "grab_bars": "grab_bars", "reception_24h": "reception_24h", "medical_equipment": "medical_equipment_allowed",
+    "kitchenette": "kitchenette", "open_24h": "open_24h", "lang_en": "staff_english", "lang_de": "staff_german",
+    "lang_uk": "staff_ukrainian",
 }
 VALUE_TO_RAMPA = {"yes": "yes", "no": "no", "partial": "partial", "na": "not_applicable"}
 CATEGORY_TO_RAMPA = {"gastronomia": "restaurant", "kultura": "culture", "uslugi": "office", "zakupy": "shop",

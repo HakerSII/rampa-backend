@@ -20,7 +20,7 @@ async def test_seeded_answers_for_user_questions(uc, place, profile, answer):
 
 async def test_accessibility_lists_all_features(uc):
     states = uc.get_accessibility("plc_urzad")
-    assert len(states) == 39 and states[F.LOWERED_CURB].state == "yes"
+    assert len(states) == 52 and states[F.LOWERED_CURB].state == "yes"
 
 
 async def test_search_by_new_feature(uc):

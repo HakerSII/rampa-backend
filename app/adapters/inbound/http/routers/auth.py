@@ -41,6 +41,23 @@ async def me(user: CurrentUser):
     return user_out(user)
 
 
+class MePatch(BaseModel):  # F54
+    display_name: str
+
+
+@router.patch("/me", response_model=UserOut)
+async def update_me(body: MePatch, uc: UC, user: CurrentUser):
+    """F54: change the display name (1–60 characters, plain text)."""
+    return user_out(uc.update_me(user, body.display_name))
+
+
+@router.delete("/me", status_code=204)
+async def delete_me(uc: UC, user: CurrentUser):
+    """F54: delete the account — signed out everywhere; contributions stay without the person."""
+    uc.delete_account(user)
+    return Response(status_code=204)
+
+
 # ---------------------------------------------------------------- F33 e-mail login
 class EmailRequestIn(BaseModel):
     email: str
