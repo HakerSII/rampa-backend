@@ -56,6 +56,8 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `AI_MODEL_PATH` | `models/gpu/gpu-int4-rtn-block-32` | ONNX model folder (`onnx`); needs `uv sync --extra ai` |
 | `AI_VISION_FALLBACK` | `mock` | `gemini` failed → `onnx` = try the local model (`AI_MODEL_PATH`) before mock; skipped with a warning when onnxruntime-genai or the model folder is missing |
 | `AI_ONNX_TIMEOUT_S` | `180` | max time for the local fallback model (slow on CPU) |
+
+The same local model runs in the browser too (Accessly `/chat`, Transformers.js on WebGPU): `uv run --with onnx python scripts/export_webgpu_model.py` repackages `AI_MODEL_PATH` into `models/webgpu/phi-3.5-vision/` (Transformers.js `phi3_v` layout, dtype `q4f16`; weight files hard-linked, float32 casts at the image-feature edges). Native onnxruntime refuses hard-linked weight files; browsers do not care.
 | `GEMINI_API_KEY` | — | **secret**; from https://aistudio.google.com/apikey, sent as the `x-goog-api-key` header |
 | `GEMINI_MODEL` | `gemini-3.8-flash` | Gemini model name (Google retired `gemini-2.5-flash` for new users) |
 | `GEMINI_API_URL` | `https://generativelanguage.googleapis.com/v1beta` | API base URL |
