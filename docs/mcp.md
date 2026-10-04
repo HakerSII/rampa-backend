@@ -20,6 +20,11 @@ flowchart LR
 |---|---|---|
 | `check_accessibility` | `place_name` (text), `profile` = `wheelchair` (default) · `crutches` · `stroller` · `blind` · `low_vision` · `deaf` · `assistance_dog` | `{query, profile, matches: [{place, answer: yes/partial/no/unknown, confidence, advice, accessibility}], total_found}`. Unknown place → `{matches: [], message: "Nie znaleziono …"}` |
 | `search_accessible_places` | `features`: list of feature keys, all required (e.g. `["step_free_entrance", "elevator"]`; full list `GET /api/v1/accessibility/features`) | `{features, places: [{id, name, address, accessibility_summary}], total}` |
+| `find_location` (F51) | `query`: place name, street or address (Polish endings / no diacritics fine) | `{query, locations: [{label, lat, lon, place_id}]}` — database places first, then OpenStreetMap (as the app's search box). None → `{locations: [], message}` |
+| `places_nearby` (F51) | `lat`, `lon`, `radius_m` = 500 (50–2000) | `{lat, lon, radius_m, total, places: [{id, name, address, category, distance_m, accessibility_summary}]}` nearest first |
+
+Typical chain: `find_location("Tauron Arena")` → `places_nearby(lat, lon)` → "what is within 500 m". The server chat
+(`/api/v1/ai/chat/stream`) does this chain by itself.
 
 The tools never raise. Backend errors come back as `{"error": "…"}`, so the assistant can tell the user that the data is unavailable.
 
