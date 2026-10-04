@@ -3,7 +3,7 @@ import asyncio
 
 import pytest
 
-from app.application.chat import ChatAssistant, answer_from_data, choose_tool, parse_tool_call
+from app.application.chat import ChatAssistant, answer_from_data, choose_tool, compact_for_model, parse_tool_call
 from clients.rampa_tools import TOOL_DEFS
 
 TOOLS = [t["name"] for t in TOOL_DEFS]
@@ -160,3 +160,13 @@ def test_empty_model_answer_falls_back_to_the_template():
 def test_tool_error_is_reported_in_the_answer():
     events = run(ChatAssistant(None, FakeTools({"error": "Kraków bez barier API niedostępne: 500"})), "Wawel")
     assert events[-1][0] == "done" and "niedostępne" in events[-1][1]["answer"]
+
+
+def test_tool_data_for_the_model_is_compact():
+    data = compact_for_model("check_accessibility", MNK)
+    assert data == {"miejsca": [{"nazwa": "Muzeum Narodowe w Krakowie", "adres": "al. 3 Maja 1", "odpowiedz": "yes",
+                                 "pewnosc": 0.5, "porada": "Wejście bez barier potwierdzone.",
+                                 "cechy": {"winda": "tak", "podjazd": "nie"}}]}
+    assert compact_for_model("search_accessible_places", {"places": [{"id": "x", "name": "A", "address": "ul. 1",
+                                                                      "accessibility_summary": {}}], "total": 1}) ==         {"razem": 1, "miejsca": [{"nazwa": "A", "adres": "ul. 1"}]}
+    assert compact_for_model("check_accessibility", {"error": "x"}) == {"error": "x"}

@@ -144,13 +144,30 @@ def tool_messages(question: str, definitions: list[dict]) -> list[dict]:
     ]
 
 
+def compact_for_model(tool: str, data: dict) -> dict:
+    """Only what the answer needs (no ids, dates, per-feature confidence): a short prompt is much faster on CPU."""
+    if "error" in data:
+        return data
+    if tool == "search_accessible_places":
+        return {"razem": data.get("total", 0),
+                "miejsca": [{"nazwa": p["name"], "adres": p.get("address")} for p in (data.get("places") or [])[:5]]}
+    if not data.get("matches"):
+        return {"miejsca": [], "info": data.get("message", "")}
+    return {"miejsca": [{
+        "nazwa": m["place"]["name"], "adres": m["place"].get("address"), "odpowiedz": m.get("answer"),
+        "pewnosc": m.get("confidence"), "porada": m.get("advice"),
+        "cechy": {_label(k): "tak" if v.get("value") else "nie"
+                  for k, v in (m.get("accessibility") or {}).items() if v.get("value") is not None},
+    } for m in data["matches"][:2]]}
+
+
 def answer_messages(question: str, tool: str, data: dict) -> list[dict]:
     return [
         {"role": "system", "content": "Jesteś asystentem dostępności Krakowa. Odpowiadaj po polsku, krótko (2-4 zdania), "
-                                      "wyłącznie na podstawie danych z narzędzia. value=true znaczy, że udogodnienie jest; "
-                                      "false, że go nie ma; brak cechy = brak danych. Nie zgaduj. Podaj pewność danych."},
+                                      "wyłącznie na podstawie danych z narzędzia. Cecha 'tak' znaczy, że udogodnienie jest; "
+                                      "nie, że go nie ma; brak cechy = brak danych. Nie zgaduj. Podaj pewność danych (0-1)."},
         {"role": "user", "content": f"Pytanie: {question}\n\nDane z narzędzia {tool}:\n"
-                                    f"{json.dumps(data, ensure_ascii=False)[:MAX_TOOL_CHARS]}"},
+                                    f"{json.dumps(compact_for_model(tool, data), ensure_ascii=False)[:MAX_TOOL_CHARS]}"},
     ]
 
 
