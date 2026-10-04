@@ -1,0 +1,77 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F45 Photo metadata + mismatch check
+  version: 0.1.0-mvp
+  description: >
+    Uploads carry what the user says the photo shows; the AI check compares it with what the
+    model sees and deletes the photo on a mismatch (400 PHOTO_MISMATCH / stream error event).
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: media
+  - name: ai
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+  schemas:
+    Expected:
+      type: object
+      required: [element]
+      properties:
+        element: { type: string, description: FeatureKey }
+        current_state: { type: [string, "null"], enum: [works, partially_works, not_working, null] }
+security: [{ bearer: [] }]
+paths:
+  /uploads:
+    post:
+      tags: [media]
+      summary: Upload a photo with optional metadata
+      operationId: uploadPhotoWithMetadata
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+                place_id: { type: string }
+                element: { type: string }
+                current_state: { type: string, enum: [works, partially_works, not_working] }
+      responses:
+        "201":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  url: { type: string }
+                  place_id: { type: [string, "null"] }
+                  element: { type: [string, "null"] }
+                  current_state: { type: [string, "null"] }
+        "400": { description: Invalid file or metadata }
+  /ai/image-tags:
+    post:
+      tags: [ai]
+      summary: Image check; with expected values (or upload metadata) a mismatch deletes the photo
+      operationId: imageTagsExpected
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [photo_ids]
+              properties:
+                photo_ids: { type: array, items: { type: string } }
+                place_id: { type: [string, "null"] }
+                expected: { $ref: "#/components/schemas/Expected" }
+      responses:
+        "200": { description: Suggestions (as F6) }
+        "400":
+          description: >
+            PHOTO_MISMATCH — details {expected, suggested, description, deleted_photo_ids};
+            also NOT_A_REAL_PLACE / VALIDATION_ERROR

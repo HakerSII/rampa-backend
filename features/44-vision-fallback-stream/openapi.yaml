@@ -1,0 +1,41 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — MVP — F44 Vision fallback + stream
+  version: 0.1.0-mvp
+  description: >
+    The image check streams its progress (Server-Sent Events) while the vision chain
+    (Gemini → local ONNX → mock) runs; the last event is the result or an error.
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: ai
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+security: [{ bearer: [] }]
+paths:
+  /ai/image-tags/stream:
+    post:
+      tags: [ai]
+      summary: Image check with streamed progress (SSE)
+      operationId: imageTagsStream
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [photo_ids]
+              properties:
+                photo_ids: { type: array, items: { type: string }, minItems: 1, maxItems: 5 }
+                place_id: { type: [string, "null"] }
+      responses:
+        "200":
+          description: >
+            text/event-stream: status events (received, analyzing, fallback), keepalive comments,
+            then one result event (as POST /ai/image-tags) or one error event.
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "401": { description: Login required }
+        "429": { description: Rate limited }

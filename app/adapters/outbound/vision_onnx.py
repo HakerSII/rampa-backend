@@ -7,6 +7,14 @@ from app.adapters.outbound.vision_prompt import INSTRUCTION, parse_analysis as _
 from app.domain.model import ImageAnalysis
 
 MODEL_NAME = "phi-3.5-vision-onnx"
+
+
+def onnx_available(model_path: str) -> bool:
+    """F44: the local model can run here — onnxruntime-genai installed and the model folder present."""
+    import importlib.util
+    from pathlib import Path
+
+    return importlib.util.find_spec("onnxruntime_genai") is not None and Path(model_path).is_dir()
 PROMPT = f"<|user|>\n<|image_1|>\n{INSTRUCTION}<|end|>\n<|assistant|>\n"
 
 
@@ -15,6 +23,8 @@ def parse_analysis(raw: str) -> ImageAnalysis:
 
 
 class OnnxPhiVisionAnalyzer:
+    LABEL = MODEL_NAME
+
     def __init__(self, model_path: str, max_length: int = 4096):
         self.model_path = model_path
         self.max_length = max_length

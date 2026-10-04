@@ -58,6 +58,7 @@ from app.domain.errors import (
     Forbidden,
     NotARealPlace,
     NotFound,
+    PhotoMismatch,
     Unauthorized,
     ValidationFailed,
 )
@@ -1253,23 +1254,43 @@ class UseCases:
 
     # ------------------------------------------------------------------ AI suggestions (F6)
     async def analyze_image(self, user: User | None, photo_ids: list[str],
-                            place_id: str | None = None) -> ImageTagsResult:
-        """Suggestions for the report form. Never changes feature state."""
+                            place_id: str | None = None, on_step=None,
+                            expected: dict | None = None) -> ImageTagsResult:
+        """Suggestions for the report form. Never changes feature state.
+        on_step(event): progress of a vision chain (F44 stream); ignored by a single model.
+        expected {element, current_state?} (else the photos' upload metadata, F45): the model's suggestion
+        must agree, otherwise the photos are deleted and PhotoMismatch is raised."""
         self._require_user(user)
         if not 1 <= len(photo_ids) <= MAX_PHOTOS:
             raise ValidationFailed(f"photo_ids: 1..{MAX_PHOTOS} required")
         photos = [self.repo.get_photo(p) for p in self._check_photos(photo_ids)]
+        expected = self._expected(expected, photos)
         if place_id:
             self.get_place(place_id)
         if self.vision is None:
             raise ValidationFailed("AI is not configured")
 
-        analyses = [await self.vision.analyze(p.path, p.original_name) for p in photos]
+        if on_step and getattr(self.vision, "REPORTS_STEPS", False):
+            analyses = [await self.vision.analyze(p.path, p.original_name, on_step=on_step) for p in photos]
+        else:
+            analyses = [await self.vision.analyze(p.path, p.original_name) for p in photos]
         real = [a for a in analyses if a.real_place]
         if not real:
             raise NotARealPlace("no photo shows a real place (screenshot or graphic?)")
 
         best = max(real, key=lambda a: a.confidence)
+        suggested = suggestions.suggest(best).suggested
+        if expected and suggested and (
+                suggested.element.value != expected["element"]
+                or (expected["current_state"] and suggested.current_state.value != expected["current_state"])):
+            deleted = await self._delete_unused_photos(photos)
+            raise PhotoMismatch(
+                f"photo shows {suggested.element.value}/{suggested.current_state.value}, "
+                f"not {expected['element']}/{expected['current_state'] or 'any'}",
+                {"expected": expected,
+                 "suggested": {"element": suggested.element.value, "current_state": suggested.current_state.value,
+                               "severity": suggested.severity.value},
+                 "description": best.description, "deleted_photo_ids": deleted})
         tags: dict[str, suggestions.Tag] = {}
         for a in real:
             for tag in suggestions.suggest(a).tags:
@@ -1551,8 +1572,15 @@ class UseCases:
         self.repo.save_state(state)
         return state
 
-    async def upload_photo(self, user: User | None, chunks: AsyncIterator[bytes], filename: str) -> Photo:
+    async def upload_photo(self, user: User | None, chunks: AsyncIterator[bytes], filename: str,
+                           place_id: str | None = None, element: str | None = None,
+                           current_state: str | None = None) -> Photo:
+        """Store a photo; optional metadata (F45) = what the user says it shows, checked by analyze_image."""
         self._require_user(user)
+        if place_id and self.repo.get_place(place_id) is None:
+            raise ValidationFailed(f"unknown place_id: {place_id}")
+        element = _enum(FeatureKey, element, "element").value if element else None
+        current_state = _enum(CurrentState, current_state, "current_state").value if current_state else None
         data = bytearray()
         async for chunk in chunks:
             data.extend(chunk)
@@ -1567,7 +1595,8 @@ class UseCases:
             yield bytes(data)
 
         path, url = await self.storage.save(one_chunk(), f"{photo_id}.{ext}")
-        photo = Photo(photo_id, path, url, original_name=clean_text(filename)[:MAX_PLACE_NAME] or "upload")
+        photo = Photo(photo_id, path, url, original_name=clean_text(filename)[:MAX_PLACE_NAME] or "upload",
+                      place_id=place_id or None, element=element, current_state=current_state)
         self.repo.add_photo(photo)
         return photo
 
@@ -1782,6 +1811,35 @@ class UseCases:
         if obs is None:
             raise NotFound(f"observation not found: {observation_id}")
         return obs
+
+    @staticmethod
+    def _expected(expected: dict | None, photos: list[Photo]) -> dict | None:
+        """F45: {element, current_state} to confirm — from the request, else the first photo with metadata."""
+        if expected is None:
+            meta = next((p for p in photos if p.element), None)
+            if meta is None:
+                return None
+            expected = {"element": meta.element, "current_state": meta.current_state}
+        state = expected.get("current_state")
+        return {"element": _enum(FeatureKey, expected.get("element"), "expected.element").value,
+                "current_state": _enum(CurrentState, state, "expected.current_state").value if state else None}
+
+    async def _delete_unused_photos(self, photos: list[Photo]) -> list[str]:
+        """Delete photos that are not evidence yet (record + file); returns the deleted ids."""
+        used = {i for r in self.repo.list_reports() for i in r.photo_ids}
+        used |= {i for p in self.repo.list_places() for i in p.photo_ids}
+        used |= {i for p in self.repo.list_places() for o in self.repo.list_observations(p.id) for i in o.evidence_ids}
+        deleted = []
+        for photo in photos:
+            if photo.id in used:
+                continue
+            self.repo.delete_photo(photo.id)
+            try:
+                await self.storage.delete(photo.path)
+            except Exception:  # noqa: BLE001 — the record is gone; a stray file is harmless
+                log.warning("could not delete photo file %s", photo.path)
+            deleted.append(photo.id)
+        return deleted
 
     def _check_photos(self, photo_ids) -> list[str]:
         photo_ids = list(photo_ids)

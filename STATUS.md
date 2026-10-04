@@ -85,9 +85,15 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F41 | Public remote MCP (Streamable HTTP /mcp) as a separate Render service | Claude | done | own env file .mcpenv (gitignored, template .mcpenv.example); verified live: local MCP (HTTP) + .mcpenv → https://rampa-backend.onrender.com → real data; compose env_file |
 | F42 | XSS hardening: input text cleaning, http(s) links, security headers | Claude | done | tests/api/test_xss.py (17); e2e F42a–c; headers + clean text verified |
 | F43 | Rate limits: /ai/* per user + per IP, login per IP (429 + Retry-After) | Claude | done | tests/api/test_rate_limits.py (8); e2e unchanged with defaults + F43 request; CORS outermost so 429 reaches browsers |
+| F45 | Photo metadata on upload (place_id, element, current_state) + PHOTO_MISMATCH check deletes the photo | Claude | done | tests/application/test_photo_mismatch.py (12), tests/api/test_photo_mismatch_api.py (5); e2e F45a–c; photos table +3 columns (auto ADD COLUMN) |
+| F44 | Vision chain Gemini → local ONNX → mock (AI_VISION_FALLBACK=onnx) + SSE POST /ai/image-tags/stream | Claude | done | tests/adapters/test_vision_chain.py (13), tests/api/test_vision_stream_api.py (5); e2e F44 request; ONNX step skipped when onnxruntime-genai/model missing (Render: no model → mock) |
 
 ## Log (newest first)
 
+- 2026-10-04 · F45 green: upload metadata, mismatch → 400 / stream error, photo deleted
+- 2026-10-04 · F45 red: metadata + mismatch tests
+- 2026-10-04 · F44 green: vision fallback chain + streamed image check (status/keepalive/result|error events)
+- 2026-10-04 · F44 red: chain + stream tests
 - 2026-10-03 · F43 green: rate limits on /ai/* and login
 - 2026-10-03 · F42 green: XSS hardening (clean text, http links, security headers)
 - 2026-10-03 · F41: .mcpenv for the MCP service, verified against Render backend

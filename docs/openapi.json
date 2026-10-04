@@ -1657,6 +1657,7 @@
           "media"
         ],
         "summary": "Upload Photo",
+        "description": "Optional metadata (F45): what the user says the photo shows; the AI check confirms it.",
         "operationId": "upload_photo_api_v1_uploads_post",
         "parameters": [
           {
@@ -2538,6 +2539,64 @@
                 "schema": {
                   "$ref": "#/components/schemas/ImageTagsOut"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/image-tags/stream": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Image Tags Stream",
+        "description": "Same check as /ai/image-tags, as Server-Sent Events: status (received, analyzing, fallback),\nkeepalive comments while a slow model works, then result or error.",
+        "operationId": "image_tags_stream_api_v1_ai_image_tags_stream_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageTagsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -5779,6 +5838,39 @@
             "type": "string",
             "contentMediaType": "application/octet-stream",
             "title": "File"
+          },
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id"
+          },
+          "element": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Element"
+          },
+          "current_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current State"
           }
         },
         "type": "object",
@@ -6226,6 +6318,30 @@
           "token"
         ],
         "title": "EmailVerifyIn"
+      },
+      "ExpectedIn": {
+        "properties": {
+          "element": {
+            "type": "string",
+            "title": "Element"
+          },
+          "current_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "element"
+        ],
+        "title": "ExpectedIn"
       },
       "Favorites": {
         "properties": {
@@ -6762,6 +6878,16 @@
               }
             ],
             "title": "Place Id"
+          },
+          "expected": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExpectedIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -7945,6 +8071,39 @@
           "url": {
             "type": "string",
             "title": "Url"
+          },
+          "place_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Id"
+          },
+          "element": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Element"
+          },
+          "current_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current State"
           }
         },
         "type": "object",

@@ -54,6 +54,8 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `AI_MODE` | `mock` | `mock` = deterministic, offline · `onnx` = Phi-3.5 Vision locally · `gemini` = Google Gemini API. Any failure → mock |
 | `AI_TIMEOUT_S` | `60` | max time per model call before falling back to mock |
 | `AI_MODEL_PATH` | `models/gpu/gpu-int4-rtn-block-32` | ONNX model folder (`onnx`); needs `uv sync --extra ai` |
+| `AI_VISION_FALLBACK` | `mock` | `gemini` failed → `onnx` = try the local model (`AI_MODEL_PATH`) before mock; skipped with a warning when onnxruntime-genai or the model folder is missing |
+| `AI_ONNX_TIMEOUT_S` | `180` | max time for the local fallback model (slow on CPU) |
 | `GEMINI_API_KEY` | — | **secret**; from https://aistudio.google.com/apikey, sent as the `x-goog-api-key` header |
 | `GEMINI_MODEL` | `gemini-3.8-flash` | Gemini model name (Google retired `gemini-2.5-flash` for new users) |
 | `GEMINI_API_URL` | `https://generativelanguage.googleapis.com/v1beta` | API base URL |

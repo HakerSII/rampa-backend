@@ -221,6 +221,9 @@ def check_out(r: CheckResult) -> CheckResultOut:
 class PhotoOut(BaseModel):
     id: str
     url: str
+    place_id: str | None = None
+    element: str | None = None
+    current_state: str | None = None
 
 
 class AuthorOut(BaseModel):
@@ -336,7 +339,8 @@ def author_out(uc, user_id: str) -> AuthorOut:
 
 
 def photo_out(photo: Photo) -> PhotoOut:
-    return PhotoOut(id=photo.id, url=photo.url)
+    return PhotoOut(id=photo.id, url=photo.url, place_id=photo.place_id, element=photo.element,
+                    current_state=photo.current_state)
 
 
 def observation_out(uc, o: Observation, me: User | None = None) -> ObservationOut:

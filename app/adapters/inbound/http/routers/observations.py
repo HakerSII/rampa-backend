@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Response, UploadFile
+from fastapi import APIRouter, Form, Response, UploadFile
 
 from app.adapters.inbound.http.deps import UC, CurrentUser, OptionalUser
 from app.adapters.inbound.http.schemas import (
@@ -36,8 +36,11 @@ async def read_chunks(file: UploadFile):
 
 
 @router.post("/uploads", status_code=201, response_model=PhotoOut, tags=["media"])
-async def upload_photo(file: UploadFile, uc: UC, user: CurrentUser):
-    photo = await uc.upload_photo(user, read_chunks(file), file.filename or "upload")
+async def upload_photo(file: UploadFile, uc: UC, user: CurrentUser, place_id: str | None = Form(None),
+                       element: str | None = Form(None), current_state: str | None = Form(None)):
+    """Optional metadata (F45): what the user says the photo shows; the AI check confirms it."""
+    photo = await uc.upload_photo(user, read_chunks(file), file.filename or "upload",
+                                  place_id=place_id, element=element, current_state=current_state)
     return photo_out(photo)
 
 

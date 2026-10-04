@@ -410,6 +410,47 @@ Content-Type: application/json
 
 {"photo_ids": ["{{upload.response.body.$.id}}"], "place_id": "plc_mnk"}
 
+### F44. Same check streamed (SSE): status received → [analyzing gemini → fallback …] → result (same JSON as above)
+### Errors after the start (NOT_A_REAL_PLACE, VALIDATION_ERROR) arrive as `event: error`, HTTP stays 200.
+POST {{base}}/ai/image-tags/stream
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+Accept: text/event-stream
+
+{"photo_ids": ["{{upload.response.body.$.id}}"], "place_id": "plc_mnk"}
+
+### F45a. Upload with metadata (user says: ramp) → 201 {id, url, place_id, element, current_state}
+# @name metaUpload
+POST {{base}}/uploads
+Authorization: Bearer {{anna}}
+Content-Type: multipart/form-data; boundary=----DemoBoundary
+
+------DemoBoundary
+Content-Disposition: form-data; name="place_id"
+
+plc_mnk
+------DemoBoundary
+Content-Disposition: form-data; name="element"
+
+ramp
+------DemoBoundary
+Content-Disposition: form-data; name="file"; filename="winda.png"
+Content-Type: image/png
+
+< ./winda.png
+------DemoBoundary--
+
+### F45b. Streamed check: model sees an elevator, not a ramp → last event `error` PHOTO_MISMATCH, photo deleted
+POST {{base}}/ai/image-tags/stream
+Authorization: Bearer {{anna}}
+Content-Type: application/json
+Accept: text/event-stream
+
+{"photo_ids": ["{{metaUpload.response.body.$.id}}"]}
+
+### F45c. The deleted photo is gone → 404
+GET http://localhost:8000{{metaUpload.response.body.$.url}}
+
 ### 4a-TXT. AI from text: "winda od dwóch tygodni nie działa" → elevator / no / temporary
 POST {{base}}/ai/parse-text
 Authorization: Bearer {{anna}}

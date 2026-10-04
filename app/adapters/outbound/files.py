@@ -17,3 +17,6 @@ class LocalFileStorage:
             data.extend(chunk)
         await asyncio.to_thread(path.write_bytes, bytes(data))
         return str(path), f"/media/{name}"
+
+    async def delete(self, path: str) -> None:
+        await asyncio.to_thread(Path(path).unlink, missing_ok=True)

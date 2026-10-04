@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     ai_mode: Literal["mock", "onnx", "gemini"] = "mock"
     ai_model_path: str = "models/gpu/gpu-int4-rtn-block-32"
     ai_timeout_s: float = 60.0
+    # F44: AI_MODE=gemini failure → local ONNX model (when installed + model folder present) → mock
+    ai_vision_fallback: Literal["mock", "onnx"] = "mock"
+    ai_onnx_timeout_s: float = 180.0
     gemini_api_key: str = ""  # secret: only in .env (gitignored)
     gemini_model: str = "gemini-3.8-flash"
     gemini_api_url: str = "https://generativelanguage.googleapis.com/v1beta"

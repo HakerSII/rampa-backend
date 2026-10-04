@@ -1,15 +1,26 @@
+import asyncio
+import json
+
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.adapters.inbound.http.deps import UC, CurrentUser, OptionalUser
+from app.domain.errors import DomainError
 from app.domain.enums import LABELS_PL, CurrentState, FeatureKey, NeedsProfile, ObservationValue, Severity
 
 router = APIRouter(tags=["ai"])
 
 
+class ExpectedIn(BaseModel):
+    element: str
+    current_state: str | None = None
+
+
 class ImageTagsIn(BaseModel):
     photo_ids: list[str]
     place_id: str | None = None
+    expected: ExpectedIn | None = None  # F45: else the photos' upload metadata
 
 
 class ImageAnalysisOut(BaseModel):
@@ -66,9 +77,7 @@ async def parse_text(body: ParseTextIn, uc: UC, user: CurrentUser):
                           confidence=s.confidence) for s in uc.parse_text(user, body.text)])
 
 
-@router.post("/ai/image-tags", response_model=ImageTagsOut)
-async def image_tags(body: ImageTagsIn, uc: UC, user: CurrentUser):
-    r = await uc.analyze_image(user, body.photo_ids, body.place_id)
+def _image_tags_out(r) -> ImageTagsOut:
     a = r.analysis
     return ImageTagsOut(
         analysis=ImageAnalysisOut(real_place=a.real_place, barrier_detected=a.barrier_detected,
@@ -80,6 +89,67 @@ async def image_tags(body: ImageTagsIn, uc: UC, user: CurrentUser):
                                severity=r.suggested.severity) if r.suggested else None,
         model=r.model,
     )
+
+
+@router.post("/ai/image-tags", response_model=ImageTagsOut)
+async def image_tags(body: ImageTagsIn, uc: UC, user: CurrentUser):
+    return _image_tags_out(await uc.analyze_image(user, body.photo_ids, body.place_id, expected=_expected(body)))
+
+
+# ---------------------------------------------------------------- F44 streamed image check
+KEEPALIVE_S = 10.0
+
+
+def _expected(body: ImageTagsIn) -> dict | None:
+    return body.expected.model_dump() if body.expected else None
+
+
+def _sse(event: str, data) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+@router.post("/ai/image-tags/stream")
+async def image_tags_stream(body: ImageTagsIn, uc: UC, user: CurrentUser):
+    """Same check as /ai/image-tags, as Server-Sent Events: status (received, analyzing, fallback),
+    keepalive comments while a slow model works, then result or error."""
+    steps: asyncio.Queue = asyncio.Queue()
+
+    async def run():
+        try:
+            r = await uc.analyze_image(user, body.photo_ids, body.place_id, on_step=steps.put_nowait,
+                                       expected=_expected(body))
+            return _sse("result", _image_tags_out(r).model_dump(mode="json"))
+        except DomainError as e:
+            error = {"code": e.code, "message": str(e)}
+            if e.details:
+                error["details"] = e.details
+            return _sse("error", {"error": error})
+        except Exception:  # noqa: BLE001 — the stream already started: report, never cut it
+            return _sse("error", {"error": {"code": "INTERNAL_ERROR", "message": "image check failed"}})
+
+    async def events():
+        yield _sse("status", {"stage": "received"})
+        task = asyncio.create_task(run())
+        try:
+            while True:
+                getter = asyncio.create_task(steps.get())
+                done, _ = await asyncio.wait({task, getter}, timeout=KEEPALIVE_S,
+                                             return_when=asyncio.FIRST_COMPLETED)
+                if getter in done:
+                    yield _sse("status", getter.result())
+                    continue
+                getter.cancel()
+                if task in done:
+                    while not steps.empty():
+                        yield _sse("status", steps.get_nowait())
+                    yield task.result()
+                    return
+                yield ": keepalive\n\n"
+        finally:
+            task.cancel()
+
+    return StreamingResponse(events(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 # ---------------------------------------------------------------- F30 recommendations

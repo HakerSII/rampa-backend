@@ -8,6 +8,7 @@ from app.domain.errors import DomainError, RateLimited
 STATUS_BY_CODE = {
     "VALIDATION_ERROR": 400,
     "NOT_A_REAL_PLACE": 400,
+    "PHOTO_MISMATCH": 400,
     "UNAUTHORIZED": 401,
     "FORBIDDEN": 403,
     "NOT_FOUND": 404,
@@ -29,7 +30,8 @@ def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(DomainError)
     async def domain_error(_: Request, exc: DomainError):
         headers = {"Retry-After": str(exc.retry_after)} if isinstance(exc, RateLimited) else None
-        return JSONResponse(error_body(exc.code, exc.message), STATUS_BY_CODE.get(exc.code, 400), headers=headers)
+        return JSONResponse(error_body(exc.code, exc.message, exc.details), STATUS_BY_CODE.get(exc.code, 400),
+                            headers=headers)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_: Request, exc: RequestValidationError):
