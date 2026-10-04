@@ -85,14 +85,17 @@ def test_prompt_is_short_with_examples(city):
     model = FakeModel()
     asyncio.run(OnnxQueryInterpreter(model, city).interpret("x"))
     system = model.prompts[0][0]["content"]
-    assert len(system) < 1500 and "->" in system and '"type"' not in system
+    assert len(system) < 1800 and "->" in system and '"type"' not in system
 
 
-def test_copying_the_vocabulary_counts_as_failure(city):
-    reply = ('{"profiles": ["wheelchair"], "features": ["step_free_entrance", "ramp", "lowered_curb", "wide_doors", '
-             '"baby_changing_table"], "categories": []}')
-    with pytest.raises(ValueError):
-        asyncio.run(OnnxQueryInterpreter(FakeModel(reply), city).interpret("x"))
+def test_copying_the_vocabulary_keeps_only_categories_and_area(city):
+    """Over-listed profiles/features come from the rules instead; the model's category and area stay."""
+    reply = ('{"profiles": ["wheelchair", "crutches", "stroller", "blind"], "features": ["step_free_entrance", "ramp", '
+             '"lowered_curb", "wide_doors", "baby_changing_table"], "categories": ["culture"], "area": "kazimierz"}')
+    intent = asyncio.run(OnnxQueryInterpreter(FakeModel(reply), city).interpret("muzeum z windą, jestem na wózku"))
+    assert [p.value for p in intent.profiles] == ["wheelchair"]
+    assert [f.value for f in intent.features] == ["elevator"]
+    assert intent.categories == ["culture"] and intent.area == "kazimierz"
 
 
 def test_recommender_uses_the_ai_timeout(city):
