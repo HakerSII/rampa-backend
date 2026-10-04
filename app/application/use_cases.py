@@ -1280,7 +1280,10 @@ class UseCases:
 
         best = max(real, key=lambda a: a.confidence)
         suggested = suggestions.suggest(best).suggested
-        if expected and suggested and (
+        # A verdict needs a real look at the photo: the mock answering as a fallback (the real model failed) is a
+        # fixed sample, not about this photo. Only AI_MODE=mock itself (the demo: vision is the mock) still checks.
+        looked = best.model != "mock" or getattr(self.vision, "LABEL", None) == "mock"
+        if expected and suggested and looked and (
                 suggested.element.value != expected["element"]
                 or (expected["current_state"] and suggested.current_state.value != expected["current_state"])):
             deleted = await self._delete_unused_photos(photos)
