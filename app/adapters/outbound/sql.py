@@ -66,7 +66,7 @@ places = Table("places", md, Column("id", String, primary_key=True), Column("seq
                Column("category", String), Column("lat", Float), Column("lon", Float),
                Column("short_description", String), Column("address", String), Column("owner_id", String),
                Column("external_id", String), Column("opening_hours", JSON), Column("contact", JSON),
-               Column("photo_ids", JSON), Column("place_type", String))
+               Column("photo_ids", JSON), Column("place_type", String), Column("kind", String))
 states = Table("feature_states", md, Column("place_id", String, primary_key=True),
                Column("feature", String, primary_key=True), Column("state", String), Column("confidence", Float),
                Column("temporary", Boolean), Column("last_verified", String), Column("sources_count", Integer),
@@ -224,7 +224,8 @@ class SqlRepo(InMemoryRepo):
             yield places, dict(id=p.id, seq=i, name=p.name, category=p.category, lat=p.location.lat,
                                lon=p.location.lon, short_description=p.short_description, address=p.address,
                                owner_id=p.owner_id, external_id=p.external_id, opening_hours=list(p.opening_hours),
-                               contact=dict(p.contact), photo_ids=list(p.photo_ids), place_type=p.place_type)
+                               contact=dict(p.contact), photo_ids=list(p.photo_ids), place_type=p.place_type,
+                               kind=p.kind)
         for by_feature in self.states.values():
             for s in by_feature.values():
                 yield states, dict(place_id=s.place_id, feature=str(s.feature), state=str(s.state),
@@ -286,7 +287,8 @@ class SqlRepo(InMemoryRepo):
                 self.places[r["id"]] = Place(r["id"], r["name"], r["category"], GeoPoint(r["lat"], r["lon"]),
                                              r["short_description"], r["address"], r["owner_id"], r["external_id"],
                                              list(r["opening_hours"] or []), dict(r["contact"] or {}),
-                                             list(r["photo_ids"] or []), r["place_type"] or "venue")
+                                             list(r["photo_ids"] or []), r["place_type"] or "venue",
+                                             r.get("kind") or "")
             for r in rows(states):
                 s = FeatureStateRecord(r["place_id"], FeatureKey(r["feature"]), StateValue(r["state"]),
                                        r["confidence"], r["temporary"], _dt(r["last_verified"]), r["sources_count"],

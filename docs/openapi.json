@@ -8329,6 +8329,11 @@
             ],
             "title": "Match"
           },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": ""
+          },
           "short_description": {
             "type": "string",
             "title": "Short Description"
@@ -8521,6 +8526,11 @@
               }
             ],
             "title": "Match"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": ""
           }
         },
         "type": "object",

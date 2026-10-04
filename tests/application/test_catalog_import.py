@@ -35,7 +35,7 @@ def test_conversion_maps_categories_and_features():
                                            "baby_changing_table": "yes"}  # open_24h: no Rampa feature
     assert e["osm:node/2"] | {} == {"ref": "osm:node/2", "name": "Kawiarnia Bez Danych", "category": "cafe",
                                     "lat": 50.06, "lon": 19.94, "address": "Rynek 1", "phone": "+48 12 000 00 00",
-                                    "website": "https://kawa.example", "features": {}}
+                                    "website": "https://kawa.example", "kind": "cafe", "features": {}}
     assert "osm:node/4" not in e  # unnamed
 
 

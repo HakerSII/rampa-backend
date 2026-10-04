@@ -984,9 +984,11 @@ class UseCases:
                 result.places_matched += 1
             else:
                 contact = {k: str(e[k]) for k in ("phone", "website") if e.get(k)}
+                hours = clean_text(str(e.get("opening_hours") or ""))
                 place = Place(self.ids.new("plc_osm"), name, str(e.get("category") or "other"), here,
                               address=clean_text(str(e.get("address") or "")), external_id=e.get("ref"),
-                              contact=contact)
+                              contact=contact, opening_hours=[{"text": hours}] if hours else [],
+                              kind=clean_text(str(e.get("kind") or ""))[:40])
                 self.repo.add_place(place)
                 if place.external_id:
                     by_ref[place.external_id] = place
