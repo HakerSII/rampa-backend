@@ -55,13 +55,20 @@ class ChatTools(Protocol):
 
 
 # ----------------------------------------------------------------- rules
+# words of a question that are not part of a place name (folded): question words, linking words, verbs of getting
+# in, "dostępne", and the visitor's means ("wózkiem", "o kulach") — removed wherever they stand
+NOT_NAME = re.compile(
+    r"(czy|gdzie|jak|a|do|w|we|na|z|ze|o|i|jest|sa|ma|maja|da|sie|mozna|moge|posiada|wejde|wjade|wejsc|wjechac|"
+    r"dostane|dojade|dostac|tam|tu|mnie|ja|dostepn\w*|przystosowan\w*|wozk\w*|wozek|dzieci\w*|inwalidz\w*|"
+    r"kul\w*|osob\w*|niepelnospraw\w*|niewidom\w*|gluch\w*|psem|pies|psa)")
+
+
 def _place_name(question: str) -> str:
-    """'Czy do Teatru Słowackiego wejdę z wózkiem?' → 'Teatru Słowackiego'."""
-    q = re.sub(r"[?.!]+$", "", question.strip())
-    q = re.sub(VERBS, "", q, flags=re.I)
-    q = re.sub(r"^(czy|gdzie|jak|a)\s+", "", q, flags=re.I)
-    q = re.sub(r"^(do|w|we|na|z)\s+", "", q, flags=re.I)
-    return q.strip() or question.strip()
+    """'czy do teatru na słowackiego wjade wozkiem ?' → 'teatru słowackiego' (search ignores endings/diacritics)."""
+    words = [w for w in re.split(r"\s+", question.strip()) if w]
+    kept = [w for w in words if not NOT_NAME.fullmatch(fold(w).strip("?.!,;:()\"'„”"))]
+    name = " ".join(kept).strip(" ?.!,;:")
+    return name or question.strip(" ?.!")
 
 
 def _names_a_place(question: str) -> bool:
@@ -180,7 +187,8 @@ def answer_messages(question: str, tool: str, data: dict) -> list[dict]:
     return [
         {"role": "system", "content": "Jesteś asystentem dostępności Krakowa. Odpowiadaj po polsku, krótko (2-4 zdania), "
                                       "wyłącznie na podstawie danych z narzędzia. Cecha 'tak' znaczy, że udogodnienie jest; "
-                                      "nie, że go nie ma; brak cechy = brak danych. Nie zgaduj. Podaj pewność danych (0-1)."},
+                                      "nie, że go nie ma; brak cechy = brak danych. Nie zgaduj. Podaj pewność danych (0-1). "
+                                      "Zacznij od nazwy i adresu znalezionego miejsca."},
         {"role": "user", "content": f"Pytanie: {question}\n\nDane z narzędzia {tool}:\n"
                                     f"{json.dumps(compact_for_model(tool, data), ensure_ascii=False)[:MAX_TOOL_CHARS]}"},
     ]

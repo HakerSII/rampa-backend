@@ -30,6 +30,7 @@ def is_phone(value: str) -> bool:
 
 # ---------------------------------------------------------------- F50 name search
 _WORD = re.compile(r"[a-z0-9]+")
+_LINKING = {"na", "do", "we", "ze", "im", "przy", "pod", "nad", "od", "obok"}  # "teatr na Słowackiego"
 
 
 def fold(value: str) -> str:
@@ -54,5 +55,5 @@ def name_matches(query: str, name: str) -> bool:
     if q in n:
         return True
     words = _WORD.findall(n)
-    tokens = [t for t in _WORD.findall(q) if len(t) > 1]
+    tokens = [t for t in _WORD.findall(q) if len(t) > 1 and t not in _LINKING]
     return bool(tokens) and all(any(w.startswith(_stem(t)) for w in words) for t in tokens)
