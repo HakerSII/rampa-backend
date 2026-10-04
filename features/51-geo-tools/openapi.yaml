@@ -3,7 +3,7 @@ info:
   title: Kraków bez barier — Open API — F51 location + nearby
   version: 0.1.0-mvp
 servers:
-  - url: http://localhost:8000/public/v1
+  - url: http://localhost:8000
 tags:
   - name: public
 components:
@@ -11,7 +11,7 @@ components:
     apiKey: { type: apiKey, in: header, name: X-Api-Key }
 security: [{ apiKey: [] }]
 paths:
-  /geocode:
+  /public/v1/geocode:
     get:
       tags: [public]
       summary: Coordinates of a place or address
@@ -20,7 +20,7 @@ paths:
         - { name: q, in: query, required: true, schema: { type: string, minLength: 2 } }
       responses:
         "200": { description: "{items: [{label, lat, lon, place_id | null}]}" }
-  /places/nearby:
+  /public/v1/places/nearby:
     get:
       tags: [public]
       summary: Places within a radius, nearest first

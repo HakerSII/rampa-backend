@@ -27,6 +27,27 @@ class PublicPlacePage(BaseModel):
     total: int
 
 
+class PublicGeoHit(BaseModel):  # F51
+    label: str
+    lat: float
+    lon: float
+    place_id: str | None  # null = an address / place found by the geocoder, not in the database
+
+
+class PublicGeoPage(BaseModel):
+    items: list[PublicGeoHit]
+
+
+class PublicNearbyPlace(PublicPlace):
+    distance_m: int
+
+
+class PublicNearbyPage(BaseModel):
+    items: list[PublicNearbyPlace]
+    total: int
+    radius_m: int
+
+
 class PublicFeature(BaseModel):
     value: bool | str  # true | false | "partial"
     temporary: bool
@@ -70,6 +91,24 @@ async def search_places(uc: UC, _: ApiKey, features: Annotated[str | None, Query
                         category: str | None = None, q: str | None = None):
     places = uc.search_places(parse_features(features), category, q)
     return PublicPlacePage(items=[public_place(uc, p) for p in places], total=len(places))
+
+
+@router.get("/geocode", response_model=PublicGeoPage)
+async def geocode(q: str, uc: UC, _: ApiKey):
+    """F51: coordinates of a place or address, like the app's search box: places of the database first, then the
+    geocoder (GEOCODER=nominatim, bounded to the city)."""
+    hits = await uc.geocode_live(q)
+    return PublicGeoPage(items=[PublicGeoHit(label=h.label, lat=h.location.lat, lon=h.location.lon,
+                                             place_id=h.place_id) for h in hits[:10]])
+
+
+@router.get("/places/nearby", response_model=PublicNearbyPage)
+async def places_nearby(uc: UC, _: ApiKey, lat: float, lon: float, radius_m: int = 500,
+                        features: Annotated[str | None, Query()] = None):
+    """F51: places within radius_m (50–2000, default 500) of the point, nearest first."""
+    rows = uc.places_nearby(lat, lon, radius_m, parse_features(features))
+    return PublicNearbyPage(items=[PublicNearbyPlace(**public_place(uc, p).model_dump(), distance_m=d) for p, d in rows],
+                            total=len(rows), radius_m=radius_m)
 
 
 @router.get("/places/{place_id}", response_model=PublicPlace)

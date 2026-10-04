@@ -519,8 +519,30 @@ class UseCases:
             raise ValidationFailed("q: at least 2 characters")
         hits = [GeocodeHit(f"{p.name}, {p.address}" if p.address else p.name, p.id, p.location)
                 for p in self.repo.list_places()
-                if needle in p.name.casefold() or needle in (p.address or "").casefold()]
+                if name_matches(q, p.name) or needle in (p.address or "").casefold()]  # F50/F51: like the search
         return hits[:10]
+
+    def places_nearby(self, lat: float, lon: float, radius_m: int = 500,
+                      features: list[FeatureKey] | None = None, limit: int = 50) -> list[tuple[Place, int]]:
+        """F51: places within radius_m of a point (50–2000 m), nearest first, with the distance in metres."""
+        if not 50 <= radius_m <= 2000:
+            raise ValidationFailed("radius_m: 50..2000")
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            raise ValidationFailed("lat/lon out of range")
+        here = GeoPoint(lat, lon)
+        found = []
+        for place in self.repo.list_places():
+            distance = haversine_m(place.location, here)
+            if distance > radius_m:
+                continue
+            if features:
+                self._refresh_expired(place.id)
+                states = self.repo.states_for(place.id)
+                if not all(f in states and states[f].state == StateValue.YES for f in features):
+                    continue
+            found.append((place, round(distance)))
+        found.sort(key=lambda x: x[1])
+        return found[:limit]
 
     async def geocode_live(self, q: str) -> list[GeocodeHit]:
         """F27: local places first (they have data), then live geocoder hits; geocoder failure → local only."""

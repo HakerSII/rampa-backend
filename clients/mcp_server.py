@@ -66,6 +66,22 @@ async def search_accessible_places(features: list[str]) -> dict:
         return await RampaTools(http, _key()).search_accessible_places(features)
 
 
+@mcp.tool()
+async def find_location(query: str) -> dict:
+    """Współrzędne miejsca lub adresu w Krakowie (jak wyszukiwarka aplikacji: najpierw baza Kraków bez barier,
+    potem OpenStreetMap). Zwraca listę {label, lat, lon, place_id}. Potem użyj places_nearby z lat/lon."""
+    async with _client() as http:
+        return await RampaTools(http, _key()).find_location(query)
+
+
+@mcp.tool()
+async def places_nearby(lat: float, lon: float, radius_m: int = 500) -> dict:
+    """Miejsca z bazy w promieniu radius_m (50–2000, domyślnie 500 m) od punktu, od najbliższego:
+    nazwa, adres, odległość i cechy dostępności."""
+    async with _client() as http:
+        return await RampaTools(http, _key()).places_nearby(lat, lon, radius_m)
+
+
 @mcp.custom_route("/health", methods=["GET"])
 async def health(_: Request) -> JSONResponse:
     return JSONResponse({"status": "ok", "transport": "http", "path": MCP_PATH})

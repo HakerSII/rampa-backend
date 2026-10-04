@@ -83,9 +83,19 @@ def is_general(question: str) -> bool:
     return bool(GENERAL.search(fold(question).strip()))
 
 
+# F51 "co jest w pobliżu X" / "koło X" / "blisko X" → the location of X, then what is within 500 m
+NEARBY = re.compile(r"\b(w poblizu|w okolicy|w okolicach|kolo|blisko|niedaleko|obok)\s+(.+)")
+NEARBY_RADIUS_M = 500
+
+
 def choose_tool(question: str, tool_names: list[str]) -> tuple[str, dict]:
-    """Keyword rules: features without a named place → search, else check the place by name (+ profile)."""
+    """Keyword rules: "w pobliżu X" → location of X; features without a named place → search; else check the place
+    by name (+ profile)."""
     folded = fold(question)
+    near = NEARBY.search(folded)
+    if near and "find_location" in tool_names:
+        # fold() keeps the length of Polish text, so the match positions cut the original question
+        return "find_location", {"query": question[near.start(2):].strip(" ?.!,")}
     features = list(dict.fromkeys(f for pattern, f in FEATURE_WORDS if re.search(pattern, folded)))
     if features and not _names_a_place(question) and "search_accessible_places" in tool_names:
         return "search_accessible_places", {"features": features}
@@ -122,10 +132,32 @@ def _label(feature: str) -> str:
     return LABELS_PL.get(feature, feature).lower()
 
 
+def _yes_labels(summary) -> list[str]:
+    keys = [k for k, v in summary.items() if v] if isinstance(summary, dict) else list(summary or [])
+    return [_label(k) for k in keys]
+
+
+def _nearby_line(place: dict) -> str:
+    """'Teatr im. Juliusza Słowackiego (Plac Świętego Ducha 1, 12 m, wejście bez schodów)'."""
+    details = [place.get("address") or "", f"{place.get('distance_m')} m", *_yes_labels(place.get("accessibility_summary"))]
+    return f"{place['name']} ({', '.join(d for d in details if d)})"
+
+
 def answer_from_data(tool: str, data: dict) -> str:
     """Template answer (Polish) from a tool's result — used without a model and as the model's fallback."""
     if "error" in data:
         return f"Nie udało się pobrać danych: {data['error']}"
+    if tool == "find_location":
+        return data.get("message") or f"Nie znaleziono lokalizacji „{data.get('query', '')}”."
+    if tool == "places_nearby":
+        where = (data.get("location") or {}).get("label") or f"{data.get('lat')}, {data.get('lon')}"
+        places = data.get("places") or []
+        radius = data.get("radius_m", NEARBY_RADIUS_M)
+        lead = f"{data['not_found']} " if data.get("not_found") else ""
+        if not places:
+            return f"{lead}W promieniu {radius} m od: {where} nie mam miejsc w bazie."
+        listed = "; ".join(_nearby_line(p) for p in places[:5])
+        return f"{lead}W promieniu {radius} m od: {where} jest {data.get('total', len(places))} miejsc. Najbliżej: {listed}."
     if tool == "search_accessible_places":
         places = data.get("places") or []
         wanted = ", ".join(_label(f) for f in data.get("features", []))
@@ -170,6 +202,11 @@ def compact_for_model(tool: str, data: dict) -> dict:
     """Only what the answer needs (no ids, dates, per-feature confidence): a short prompt is much faster on CPU."""
     if "error" in data:
         return data
+    if tool == "places_nearby":
+        return {"lokalizacja": (data.get("location") or {}).get("label"), "promien_m": data.get("radius_m"),
+                "uwaga": data.get("not_found", ""),
+                "miejsca": [{"nazwa": p["name"], "adres": p.get("address"), "odleglosc_m": p.get("distance_m"),
+                             "jest": _yes_labels(p.get("accessibility_summary"))} for p in (data.get("places") or [])[:5]]}
     if tool == "search_accessible_places":
         return {"razem": data.get("total", 0),
                 "miejsca": [{"nazwa": p["name"], "adres": p.get("address")} for p in (data.get("places") or [])[:5]]}
@@ -207,6 +244,33 @@ class ChatAssistant:
             return {"state": "rules", "model": "rules", "tools": names}
         return {"state": self.model.state(), "model": self.model.name, "tools": names}
 
+    async def _call(self, name: str, args: dict, emit) -> dict:
+        emit(("tool_call", {"name": name, "arguments": args, "chosen_by": "chain"}))
+        data = await self.tools.call(name, args)
+        emit(("tool_result", {"name": name, "result": data}))
+        return data
+
+    async def _follow_up(self, name: str, args: dict, data: dict, emit) -> tuple[str, dict]:
+        """F51: a location → what is within 500 m of it (the MCP tools again); a place missing by name → its
+        location and surroundings. Returns the tool and data the answer is written from."""
+        tools = {t["name"] for t in self.tools.definitions}
+        not_found = ""
+        if (name == "check_accessibility" and not data.get("matches") and "error" not in data
+                and "find_location" in tools):
+            not_found = data.get("message") or ""
+            name, data = "find_location", await self._call("find_location", {"query": args["place_name"]}, emit)
+            if not data.get("locations"):
+                return "check_accessibility", {"matches": [], "message": not_found}
+        if name == "find_location" and data.get("locations") and "places_nearby" in tools:
+            location = data["locations"][0]
+            nearby = await self._call("places_nearby", {"lat": location["lat"], "lon": location["lon"],
+                                                        "radius_m": NEARBY_RADIUS_M}, emit)
+            if "error" in nearby:
+                return "places_nearby", nearby
+            note = (f"{not_found} Pokazuję okolicę tej lokalizacji." if not_found else "")
+            return "places_nearby", {**nearby, "location": location, "not_found": note}
+        return name, data
+
     async def ask(self, question: str, emit: Callable[[tuple[str, dict]], None]) -> None:
         emit(("status", {"stage": "received"}))
         if is_general(question):
@@ -235,6 +299,7 @@ class ChatAssistant:
         emit(("tool_call", {"name": name, "arguments": args, "chosen_by": chosen_by}))
         data = await self.tools.call(name, args)
         emit(("tool_result", {"name": name, "result": data}))
+        name, data = await self._follow_up(name, args, data, emit)
 
         answer, answered_by = "", "rules"
         if use_model:
