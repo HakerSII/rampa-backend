@@ -89,3 +89,17 @@ def test_kind_and_opening_hours_are_kept():
     run(uc, data)
     p = next(p for p in uc.repo.list_places() if p.name == "Ogród Doświadczeń")
     assert p.kind == "theme_park" and p.opening_hours == [{"text": "Sa,Su 10:00-19:00"}]
+
+
+def test_reimport_fills_missing_kind_hours_address_and_contact():
+    """A place imported before kind/hours existed gets them on the next import; values already set stay."""
+    uc = make_use_cases()
+    run(uc, [{"ref": "osm:node/6", "name": "Ogród", "category": "culture", "lat": 50.07, "lon": 19.99, "features": {}}])
+    p = next(p for p in uc.repo.list_places() if p.name == "Ogród")
+    p.address = "Al. Pokoju 68"  # set meanwhile (e.g. by the owner): kept
+    r = run(uc, [{"ref": "osm:node/6", "name": "Ogród", "category": "culture", "lat": 50.07, "lon": 19.99,
+                  "kind": "park rozrywki", "opening_hours": "Sa,Su 10:00-19:00", "address": "inny",
+                  "phone": "+48 1", "features": {}}])
+    assert r.places_matched == 1
+    assert p.kind == "park rozrywki" and p.opening_hours == [{"text": "Sa,Su 10:00-19:00"}]
+    assert p.address == "Al. Pokoju 68" and p.contact == {"phone": "+48 1"}
