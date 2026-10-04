@@ -32,7 +32,7 @@ docker compose down -v                # stop + wipe Postgres data and media
 
 ### Render (production deploy)
 
-The backend is **deployed on Render** and **deploys automatically after every merge to `master`**.
+The backend is **deployed on Render** and **deploys automatically after every merge to `master`**. The full picture (all services incl. the Accessly UI, env, smoke test) is in [deployment.md](deployment.md).
 
 | Render resource | What it is |
 |---|---|
