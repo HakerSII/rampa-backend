@@ -49,6 +49,7 @@ Every error has the same shape:
 |---|---|---|
 | 400 | `VALIDATION_ERROR` | bad body/query, unknown enum value, wrong photo ids, voting on own observation … (`details.errors` for schema errors) |
 | 400 | `NOT_A_REAL_PLACE` | AI: no uploaded photo shows a real place |
+| 400 | `PHOTO_MISMATCH` | AI sees another element/state than the user said; the photo was deleted (F45) |
 | 401 | `UNAUTHORIZED` | no/invalid token or API key, bad Google token |
 | 403 | `FORBIDDEN` | role missing (owner/admin), not the owner of this place, not the author of a report |
 | 404 | `NOT_FOUND` | unknown place/observation/report/queue item; demo or Google login disabled in the current mode |
@@ -387,13 +388,14 @@ Another city = another JSON file. Two things stay in code: the needs profiles (t
 ## 5. Reporting and observations
 
 ### `POST /api/v1/uploads` (multipart, field `file`)
-PNG or JPG (checked by magic bytes), ≤ 10 MB.
+PNG or JPG (checked by magic bytes), ≤ 10 MB. Optional metadata form fields (F45): `place_id`, `element` (FeatureKey),
+`current_state` (`works|partially_works|not_working`) — what the user says the photo shows; the AI check confirms it.
 
 ```json
 // 201
-{ "id": "ph_1", "url": "/media/ph_1.png" }
+{ "id": "ph_1", "url": "/media/ph_1.png", "place_id": "plc_mnk", "element": "elevator", "current_state": "not_working" }
 ```
-Other format → 400, too large → 413.
+Other format, unknown place or invalid enum → 400, too large → 413.
 
 ### `POST /api/v1/ai/image-tags`
 Body `{ "photo_ids": ["ph_1"], "place_id": "plc_mnk" }` (1–5 photos). A **suggestion only**; it never changes data. The model depends on `AI_MODE`; any failure falls back to `mock`.
@@ -414,6 +416,17 @@ Body `{ "photo_ids": ["ph_1"], "place_id": "plc_mnk" }` (1–5 photos). A **sugg
 `model` is `mock`, `phi-3.5-vision-onnx` or `gemini`. Only screenshots or graphics → 400 `NOT_A_REAL_PLACE`.
 With `AI_MODE=gemini` and `AI_VISION_FALLBACK=onnx`, a failed Gemini call goes to the local ONNX model first, then to mock.
 
+**Mismatch check (F45).** Optional `"expected": {"element": "ramp", "current_state": "not_working"}` (state optional);
+without it the photos' upload metadata is used. If the model's `suggested` element differs (or the same element with
+another state) → 400 `PHOTO_MISMATCH`, and the checked photos are **deleted** (unless already evidence):
+```json
+{ "error": { "code": "PHOTO_MISMATCH", "message": "photo shows elevator/not_working, not ramp/any",
+  "details": { "expected": { "element": "ramp", "current_state": null },
+               "suggested": { "element": "elevator", "current_state": "not_working", "severity": "critical" },
+               "description": "Elevator door with an 'out of order' notice; …", "deleted_photo_ids": ["ph_1"] } } }
+```
+No suggestion from the model (nothing recognised) → no verdict, normal answer.
+
 ### `POST /api/v1/ai/image-tags/stream` (F44)
 Same body and check as `/ai/image-tags`, answered as `text/event-stream` so a client can show progress while a
 slow model works (Gemini retries, local ONNX on CPU). No token → 401 before the stream; rate limits as `/ai/*`.
@@ -433,7 +446,7 @@ data: {"stage": "fallback", "from": "gemini", "model": "phi-3.5-vision-onnx"}
 event: result
 data: { ...same JSON as /ai/image-tags... }
 ```
-`: keepalive` comments every 10 s. Errors after the stream started (validation, `NOT_A_REAL_PLACE`) come as
+`: keepalive` comments every 10 s. Errors after the stream started (validation, `NOT_A_REAL_PLACE`, `PHOTO_MISMATCH` with `details`) come as
 `event: error` with `{"error": {"code", "message"}}`; the HTTP status stays 200. `analyzing`/`fallback` appear only
 when a real model runs (not with `AI_MODE=mock`).
 
