@@ -6,6 +6,7 @@
 
 | Document | What's inside |
 |---|---|
+| [tech-stack.md](tech-stack.md) | Tech stack at a glance: Python/FastAPI, storage, AI models and fallbacks, OSM services, MCP, security, deploy |
 | [architecture.md](architecture.md) | Hexagonal architecture, modules, domain model, trust and conflict rules, AI, OSM, persistence, design decisions and limits |
 | [api.md](api.md) | Full HTTP API reference: conventions, auth, errors, every endpoint with real request/response examples |
 | [configuration.md](configuration.md) | Every setting (`.env` ↔ `app/config.py`), defaults, modes |
