@@ -85,11 +85,15 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F41 | Public remote MCP (Streamable HTTP /mcp) as a separate Render service | Claude | done | own env file .mcpenv (gitignored, template .mcpenv.example); verified live: local MCP (HTTP) + .mcpenv → https://rampa-backend.onrender.com → real data; compose env_file |
 | F42 | XSS hardening: input text cleaning, http(s) links, security headers | Claude | done | tests/api/test_xss.py (17); e2e F42a–c; headers + clean text verified |
 | F43 | Rate limits: /ai/* per user + per IP, login per IP (429 + Retry-After) | Claude | done | tests/api/test_rate_limits.py (8); e2e unchanged with defaults + F43 request; CORS outermost so 429 reaches browsers |
+| F47 | AI_RECOMMENDER=onnx: local Phi-3.5 → F40 filters (prompt with values + examples, JSON repair; over-listing → rules for needs/features) | Claude | done | tests/adapters/test_recommender_onnx.py (13); live: model gets category/area right, over-lists features → hybrid; ~50–90 s on CPU |
+| F46 | Chat on the server: CHAT_MODE rules/onnx/off, model loaded at start (shared weights), MCP tools in-process, SSE /ai/chat/stream | Claude | done | tests/application/test_chat.py (18), tests/adapters/test_chat_onnx.py (7), tests/api/test_chat_api.py (6); e2e F46a–b; live CPU: tool chosen by the model, answer streamed (~90 s) |
 | F45 | Photo metadata on upload (place_id, element, current_state) + PHOTO_MISMATCH check deletes the photo | Claude | done | tests/application/test_photo_mismatch.py (12), tests/api/test_photo_mismatch_api.py (5); e2e F45a–c; photos table +3 columns (auto ADD COLUMN) |
 | F44 | Vision chain Gemini → local ONNX → mock (AI_VISION_FALLBACK=onnx) + SSE POST /ai/image-tags/stream | Claude | done | tests/adapters/test_vision_chain.py (13), tests/api/test_vision_stream_api.py (5); e2e F44 request; ONNX step skipped when onnxruntime-genai/model missing (Render: no model → mock) |
 
 ## Log (newest first)
 
+- 2026-10-04 · F47 green: AI_RECOMMENDER=onnx (hybrid with rules when the small model over-lists)
+- 2026-10-04 · F46 green: server chat assistant, SSE, model preloaded; WebGPU export dropped (concept change: chat on the server)
 - 2026-10-04 · F45 green: upload metadata, mismatch → 400 / stream error, photo deleted
 - 2026-10-04 · F45 red: metadata + mismatch tests
 - 2026-10-04 · F44 green: vision fallback chain + streamed image check (status/keepalive/result|error events)
