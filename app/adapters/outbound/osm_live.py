@@ -1,6 +1,8 @@
 """Live OpenStreetMap adapters (F27): Nominatim geocoder + Overpass POI source, with offline fallback.
 OSM usage policy: identifying User-Agent, low volume (search box + admin-triggered import only)."""
+import asyncio
 import logging
+import time
 
 import httpx
 
@@ -29,15 +31,25 @@ class _LazyClient:
 
 class NominatimGeocoder(_LazyClient):
     def __init__(self, url: str, user_agent: str, *, timeout_s: float = 10.0, viewbox: str = "",
-                 transport: httpx.AsyncBaseTransport | None = None):
+                 transport: httpx.AsyncBaseTransport | None = None, min_interval_s: float = 1.1):
         super().__init__(user_agent, timeout_s, transport)
         self.url, self.viewbox = url, viewbox  # lon1,lat1,lon2,lat2 from the city config (F37); "" = unbounded
+        self.min_interval_s = min_interval_s  # usage policy: at most 1 request per second
+        self._last = 0.0
+        self._turn = asyncio.Lock()
 
     async def search(self, q: str) -> list[GeocodeHit]:
-        params = {"q": q, "format": "jsonv2", "limit": 5}
+        params = {"q": q, "format": "jsonv2", "limit": 5, "countrycodes": "pl", "accept-language": "pl"}
         if self.viewbox:
             params |= {"viewbox": self.viewbox, "bounded": 1}
-        r = await self.client.get(self.url, params=params)
+        async with self._turn:
+            wait = self._last + self.min_interval_s - time.monotonic()
+            if wait > 0:
+                await asyncio.sleep(wait)
+            try:
+                r = await self.client.get(self.url, params=params)
+            finally:
+                self._last = time.monotonic()
         r.raise_for_status()
         return [GeocodeHit(row.get("display_name") or q, None, GeoPoint(float(row["lat"]), float(row["lon"])))
                 for row in r.json() if row.get("lat") is not None and row.get("lon") is not None]
