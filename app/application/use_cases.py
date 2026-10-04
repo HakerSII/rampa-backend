@@ -1524,7 +1524,7 @@ class UseCases:
         target = self.get_place(target_id)
         features = set()
         for o in self.repo.list_observations(source_id):
-            o.place_id = target_id
+            self.repo.move_observation(o.id, target_id)  # keeps the per-place index right (F56)
             features.add(o.feature)
         for r in self.repo.list_reports():
             if r.place_id == source_id:

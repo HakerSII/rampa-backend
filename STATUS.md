@@ -85,6 +85,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F41 | Public remote MCP (Streamable HTTP /mcp) as a separate Render service | Claude | done | own env file .mcpenv (gitignored, template .mcpenv.example); verified live: local MCP (HTTP) + .mcpenv → https://rampa-backend.onrender.com → real data; compose env_file |
 | F42 | XSS hardening: input text cleaning, http(s) links, security headers | Claude | done | tests/api/test_xss.py (17); e2e F42a–c; headers + clean text verified |
 | F43 | Rate limits: /ai/* per user + per IP, login per IP (429 + Retry-After) | Claude | done | tests/api/test_rate_limits.py (8); e2e unchanged with defaults + F43 request; CORS outermost so 429 reaches browsers |
+| F56 | Observations indexed by place: map / observation feeds / card were O(places × observations) — 10–30 s on Render with the full catalogue | Claude | done | tests/adapters/test_repo_performance.py; local full catalogue: every endpoint ~0.2 s |
 | F55 | Reviews: 1–5 stars + text, one per account and place, average on places | Claude | done | tests/api/test_account_reviews_api.py; live: Opinie tab on the card, average in the list |
 | F54 | Account settings: PATCH /me (name), DELETE /me (forget the person, keep contributions) | Claude | done | same tests; live: rename shows on reviews, delete signs out |
 | F53 | 13 features of the Accessly main catalogue + report types (Tablica, Inne) | Claude | done | tests/application/test_features_accessly.py; catalogue brings open_24h (70), reception_24h (22) |
@@ -100,6 +101,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 
 ## Log (newest first)
 
+- 2026-10-04 · F56 green: per-place observation index (production hung after the catalogue import)
 - 2026-10-04 · F54/F55 green: account settings + reviews (forms as on Accessly main)
 - 2026-10-04 · F53 green: main catalogue features + report types
 - 2026-10-04 · F52: GET /observations exclude_source=open_data (imported facts are not barrier reports)
