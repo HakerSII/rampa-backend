@@ -1,0 +1,35 @@
+openapi: 3.1.0
+info:
+  title: Kraków bez barier — Open API — F51 location + nearby
+  version: 0.1.0-mvp
+servers:
+  - url: http://localhost:8000/public/v1
+tags:
+  - name: public
+components:
+  securitySchemes:
+    apiKey: { type: apiKey, in: header, name: X-Api-Key }
+security: [{ apiKey: [] }]
+paths:
+  /geocode:
+    get:
+      tags: [public]
+      summary: Coordinates of a place or address
+      operationId: publicGeocode
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 2 } }
+      responses:
+        "200": { description: "{items: [{label, lat, lon, place_id | null}]}" }
+  /places/nearby:
+    get:
+      tags: [public]
+      summary: Places within a radius, nearest first
+      operationId: publicPlacesNearby
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lon, in: query, required: true, schema: { type: number } }
+        - { name: radius_m, in: query, schema: { type: integer, minimum: 50, maximum: 2000, default: 500 } }
+        - { name: features, in: query, schema: { type: string } }
+      responses:
+        "200": { description: "{items: [PublicPlace + distance_m], total, radius_m}" }
+        "400": { description: Invalid radius / coordinates }

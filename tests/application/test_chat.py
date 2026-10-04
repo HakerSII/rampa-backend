@@ -197,3 +197,50 @@ def test_everyday_questions_find_the_place(question):
     name, args = choose_tool(question, TOOLS)
     assert name == "check_accessibility"
     assert name_matches(args["place_name"], "Teatr im. Juliusza Słowackiego"), args
+
+
+
+class GeoTools(FakeTools):
+    """check_accessibility finds nothing; find_location + places_nearby answer (F51)."""
+
+    def __init__(self):
+        super().__init__()
+        self.answers = {
+            "check_accessibility": {"query": "x", "matches": [], "message": "Nie znaleziono miejsca „x”."},
+            "find_location": {"query": "x", "locations": [{"label": "Plac Świętego Ducha 1, Kraków", "lat": 50.0638,
+                                                           "lon": 19.9437, "place_id": None}]},
+            "places_nearby": {"lat": 50.0638, "lon": 19.9437, "radius_m": 500, "total": 1, "places": [
+                {"id": "plc_1", "name": "Teatr im. Juliusza Słowackiego", "address": "Plac Świętego Ducha 1",
+                 "distance_m": 12, "accessibility_summary": {"step_free_entrance": True}}]},
+        }
+
+    async def call(self, name, arguments):
+        self.calls.append((name, arguments))
+        return self.answers[name]
+
+
+def test_rules_nearby_question_uses_location_then_nearby():
+    tools = GeoTools()
+    events = run(ChatAssistant(None, tools), "co jest w pobliżu placu Świętego Ducha?")
+    assert [c[0] for c in tools.calls] == ["find_location", "places_nearby"]
+    assert tools.calls[1][1] == {"lat": 50.0638, "lon": 19.9437, "radius_m": 500}
+    assert [d["name"] for n, d in events if n == "tool_call"] == ["find_location", "places_nearby"]
+    done = events[-1][1]
+    assert done["tool"] == "places_nearby" and "Teatr im. Juliusza Słowackiego" in done["answer"]
+    assert "Plac Świętego Ducha 1, Kraków" in done["answer"] and "12 m" in done["answer"]
+
+
+def test_unknown_place_falls_back_to_its_location_and_surroundings():
+    tools = GeoTools()
+    events = run(ChatAssistant(None, tools), "czy do opery krakowskiej wjadę wózkiem?")
+    assert [c[0] for c in tools.calls] == ["check_accessibility", "find_location", "places_nearby"]
+    assert "Teatr im. Juliusza Słowackiego" in events[-1][1]["answer"]
+
+
+def test_model_choosing_find_location_is_followed_by_nearby():
+    model = FakeModel(choice='{"tool": "find_location", "arguments": {"query": "Plac Świętego Ducha"}}',
+                      answer="W pobliżu jest Teatr Słowackiego.")
+    tools = GeoTools()
+    run(ChatAssistant(model, tools), "co jest koło placu św. ducha")
+    assert [c[0] for c in tools.calls] == ["find_location", "places_nearby"]
+    assert "Teatr im. Juliusza Słowackiego" in model.prompts[1][-1]["content"]
