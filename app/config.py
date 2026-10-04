@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     mail_from: str = "noreply@rampa.local"
     email_link_url: str = ""  # front-end page that takes ?token=…; empty → code only
     # F30 recommendations: rules (offline) | claude (ANTHROPIC_API_KEY) | gemini (GEMINI_API_KEY); failure → rules
-    ai_recommender: Literal["rules", "claude", "gemini"] = "rules"
+    ai_recommender: Literal["rules", "claude", "gemini", "onnx"] = "rules"  # onnx: local Phi-3.5 (F47)
     anthropic_api_key: str = ""  # secret: only in .env / Render env
     claude_model: str = "claude-sonnet-5-5"
     router: Literal["straight", "osrm"] = "straight"  # F28: GET /route geometry

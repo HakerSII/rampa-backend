@@ -42,12 +42,15 @@ def _gemini_fallback(settings: Settings, mock):
                                   settings.ai_onnx_timeout_s)
 
 
-def build_chat_model(settings: Settings):
-    """F46: None = rules answers (CHAT_MODE=rules|off); onnx → local Phi-3.5 (loading starts in create_app)."""
-    if settings.chat_mode != "onnx":
-        return None
+def build_onnx_text_model(settings: Settings):
+    """Local Phi-3.5 for text (chat F46, recommender F47); the weights are loaded once per folder (phi_onnx)."""
     from app.adapters.outbound.chat_onnx import OnnxPhiChatModel
     return OnnxPhiChatModel(settings.chat_model_path or settings.ai_model_path, settings.chat_timeout_s)
+
+
+def build_chat_model(settings: Settings):
+    """F46: None = rules answers (CHAT_MODE=rules|off); onnx → local Phi-3.5 (loading starts in create_app)."""
+    return build_onnx_text_model(settings) if settings.chat_mode == "onnx" else None
 
 
 def build_geocoder(settings: Settings, city: City):
@@ -67,6 +70,12 @@ def build_mailer(settings: Settings):
 
 
 def build_recommender(settings: Settings, city: City):
+    if settings.ai_recommender == "onnx":  # F47: local Phi-3.5, weights shared with chat / photo analysis
+        from app.adapters.outbound.recommender_onnx import OnnxQueryInterpreter
+        llm = build_onnx_text_model(settings)
+        if settings.chat_preload:
+            llm.start_loading()
+        return OnnxQueryInterpreter(llm, city)
     if settings.ai_recommender == "gemini":
         if not settings.gemini_api_key:
             log.warning("AI_RECOMMENDER=gemini but GEMINI_API_KEY is empty → rules")
