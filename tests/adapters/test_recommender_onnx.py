@@ -73,3 +73,16 @@ def test_use_case_falls_back_to_rules_when_not_loaded():
     uc = make_use_cases(recommender=OnnxQueryInterpreter(FakeModel(state="loading"), load_city(None)))
     r = asyncio.run(uc.recommend(None, "kawiarnia z toaletą dla wózka", None, None, None, 5))
     assert r.model == "rules"
+
+
+def test_truncated_json_is_repaired(city):
+    reply = '{"profiles": ["wheelchair"], "features": ["elevator"'
+    intent = asyncio.run(OnnxQueryInterpreter(FakeModel(reply), city).interpret("winda"))
+    assert [p.value for p in intent.profiles] == ["wheelchair"] and [f.value for f in intent.features] == ["elevator"]
+
+
+def test_prompt_is_short_with_examples(city):
+    model = FakeModel()
+    asyncio.run(OnnxQueryInterpreter(model, city).interpret("x"))
+    system = model.prompts[0][0]["content"]
+    assert len(system) < 1500 and "->" in system and '"type"' not in system
