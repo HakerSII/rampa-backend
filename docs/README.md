@@ -11,6 +11,7 @@
 | [api.md](api.md) | Full HTTP API reference: conventions, auth, errors, every endpoint with real request/response examples |
 | [configuration.md](configuration.md) | Every setting (`.env` ↔ `app/config.py`), defaults, modes |
 | [operations.md](operations.md) | Run, test, **Render deploy (auto after merge to `master`)**, demo script, MCP in Claude, Gemini/ONNX, Google login, troubleshooting |
+| [deployment.md](deployment.md) | **Deployment of the whole system on Render**: services and URLs (backend, Postgres, MCP, Accessly UI), branches that deploy, release flow, production env, catalogue import, smoke test, troubleshooting |
 | [mcp.md](mcp.md) | MCP for AI assistants: tools, local stdio vs remote HTTP, deploy as a separate Render service, connecting Claude / Gemini CLI / Grok |
 | [PITCH.md](PITCH.md) | 90-second pitch, evidence, architecture slide, Q&A |
 | [DEMO.md](DEMO.md) | Stage demo script: pre-flight checks, every click and expected result, fallbacks |
