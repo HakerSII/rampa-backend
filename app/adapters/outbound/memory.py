@@ -109,16 +109,38 @@ class InMemoryRepo:
 
     # observations / reports / photos
     def add_observation(self, obs: Observation) -> None:
+        index = self._place_index()
+        if obs.id not in self.observations:
+            index.setdefault(obs.place_id, []).append(obs.id)
         self.observations[obs.id] = obs
+        self._index_size = len(self.observations)
 
     def get_observation(self, obs_id: str) -> Observation | None:
         return self.observations.get(obs_id)
 
+    def move_observation(self, obs_id: str, place_id: str) -> None:
+        """Re-home an observation (merging duplicate places) and its entry in the per-place index."""
+        o = self.observations[obs_id]
+        index = self._place_index()
+        if obs_id in index.get(o.place_id, []):
+            index[o.place_id].remove(obs_id)
+        o.place_id = place_id
+        index.setdefault(place_id, []).append(obs_id)
+
+    def _place_index(self) -> dict[str, list[str]]:
+        """F56: observation ids per place, in insertion order. Rebuilt when the dict was replaced (reload) or shrank;
+        a scan per place made the map / feeds O(places × observations) with the full catalogue."""
+        if getattr(self, "_index_of", None) is not self.observations or self._index_size != len(self.observations):
+            index: dict[str, list[str]] = {}
+            for o in self.observations.values():
+                index.setdefault(o.place_id, []).append(o.id)
+            self._index, self._index_of, self._index_size = index, self.observations, len(self.observations)
+        return self._index
+
     def list_observations(self, place_id: str, feature: FeatureKey | None = None) -> list[Observation]:
-        return [
-            o for o in self.observations.values()
-            if o.place_id == place_id and (feature is None or o.feature == feature)
-        ]
+        ids = self._place_index().get(place_id, ())
+        return [o for o in (self.observations[i] for i in ids if i in self.observations)
+                if feature is None or o.feature == feature]
 
     def add_report(self, report: Report) -> None:
         self.reports[report.id] = report
