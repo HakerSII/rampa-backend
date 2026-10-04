@@ -79,3 +79,13 @@ def test_only_admin():
     with pytest.raises(Forbidden):
         run_as = asyncio.run(uc.import_catalog(user(uc, "anna"), entries()))
         assert run_as is None
+
+
+def test_kind_and_opening_hours_are_kept():
+    data = from_accessly([{"ref": "node/5", "name": "Ogród Doświadczeń", "category": "kultura", "kind": "theme_park",
+                           "lat": 50.07, "lng": 19.99, "openingHours": "Sa,Su 10:00-19:00"}])
+    assert data[0]["kind"] == "theme_park" and data[0]["opening_hours"] == "Sa,Su 10:00-19:00"
+    uc = make_use_cases()
+    run(uc, data)
+    p = next(p for p in uc.repo.list_places() if p.name == "Ogród Doświadczeń")
+    assert p.kind == "theme_park" and p.opening_hours == [{"text": "Sa,Su 10:00-19:00"}]
