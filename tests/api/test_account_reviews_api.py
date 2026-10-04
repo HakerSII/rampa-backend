@@ -55,7 +55,7 @@ def test_review_add_change_and_list(tmp_path):
     page = c.get("/api/v1/places/plc_mnk/reviews", headers=ANNA).json()
     assert (page["count"], page["average"]) == (2, 3.0)
     assert page["mine"]["rating"] == 4 and page["mine"]["text"] == "Winda działa, ale wolna."
-    assert {i["author"]["display_name"] for i in page["items"]} == {"Anna K.", "Ola"} or len(page["items"]) == 2
+    assert {i["author"]["display_name"] for i in page["items"]} == {"Anna K.", "Ola W."}  # public names
     assert c.get("/api/v1/places/plc_mnk/reviews").json()["mine"] is None  # guest
 
 

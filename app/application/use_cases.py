@@ -79,6 +79,7 @@ from app.domain.model import (
     Report,
     Session,
     User,
+    Review,
 )
 from app.seed import OSM_AUTHOR_ID, SEED_AUTHOR_ID, load_seed
 
@@ -1044,6 +1045,66 @@ class UseCases:
         for place_id, feature in touched:
             self.recompute(place_id, feature)
         return result
+
+    # ------------------------------------------------------------------ F54 account settings
+    DELETED_NAME = "Usunięty użytkownik"
+
+    def update_me(self, user: User | None, display_name: str) -> User:
+        self._require_user(user)
+        name = clean_text(display_name or "").strip()
+        if not 1 <= len(name) <= 60:
+            raise ValidationFailed("display_name: 1..60 characters")
+        user.display_name = name
+        return user
+
+    def delete_account(self, user: User | None) -> None:
+        """Forget the person: sessions, favourites, needs, reviews, e-mail / Google / demo login. Observations,
+        reports and questions stay (the community's data), shown as DELETED_NAME."""
+        self._require_user(user)
+        for review in [r for r in self.repo.list_reviews() if r.author_id == user.id]:
+            self.repo.delete_review(review.place_id, user.id)
+        user.favorite_place_ids, user.needs, user.pref_features = [], [], []
+        user.email = user.google_sub = user.username = None
+        user.display_name = self.DELETED_NAME
+        self.repo.delete_sessions_of(user.id)
+
+    # ------------------------------------------------------------------ F55 reviews
+    @staticmethod
+    def _require_account(user: User | None) -> None:
+        if user is None:
+            raise Unauthorized("login required")
+        if not (user.email or user.google_sub or user.username):
+            raise Forbidden("an account is needed for reviews (sign in with e-mail)")
+
+    def save_review(self, user: User | None, place_id: str, rating: int, text: str = "") -> Review:
+        self._require_account(user)
+        self.get_place(place_id)
+        if not 1 <= int(rating) <= 5:
+            raise ValidationFailed("rating: 1..5")
+        text = clean_text(text or "").strip()
+        if len(text) > 500:
+            raise ValidationFailed("text: at most 500 characters")
+        now = self.clock.now()
+        old = self.repo.get_review(place_id, user.id)
+        review = Review(old.id if old else self.ids.new("rev"), place_id, user.id, int(rating), text,
+                        old.created_at if old else now, now)
+        self.repo.save_review(review)
+        return review
+
+    def delete_review(self, user: User | None, place_id: str) -> None:
+        self._require_user(user)
+        self.repo.delete_review(place_id, user.id)
+
+    def list_reviews(self, place_id: str, user: User | None = None) -> tuple[list[Review], Review | None]:
+        self.get_place(place_id)
+        items = sorted(self.repo.list_reviews(place_id), key=lambda r: r.updated_at, reverse=True)
+        mine = next((r for r in items if user and r.author_id == user.id), None)
+        return items, mine
+
+    def rating_for(self, place_id: str) -> dict | None:
+        """{avg (1 decimal), count} of a place's reviews, or None without any."""
+        stars = [r.rating for r in self.repo.list_reviews(place_id)]
+        return {"avg": round(sum(stars) / len(stars), 1), "count": len(stars)} if stars else None
 
     def _find_place(self, name: str, here: GeoPoint, external_id: str | None = None) -> Place | None:
         """Same external id, or the same name (case-insensitive) within MATCH_RADIUS_M."""

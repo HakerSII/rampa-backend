@@ -1,7 +1,7 @@
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.adapters.inbound.http.deps import UC, CurrentUser, OptionalUser
 from app.adapters.inbound.http.schemas import (
@@ -20,6 +20,7 @@ from app.adapters.inbound.http.schemas import (
     ResolvePlaceIn,
     accessibility_out,
     activity_item_out,
+    AuthorOut,
     author_out,
     check_out,
     feature_dictionary,
@@ -97,6 +98,8 @@ async def search_places(uc: UC, features: Annotated[str | None, Query()] = None,
         return MapMarkers(total=len(markers), items=markers)
     r = uc.find_places(query)
     items = [place_summary(p, uc.yes_features(p.id), uc.verification_for(p.id), d) for p, d in r.items]
+    for item in items:
+        item.rating = uc.rating_for(item.id)  # F55
     if query.profiles:  # F31: how well each place fits the profile
         for item in items:
             item.match = uc.place_match(item.id, query.profiles)
@@ -128,7 +131,57 @@ async def resolve_place(body: ResolvePlaceIn, uc: UC, user: CurrentUser, respons
 
 @router.get("/places/{place_id}", response_model=PlaceOut, tags=["places"])
 async def get_place(place_id: str, uc: UC):
-    return place_out(uc.get_place(place_id), uc.yes_features(place_id), uc.verification_for(place_id))
+    out = place_out(uc.get_place(place_id), uc.yes_features(place_id), uc.verification_for(place_id))
+    out.rating = uc.rating_for(place_id)  # F55
+    return out
+
+
+# ---------------------------------------------------------------- F55 reviews
+class ReviewIn(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    text: str = Field(default="", max_length=500)
+
+
+class ReviewOut(BaseModel):
+    id: str
+    author: AuthorOut
+    rating: int
+    text: str
+    created_at: str
+    updated_at: str
+
+
+class ReviewPage(BaseModel):
+    items: list[ReviewOut]
+    count: int
+    average: float | None
+    mine: ReviewOut | None
+
+
+def review_out(uc, r) -> ReviewOut:
+    return ReviewOut(id=r.id, author=author_out(uc, r.author_id), rating=r.rating, text=r.text,
+                     created_at=iso(r.created_at), updated_at=iso(r.updated_at))
+
+
+@router.get("/places/{place_id}/reviews", response_model=ReviewPage, tags=["places"])
+async def list_reviews(place_id: str, uc: UC, me: OptionalUser):
+    """F55: newest first, the average and the caller's own review (guest: null)."""
+    items, mine = uc.list_reviews(place_id, me)
+    rating = uc.rating_for(place_id)
+    return ReviewPage(items=[review_out(uc, r) for r in items], count=len(items),
+                      average=rating["avg"] if rating else None, mine=review_out(uc, mine) if mine else None)
+
+
+@router.put("/places/{place_id}/reviews/me", response_model=ReviewOut, tags=["places"])
+async def save_review(place_id: str, body: ReviewIn, uc: UC, user: CurrentUser):
+    """F55: add or replace my review (an account needed: this device's anonymous identity → 403)."""
+    return review_out(uc, uc.save_review(user, place_id, body.rating, body.text))
+
+
+@router.delete("/places/{place_id}/reviews/me", status_code=204, tags=["places"])
+async def delete_review(place_id: str, uc: UC, user: CurrentUser):
+    uc.delete_review(user, place_id)
+    return Response(status_code=204)
 
 
 @router.get("/places/{place_id}/accessibility", response_model=AccessibilityOut, tags=["places"])

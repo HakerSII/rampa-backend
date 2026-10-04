@@ -26,7 +26,7 @@ paths:
       summary: Delete the account (contributions stay, anonymised)
       operationId: deleteMe
       responses:
-        "204": { description: Deleted, signed out }
+        "204": { description: "Deleted, signed out" }
         "401": { description: Login required }
   /places/{placeId}/reviews:
     get:
