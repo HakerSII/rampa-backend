@@ -1,64 +1,73 @@
 """F48: the local model is downloaded at start when missing (Hugging Face), with a memory guard."""
 import json
+from pathlib import Path
 
-import httpx
 import pytest
 
 from app.adapters.outbound import model_fetch, phi_onnx
 
 REPO, SUB = "microsoft/Phi-3.5-vision-instruct-onnx", "gpu/gpu-int4-rtn-block-32"
-FILES = {"genai_config.json": b'{"model": {}}', "phi-3.5-v-instruct-text.onnx": b"graph",
-         "phi-3.5-v-instruct-text.onnx.data": b"w" * 5000, "tokenizer.json": b"{}"}
 
 
-def hub(requests: list):
-    def handler(request: httpx.Request) -> httpx.Response:
-        requests.append(request.url.path)
-        if request.url.path == f"/api/models/{REPO}/tree/main/{SUB}":
-            return httpx.Response(200, json=[{"type": "file", "path": f"{SUB}/{n}", "size": len(b)} for n, b in FILES.items()]
-                                  + [{"type": "directory", "path": f"{SUB}/extra"}])
-        for name, body in FILES.items():
-            if request.url.path == f"/{REPO}/resolve/main/{SUB}/{name}":
-                return httpx.Response(200, content=body)
-        return httpx.Response(404)
-    return httpx.Client(transport=httpx.MockTransport(handler), base_url="https://huggingface.co")
+@pytest.fixture
+def hub(monkeypatch):
+    """Fake snapshot_download (as get_model.py): writes the subfolder's files under local_dir."""
+    calls = []
+
+    def snapshot(repo_id, allow_patterns, local_dir):
+        calls.append((repo_id, allow_patterns, local_dir))
+        target = Path(local_dir) / SUB
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "genai_config.json").write_text("{}")
+        (target / "phi-3.5-v-instruct-text.onnx.data").write_bytes(b"w" * 10)
+
+    monkeypatch.setattr(model_fetch, "_snapshot_download", snapshot)
+    return calls
 
 
-def test_downloads_every_file_config_last(tmp_path):
-    requests = []
-    target = tmp_path / "model"
-    model_fetch.ensure_model(str(target), REPO, SUB, client=hub(requests))
-    assert {p.name for p in target.iterdir()} == set(FILES)
-    assert (target / "phi-3.5-v-instruct-text.onnx.data").read_bytes() == FILES["phi-3.5-v-instruct-text.onnx.data"]
-    downloads = [r for r in requests if "/resolve/" in r]
-    assert downloads[-1].endswith("genai_config.json")  # its presence = the download finished
-    assert model_fetch.is_complete(str(target))
+def test_downloads_the_subfolder_like_get_model(tmp_path, hub):
+    path = tmp_path / "models" / "gpu" / "gpu-int4-rtn-block-32"
+    model_fetch.ensure_model(str(path), REPO, SUB)
+    assert hub == [(REPO, [f"{SUB}/*"], str(tmp_path / "models"))]
+    assert model_fetch.is_complete(str(path)) and (path / "genai_config.json").exists()
 
 
-def test_complete_model_is_not_downloaded_again(tmp_path):
-    target = tmp_path / "model"
-    model_fetch.ensure_model(str(target), REPO, SUB, client=hub([]))
-    again = []
-    model_fetch.ensure_model(str(target), REPO, SUB, client=hub(again))
-    assert again == []
+def test_complete_model_is_not_downloaded_again(tmp_path, hub):
+    path = tmp_path / "models" / SUB
+    model_fetch.ensure_model(str(path), REPO, SUB)
+    model_fetch.ensure_model(str(path), REPO, SUB)
+    assert len(hub) == 1
 
 
-def test_interrupted_download_resumes_missing_files(tmp_path):
-    target = tmp_path / "model"
-    target.mkdir()
-    (target / "tokenizer.json").write_bytes(FILES["tokenizer.json"])  # already there, right size
-    (target / "phi-3.5-v-instruct-text.onnx.data.part").write_bytes(b"half")
-    requests = []
-    model_fetch.ensure_model(str(target), REPO, SUB, client=hub(requests))
-    assert not any(r.endswith("tokenizer.json") for r in requests)
-    assert not list(target.glob("*.part")) and model_fetch.is_complete(str(target))
+def test_a_model_copied_by_hand_counts_as_complete(tmp_path, hub):
+    path = tmp_path / "models" / SUB
+    path.mkdir(parents=True)
+    (path / "genai_config.json").write_text("{}")
+    model_fetch.ensure_model(str(path), REPO, SUB)
+    assert hub == []
 
 
-def test_hub_error_raises(tmp_path):
-    client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(500)), base_url="https://huggingface.co")
-    with pytest.raises(httpx.HTTPError):
-        model_fetch.ensure_model(str(tmp_path / "m"), REPO, SUB, client=client)
-    assert not model_fetch.is_complete(str(tmp_path / "m"))
+def test_interrupted_download_is_resumed(tmp_path, monkeypatch, hub):
+    path = tmp_path / "models" / SUB
+
+    def dies(repo_id, allow_patterns, local_dir):
+        (Path(local_dir) / SUB).mkdir(parents=True, exist_ok=True)
+        (Path(local_dir) / SUB / "genai_config.json").write_text("{}")  # some files are there, not all
+        raise OSError("connection reset")
+
+    real = model_fetch._snapshot_download
+    monkeypatch.setattr(model_fetch, "_snapshot_download", dies)
+    with pytest.raises(OSError):
+        model_fetch.ensure_model(str(path), REPO, SUB)
+    assert not model_fetch.is_complete(str(path))  # genai_config.json alone is not enough after a failed run
+    monkeypatch.setattr(model_fetch, "_snapshot_download", real)
+    model_fetch.ensure_model(str(path), REPO, SUB)
+    assert model_fetch.is_complete(str(path)) and len(hub) == 1
+
+
+def test_path_must_end_with_the_subfolder(tmp_path, hub):
+    with pytest.raises(ValueError):
+        model_fetch.ensure_model(str(tmp_path / "elsewhere"), REPO, SUB)
 
 
 def test_memory_from_cgroup_v2(tmp_path):
