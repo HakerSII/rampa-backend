@@ -184,3 +184,16 @@ def test_general_questions_get_help_without_a_tool(question):
     assert tools.calls == [] and "tool_call" not in names(events)
     done = events[-1][1]
     assert done["tool"] is None and done["model"] == "rules" and "Muzeum Narodowe" in done["answer"]
+
+
+@pytest.mark.parametrize("question", [
+    "czy do teatru na słowackiego wjade wozkiem ?",
+    "czy do teatru na slowackiego wjade wozkiem",
+    "Czy wjadę wózkiem do Teatru Słowackiego?",
+    "teatr słowackiego na wózku",
+])
+def test_everyday_questions_find_the_place(question):
+    from app.domain.text import name_matches
+    name, args = choose_tool(question, TOOLS)
+    assert name == "check_accessibility"
+    assert name_matches(args["place_name"], "Teatr im. Juliusza Słowackiego"), args

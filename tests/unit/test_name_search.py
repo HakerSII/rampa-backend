@@ -15,6 +15,7 @@ def test_fold():
     ("Muzeum Narodowego", "Muzeum Narodowe w Krakowie"),
     ("camelot", "Cafe Camelot"),
     ("amelot", "Cafe Camelot"),  # a plain fragment still works
+    ("teatru na slowackiego", "Teatr im. Juliusza Słowackiego"),  # linking words are ignored
 ])
 def test_matches(query, name):
     assert name_matches(query, name)
