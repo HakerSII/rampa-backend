@@ -34,3 +34,34 @@ def test_search_places_uses_it():
     from tests.conftest import make_use_cases
     uc = make_use_cases()
     assert [p.id for p in uc.search_places(q="muzeum narodowego")] == ["plc_mnk"]
+
+
+@pytest.mark.parametrize("query, expected", [
+    ("Tauron Areny", "Tauron Arena"),
+    ("Teatru Bagatela", "Teatr Bagatela"),
+    ("Opery Krakowskiej", "Opera Krakowska"),
+    ("ulicy Lea 120", "Lea 120"),
+    ("Galerii Krakowskiej", "Galeria Krakowska"),
+    ("Wawel", "Wawel"),
+])
+def test_nominative_variant_for_the_geocoder(query, expected):
+    from app.domain.text import nominative
+    assert nominative(query) == expected
+
+
+async def test_geocode_retries_with_the_nominative():
+    from app.domain.model import GeocodeHit, GeoPoint
+    from tests.conftest import make_use_cases
+
+    class Geo:
+        def __init__(self):
+            self.queries = []
+
+        async def search(self, q):
+            self.queries.append(q)
+            return [GeocodeHit("TAURON Arena Kraków, Lema 7", None, GeoPoint(50.0679, 19.9914))] if q == "Tauron Arena" else []
+
+    geo = Geo()
+    uc = make_use_cases(geocoder=geo)
+    hits = await uc.geocode_live("Tauron Areny")
+    assert geo.queries == ["Tauron Areny", "Tauron Arena"] and hits[0].label.startswith("TAURON Arena")
