@@ -2058,6 +2058,22 @@
             }
           },
           {
+            "name": "exclude_source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exclude Source"
+            }
+          },
+          {
             "name": "authorization",
             "in": "header",
             "required": false,

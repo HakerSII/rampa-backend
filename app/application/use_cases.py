@@ -1811,8 +1811,9 @@ class UseCases:
 
     def map_observations(self, *, bbox: str | None = None, active: bool = True, feature: str | None = None,
                          value: str | None = None, current: bool = False, since: str | None = None,
-                         limit: int = 200) -> list[tuple[Observation, Place, str | None]]:
-        """F24: observations across places for the map, newest first, with place + report severity."""
+                         limit: int = 200, exclude_source: str | None = None) -> list[tuple[Observation, Place, str | None]]:
+        """F24: observations across places for the map, newest first, with place + report severity.
+        exclude_source (F52): e.g. open_data — imported facts are place features, not barrier reports."""
         if not 1 <= limit <= 500:
             raise ValidationFailed("limit: 1..500")
         try:
@@ -1821,6 +1822,7 @@ class UseCases:
             raise ValidationFailed(str(e)) from e
         feature_v = _enum(FeatureKey, feature, "feature") if feature else None
         value_v = _enum(ObservationValue, value, "value") if value else None
+        excluded = _enum(ObservationSource, exclude_source, "exclude_source") if exclude_source else None
         since_dt = None
         if since:
             try:  # "+01:00" often arrives as " 01:00" when not URL-encoded
@@ -1842,6 +1844,8 @@ class UseCases:
                 if active and (not validation.is_active(o) or trust.is_expired(o, now)):
                     continue
                 if value_v and o.value != value_v:
+                    continue
+                if excluded and o.source == excluded:
                     continue
                 if since_dt and o.created_at < since_dt:
                     continue

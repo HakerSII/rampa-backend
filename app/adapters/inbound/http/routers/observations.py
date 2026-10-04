@@ -69,10 +69,10 @@ async def get_report(report_id: str, uc: UC, user: CurrentUser):
 @router.get("/observations", response_model=MapObservations, tags=["observations"])
 async def map_observations(uc: UC, me: OptionalUser, bbox: str | None = None, active: bool = True,
                            feature: str | None = None, value: str | None = None, current: bool = False,
-                           since: str | None = None, limit: int = 200):
+                           since: str | None = None, limit: int = 200, exclude_source: str | None = None):
     """F24 map layer: observations across places (one request), newest first, with place + report severity."""
     rows = uc.map_observations(bbox=bbox, active=active, feature=feature, value=value, current=current,
-                               since=since, limit=limit)
+                               since=since, limit=limit, exclude_source=exclude_source)
     items = [MapObservationOut(**observation_out(uc, o, me).model_dump(),
                                place=MapPlaceOut(id=p.id, name=p.name,
                                                  location=Location(lat=p.location.lat, lon=p.location.lon)),

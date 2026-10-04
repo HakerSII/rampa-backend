@@ -553,7 +553,7 @@ Body `{ "value": 1 }` or `{ "value": -1 }`. Voting again replaces the previous v
 
 ## 5c. Map layer of observations
 
-`GET /api/v1/observations?active=true&bbox=19.93,50.055,19.95,50.07&value=no&current=true&since=…&limit=200`: observations across all places, **newest first**. Each item is a full `Observation` plus:
+`GET /api/v1/observations?active=true&bbox=19.93,50.055,19.95,50.07&value=no&current=true&since=…&limit=200`: observations across all places, **newest first**. `exclude_source=open_data` (F52) leaves out imported OSM / catalogue facts: they are place features, not barrier reports (the app's Zgłoszenia list asks this way). Each item is a full `Observation` plus:
 
 ```json
 { "place": { "id": "plc_camelot", "name": "Cafe Camelot", "location": { "lat": 50.0628, "lon": 19.9383 } },

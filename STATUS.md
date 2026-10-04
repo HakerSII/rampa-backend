@@ -96,6 +96,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 
 ## Log (newest first)
 
+- 2026-10-04 · F52: GET /observations exclude_source=open_data (imported facts are not barrier reports)
 - 2026-10-04 · F51 green: location + surroundings for the chat and MCP; app search through Rampa
 - 2026-10-04 · F50 green: forgiving name search; chat understands everyday questions
 - 2026-10-04 · F49 green: place catalogue import (map as on Accessly main)
