@@ -85,6 +85,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 | F41 | Public remote MCP (Streamable HTTP /mcp) as a separate Render service | Claude | done | own env file .mcpenv (gitignored, template .mcpenv.example); verified live: local MCP (HTTP) + .mcpenv → https://rampa-backend.onrender.com → real data; compose env_file |
 | F42 | XSS hardening: input text cleaning, http(s) links, security headers | Claude | done | tests/api/test_xss.py (17); e2e F42a–c; headers + clean text verified |
 | F43 | Rate limits: /ai/* per user + per IP, login per IP (429 + Retry-After) | Claude | done | tests/api/test_rate_limits.py (8); e2e unchanged with defaults + F43 request; CORS outermost so 429 reaches browsers |
+| F49 | Full place catalogue from Accessly main (6545 places, 1445 with OSM facts) → POST /admin/imports source=catalog | Claude | done | tests (8); live: import 0.5 s (memory), map + card + route same as main |
 | F48 | Local model downloaded at start when missing (huggingface_hub, as get_model.py) + memory guard + preload + /health local_model; Docker image with the ai extra | Claude | done | tests/adapters/test_model_fetch.py (19), tests/api/test_model_preload_api.py (8); live: empty folder → downloading at start → ready |
 | F47 | AI_RECOMMENDER=onnx: local Phi-3.5 → F40 filters (prompt with values + examples, JSON repair; over-listing → rules for needs/features) | Claude | done | tests/adapters/test_recommender_onnx.py (13); live: model gets category/area right, over-lists features → hybrid; ~50–90 s on CPU |
 | F46 | Chat on the server: CHAT_MODE rules/onnx/off, model loaded at start (shared weights), MCP tools in-process, SSE /ai/chat/stream | Claude | done | tests/application/test_chat.py (18), tests/adapters/test_chat_onnx.py (7), tests/api/test_chat_api.py (6); e2e F46a–b; live CPU: tool chosen by the model, answer streamed (~90 s) |
@@ -93,6 +94,7 @@ States: `todo` · `red` · `green` · `done` · `blocked`
 
 ## Log (newest first)
 
+- 2026-10-04 · F49 green: place catalogue import (map as on Accessly main)
 - 2026-10-04 · F48 green: model download at start, memory guard (Render: needs ≥ ~4 GB instance for onnx)
 - 2026-10-04 · F45 fix: no PHOTO_MISMATCH verdict when the mock answered as a fallback (prod had AI_MODE=onnx without a model)
 - 2026-10-04 · F47 green: AI_RECOMMENDER=onnx (hybrid with rules when the small model over-lists)

@@ -62,7 +62,7 @@ All settings live in `app/config.py` (`Settings`, pydantic-settings). They are r
 | `AI_MODEL_MIN_RAM_MB` | `3500` | not loaded with less free memory (container limit or MemAvailable): state `error`, fallbacks answer — an out-of-memory kill would take the whole server down. `0` = no check |
 | `CHAT_MODE` | `rules` | F46 chat: `rules` (keyword rules + template, no model) · `onnx` (local Phi-3.5) · `off` (503) |
 | `CHAT_MODEL_PATH` | — | model folder for the chat; empty = `AI_MODEL_PATH` (one copy in memory, shared with photos and recommendations) |
-| `CHAT_PRELOAD` | `true` | start loading the local model in the background when the server starts (chat and `AI_RECOMMENDER=onnx`) |
+| `CHAT_PRELOAD` | `false` | start loading the local model in the background when the server starts (chat and `AI_RECOMMENDER=onnx`) |
 | `CHAT_TIMEOUT_S` | `120` | max time per chat model call → rules answer |
 | `CHAT_MAX_NEW_TOKENS` | `160` | length limit of a chat answer |
 | `GEMINI_API_KEY` | — | **secret**; from https://aistudio.google.com/apikey, sent as the `x-goog-api-key` header |

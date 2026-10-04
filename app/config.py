@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3.8-flash"
     gemini_api_url: str = "https://generativelanguage.googleapis.com/v1beta"
     osm_file: str = "data/osm_krakow_tauron.json"  # offline OSM snapshot
+    catalog_file: str = "data/krakow_catalog.json"  # F49: full place catalogue (POST /admin/imports source=catalog)
     # F27 live OSM: geocoder for the search box; Overpass for POST /admin/imports {"source": "overpass"}
     geocoder: Literal["local", "nominatim"] = "local"
     nominatim_url: str = "https://nominatim.openstreetmap.org/search"
