@@ -58,3 +58,18 @@ def make_use_cases(auth_mode="demo", verifier=None, admin_emails=None, clock=Non
 @pytest.fixture
 def uc() -> UseCases:
     return make_use_cases()
+
+
+@pytest.fixture(autouse=True)
+def _isolated_local_model(monkeypatch):
+    """F48: the local-model settings are process-wide (one app per server); every test starts without them
+    and never downloads or loads a real model by accident."""
+    from app.adapters.outbound import phi_onnx
+    monkeypatch.setattr(phi_onnx, "_CONFIG", {"download": False, "repo": "", "subfolder": "", "min_ram_mb": 0})
+    monkeypatch.setattr(phi_onnx, "STATE", {})
+    monkeypatch.setattr(phi_onnx, "preload", lambda path: _NoThread())
+
+
+class _NoThread:
+    def join(self, timeout=None):
+        pass

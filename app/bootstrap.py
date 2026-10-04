@@ -14,6 +14,19 @@ from app.domain.city import City, load_city
 log = logging.getLogger(__name__)
 
 
+def local_model_path(settings: Settings) -> str | None:
+    """F48: the local model folder if any setting uses it (photos, their fallback, chat, recommendations), else None."""
+    uses = (settings.ai_mode == "onnx" or settings.chat_mode == "onnx" or settings.ai_recommender == "onnx"
+            or (settings.ai_mode == "gemini" and settings.ai_vision_fallback == "onnx"))
+    return (settings.chat_model_path or settings.ai_model_path) if uses else None
+
+
+def configure_local_model(settings: Settings) -> None:
+    from app.adapters.outbound import phi_onnx
+    phi_onnx.configure(download=settings.ai_model_download, repo=settings.ai_model_repo,
+                       subfolder=settings.ai_model_subfolder, min_ram_mb=settings.ai_model_min_ram_mb)
+
+
 def build_vision(settings: Settings):
     mock = MockVisionAnalyzer()
     if settings.ai_mode == "gemini":
@@ -115,6 +128,7 @@ def build_use_cases(settings: Settings, verifier: IdentityVerifier | None = None
     if verifier is None and settings.auth_mode == "google":
         from app.adapters.outbound.google_auth import GoogleIdentityVerifier
         verifier = GoogleIdentityVerifier(settings.google_client_id)
+    configure_local_model(settings)  # before build_vision: onnx_available() depends on the download setting
     vision = build_vision(settings)
     city = load_city(settings.city_config or None)  # F37: invalid file → error at start
     ids = SeqIdGenerator()

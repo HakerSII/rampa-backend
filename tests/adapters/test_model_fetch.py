@@ -6,6 +6,7 @@ import pytest
 
 from app.adapters.outbound import model_fetch, phi_onnx
 
+REAL_PRELOAD = phi_onnx.preload  # conftest replaces it in every test (no background loads)
 REPO, SUB = "microsoft/Phi-3.5-vision-instruct-onnx", "gpu/gpu-int4-rtn-block-32"
 
 
@@ -145,7 +146,7 @@ def test_state_of_an_unused_model(fresh):
 def test_preload_runs_in_the_background(fresh, monkeypatch):
     loaded = []
     monkeypatch.setattr(phi_onnx, "load", lambda path: loaded.append(path))
-    t = phi_onnx.preload("models/x")
+    t = REAL_PRELOAD("models/x")
     t.join(2)
     assert loaded == ["models/x"]
 
@@ -155,7 +156,7 @@ def test_preload_swallows_errors(fresh, monkeypatch):
         raise MemoryError("no")
 
     monkeypatch.setattr(phi_onnx, "load", boom)
-    phi_onnx.preload("models/x").join(2)  # no exception escapes the thread
+    REAL_PRELOAD("models/x").join(2)  # no exception escapes the thread
 
 
 def test_settings_defaults():

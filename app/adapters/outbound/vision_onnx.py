@@ -11,11 +11,13 @@ MODEL_NAME = "phi-3.5-vision-onnx"
 
 
 def onnx_available(model_path: str) -> bool:
-    """F44: the local model can run here — onnxruntime-genai installed and the model folder present."""
+    """F44: the local model can run here — onnxruntime-genai installed and the model folder present
+    (or it will be downloaded at start, F48)."""
     import importlib.util
     from pathlib import Path
 
-    return importlib.util.find_spec("onnxruntime_genai") is not None and Path(model_path).is_dir()
+    return importlib.util.find_spec("onnxruntime_genai") is not None and (
+        Path(model_path).is_dir() or phi_onnx.download_enabled())
 PROMPT = f"<|user|>\n<|image_1|>\n{INSTRUCTION}<|end|>\n<|assistant|>\n"
 
 
