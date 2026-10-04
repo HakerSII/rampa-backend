@@ -6766,7 +6766,20 @@
           "baby_changing_table",
           "stroller_space",
           "rest_areas",
-          "luggage_storage"
+          "luggage_storage",
+          "quiet_space",
+          "accessible_room",
+          "roll_in_shower",
+          "grab_bars",
+          "reception_24h",
+          "medical_equipment_allowed",
+          "kitchenette",
+          "open_24h",
+          "staff_english",
+          "staff_german",
+          "staff_ukrainian",
+          "information_sign",
+          "other_barrier"
         ],
         "title": "FeatureKey"
       },
