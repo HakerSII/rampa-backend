@@ -84,3 +84,28 @@ async def test_invalid_expected_element(uc):
     ph = await upload(uc, "winda.png")
     with pytest.raises(ValidationFailed):
         await uc.analyze_image(user(uc, "anna"), [ph.id], expected={"element": "teleport"})
+
+
+class _BrokenModel:
+    LABEL = "gemini"
+
+    async def analyze(self, image_path, original_name):
+        raise RuntimeError("quota exceeded")
+
+
+async def test_mock_fallback_is_no_verdict_and_keeps_the_photo(tmp_path):
+    """The real model failed and the mock's fixed sample answered: it says nothing about this photo → no mismatch."""
+    from app.adapters.outbound.files import LocalFileStorage
+    from app.adapters.outbound.vision_mock import FallbackVisionAnalyzer, MockVisionAnalyzer
+    u = make_use_cases(vision=FallbackVisionAnalyzer(_BrokenModel(), MockVisionAnalyzer(), 1))
+    u.storage = LocalFileStorage(str(tmp_path))
+    ph = await upload(u, "winda.png", element="ramp")
+    r = await u.analyze_image(user(u, "anna"), [ph.id])
+    assert r.model == "mock" and u.repo.get_photo(ph.id) is not None and Path(ph.path).exists()
+
+
+async def test_demo_mode_mock_still_checks(uc):
+    """AI_MODE=mock (the deterministic demo) keeps the mismatch check."""
+    ph = await upload(uc, "winda.png", element="ramp")
+    with pytest.raises(PhotoMismatch):
+        await uc.analyze_image(user(uc, "anna"), [ph.id])
