@@ -57,3 +57,23 @@ def name_matches(query: str, name: str) -> bool:
     words = _WORD.findall(n)
     tokens = [t for t in _WORD.findall(q) if len(t) > 1 and t not in _LINKING]
     return bool(tokens) and all(any(w.startswith(_stem(t)) for w in words) for t in tokens)
+
+
+_STREET_WORDS = {"ulicy", "ulica", "ul", "ul.", "alei", "al", "al."}
+
+
+def _nominative_word(word: str) -> str:
+    lower = word.lower()
+    if len(word) <= 4 or any(c.isdigit() for c in word):
+        return word
+    for ending, replacement in (("iej", "a"), ("ego", "e"), ("ii", "ia"), ("y", "a"), ("u", "")):
+        if lower.endswith(ending):
+            return word[: len(word) - len(ending)] + replacement
+    return word
+
+
+def nominative(query: str) -> str:
+    """Rough nominative of a Polish place phrase for the geocoder (Nominatim does not decline):
+    'Tauron Areny' → 'Tauron Arena', 'ulicy Lea 120' → 'Lea 120', 'Teatru Bagatela' → 'Teatr Bagatela'."""
+    words = [w for w in query.split() if w.lower() not in _STREET_WORDS]
+    return " ".join(_nominative_word(w) for w in words)
